@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const QuestionFilter = ({ 
   searchKeyword, 
@@ -8,6 +8,22 @@ const QuestionFilter = ({
   total, 
   loading 
 }) => {
+  const [inputValue, setInputValue] = useState(searchKeyword);
+
+  // Debounce: 用户停止输入 500ms 后才更新搜索关键词
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchKeyword(inputValue);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [inputValue, setSearchKeyword]);
+
+  // 同步外部 searchKeyword 变化（例如清除按钮）
+  useEffect(() => {
+    setInputValue(searchKeyword);
+  }, [searchKeyword]);
+
   return (
     <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
       <h2 className="text-lg font-bold text-gray-800 mb-4">题目筛选</h2>
@@ -19,8 +35,8 @@ const QuestionFilter = ({
           </label>
           <input
             type="text"
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             placeholder="输入关键词进行模糊搜索..."
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />

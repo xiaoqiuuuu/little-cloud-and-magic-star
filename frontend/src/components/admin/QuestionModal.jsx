@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { App } from 'antd';
 import ImagePreview from '../ImagePreview';
 import VideoPreview from '../VideoPreview';
 import AudioPreview from '../AudioPreview';
@@ -11,6 +12,8 @@ const QuestionModal = ({
   editingQuestion, 
   producers 
 }) => {
+  const { message } = App.useApp();
+  
   const [formData, setFormData] = useState({
     question: '',
     answer: '',
@@ -68,18 +71,18 @@ const QuestionModal = ({
     try {
       if (editingQuestion) {
         await api.put(`/admin/questions/${editingQuestion.id}`, data);
-        alert('更新成功!');
+        message.success('更新成功!');
       } else {
         // 仅在添加题目时保存出题人到 localStorage
         localStorage.setItem('lastAuthor', JSON.stringify(formData.author || []));
         await api.post('/admin/questions', data);
-        alert('创建成功!');
+        message.success('创建成功!');
       }
       onSuccess();
       onClose();
     } catch (error) {
       console.error('操作失败:', error);
-      alert('操作失败，请稍后重试');
+      message.error('操作失败，请稍后重试');
     }
   };
 
@@ -190,7 +193,7 @@ const QuestionModal = ({
                   let urls = [];
                   for (const file of files) {
                     if (file.size > 10 * 1024 * 1024) {
-                      alert(`${file.name} 超过10M，已跳过`);
+                      message.warning(`${file.name} 超过10M，已跳过`);
                       continue;
                     }
                     const form = new FormData();
@@ -201,7 +204,7 @@ const QuestionModal = ({
                       });
                       urls.push(res.data.url);
                     } catch (err) {
-                      alert(`${file.name} 上传失败`);
+                      message.error(`${file.name} 上传失败`);
                     }
                   }
                   setFormData((prev) => ({
@@ -226,7 +229,7 @@ const QuestionModal = ({
                   let urls = [];
                   for (const file of files) {
                     if (file.size > 10 * 1024 * 1024) {
-                      alert(`${file.name} 超过10M，已跳过`);
+                      message.warning(`${file.name} 超过10M，已跳过`);
                       continue;
                     }
                     const form = new FormData();
@@ -237,7 +240,7 @@ const QuestionModal = ({
                       });
                       urls.push(res.data.url);
                     } catch (err) {
-                      alert(`${file.name} 上传失败`);
+                      message.error(`${file.name} 上传失败`);
                     }
                   }
                   setFormData((prev) => ({

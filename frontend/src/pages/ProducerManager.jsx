@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { App } from 'antd';
 import api from '../api';
 
 function ProducerManager() {
+  const { message, modal } = App.useApp();
+  
   const [producers, setProducers] = useState([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,32 +73,33 @@ function ProducerManager() {
     try {
       if (editingProducer) {
         await api.put(`/admin/producers/${editingProducer.id}`, data);
-        alert('更新成功!');
+        message.success('更新成功!');
       } else {
         await api.post('/admin/producers', data);
-        alert('创建成功!');
+        message.success('创建成功!');
       }
       handleCloseModal();
       fetchProducers();
     } catch (error) {
       console.error('操作失败:', error);
-      alert('操作失败，请稍后重试');
+      message.error('操作失败，请稍后重试');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('确定要删除这个制作人吗?')) {
-      return;
-    }
-
-    try {
-      await api.delete(`/admin/producers/${id}`);
-      alert('删除成功!');
-      fetchProducers();
-    } catch (error) {
-      console.error('删除失败:', error);
-      alert('删除失败，请稍后重试');
-    }
+    modal.confirm({
+      title: '确定要删除这个制作人吗?',
+      onOk: async () => {
+        try {
+          await api.delete(`/admin/producers/${id}`);
+          message.success('删除成功!');
+          fetchProducers();
+        } catch (error) {
+          console.error('删除失败:', error);
+          message.error('删除失败，请稍后重试');
+        }
+      }
+    });
   };
 
   if (loading) {

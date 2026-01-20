@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { Table, Tag, Button, Space, App } from 'antd';
+import { EditOutlined, DeleteOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined, DownloadOutlined } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 
 const QuestionList = ({ 
   questions, 
@@ -9,220 +12,316 @@ const QuestionList = ({
   setSortDesc, 
   onEdit, 
   onDelete,
-  onResetStats 
+  onResetStats,
+  onBatchDelete,
+  onBatchResetStats,
+  currentPage,
+  pageSize,
+  total,
+  onPageChange
 }) => {
-  const [viewingAnswer, setViewingAnswer] = useState(null);
+  const { modal, message } = App.useApp();
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
 
-  if (loading) {
-    return <div className="p-8 text-center text-gray-500">加载中...</div>;
-  }
+  const handleBatchDelete = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要删除的题目');
+      return;
+    }
+    
+    modal.confirm({
+      title: '批量删除确认',
+      content: `确定要删除选中的 ${selectedRowKeys.length} 个题目吗？此操作不可恢复！`,
+      okText: '确定删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        if (onBatchDelete) {
+          await onBatchDelete(selectedRowKeys);
+          setSelectedRowKeys([]);
+        }
+      },
+    });
+  };
 
-  if (questions.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-        {searchKeyword || filterTag !== 'all' ? '没有找到匹配的题目' : '暂无题目，请添加题目'}
-      </div>
-    );
-  }
+  const handleBatchResetStats = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要归零的题目');
+      return;
+    }
+    
+    modal.confirm({
+      title: '批量归零确认',
+      content: `确定要归零选中的 ${selectedRowKeys.length} 个题目的统计数据吗？`,
+      okText: '确定归零',
+      cancelText: '取消',
+      onOk: async () => {
+        if (onBatchResetStats) {
+          await onBatchResetStats(selectedRowKeys);
+          setSelectedRowKeys([]);
+        }
+      },
+    });
+  };
+
+  const handleBatchExport = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要导出的题目');
+      return;
+    }
+
+    try {
+      // 筛选选中的题目
+      const selectedQuestions = questions.filter(q => selectedRowKeys.includes(q.id));
+
+      // 转换数据为 Excel 格式
+      const excelData = selectedQuestions.map(q => ({
+        'ID': q.id,
+        '题目': q.question,
+        '答案': q.answer,
+        '资源链接（多个用|分隔）': q.resources?.join('|') || '',
+        '标签（concert/vlog/common）': q.tag,
+        '出题人（多个用|分隔）': Array.isArray(q.author) ? q.author.join('|') : (q.author || ''),
+        '随机点击数': q.random_clicks || 0,
+        '隐藏点击数': q.hide_clicks || 0,
+      }));
+
+      // 创建工作簿
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '题目列表');
+
+      // 设置列宽
+      const colWidths = [
+        { wch: 10 },  // ID
+        { wch: 40 },  // 题目
+        { wch: 30 },  // 答案
+        { wch: 50 },  // 资源链接
+        { wch: 20 },  // 标签
+        { wch: 30 },  // 出题人
+        { wch: 12 },  // 随机点击数
+        { wch: 12 },  // 隐藏点击数
+      ];
+      worksheet['!cols'] = colWidths;
+
+      // 导出文件
+      const fileName = `批量导出_${selectedRowKeys.length}题_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      message.success(`成功导出 ${selectedRowKeys.length} 道题目`);
+    } catch (error) {
+      console.error('批量导出失败:', error);
+      message.error('导出失败，请稍后重试');
+    }
+  };
+
+  const columns = [
+    {
+      title: '编号',
+      dataIndex: 'id',
+      key: 'id',
+      width: 80,
+      render: (id) => <span className="text-blue-600 font-medium">#{id}</span>,
+    },
+    {
+      title: '题目',
+      dataIndex: 'question',
+      key: 'question',
+      ellipsis: true,
+      render: (text) => (
+        <div className="text-sm" title={text}>
+          {text}
+        </div>
+      ),
+    },
+    {
+      title: '答案',
+      dataIndex: 'answer',
+      key: 'answer',
+      width: 150,
+      render: (answer, record) => {
+        const isExpanded = expandedRowKeys.includes(record.id);
+        return (
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Button
+              type="link"
+              size="small"
+              icon={isExpanded ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              onClick={() => {
+                setExpandedRowKeys(prev => 
+                  isExpanded ? prev.filter(key => key !== record.id) : [...prev, record.id]
+                );
+              }}
+            >
+              {isExpanded ? '隐藏答案' : '查看答案'}
+            </Button>
+            {isExpanded && (
+              <div className="p-2 bg-green-50 rounded border border-green-200 text-xs break-all">
+                {answer}
+              </div>
+            )}
+          </Space>
+        );
+      },
+    },
+    {
+      title: '类型',
+      dataIndex: 'tag',
+      key: 'tag',
+      width: 100,
+      render: (tag) => {
+        const tagConfig = {
+          concert: { color: 'purple', text: '演唱会' },
+          vlog: { color: 'blue', text: 'Vlog' },
+          general: { color: 'default', text: '通用' },
+        };
+        const config = tagConfig[tag] || tagConfig.general;
+        return <Tag color={config.color}>{config.text}</Tag>;
+      },
+    },
+    {
+      title: '出题人',
+      dataIndex: 'author',
+      key: 'author',
+      width: 120,
+      ellipsis: true,
+      render: (author) => {
+        const authorText = Array.isArray(author) ? author.join(', ') : (author || '-');
+        return <span title={authorText}>{authorText}</span>;
+      },
+    },
+    {
+      title: '资源数',
+      dataIndex: 'resources',
+      key: 'resources',
+      width: 100,
+      align: 'center',
+      render: (resources) => (
+        <span>{resources && resources.length > 0 ? `${resources.length} 个` : '无'}</span>
+      ),
+    },
+    {
+      title: '点击统计',
+      key: 'stats',
+      width: 120,
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+          <span className="text-purple-600 text-xs">随机: {record.random_clicks || 0}</span>
+          <span className="text-orange-600 text-xs">隐藏: {record.hide_clicks || 0}</span>
+        </Space>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 180,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => onEdit(record)}
+          >
+            编辑
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<ReloadOutlined />}
+            onClick={() => onResetStats(record.id)}
+            title="归零统计数据"
+          >
+            归零
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => onDelete(record.id)}
+          >
+            删除
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (selectedKeys) => {
+      setSelectedRowKeys(selectedKeys);
+    },
+    selections: [
+      Table.SELECTION_ALL,
+      Table.SELECTION_INVERT,
+      Table.SELECTION_NONE,
+    ],
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      {/* Desktop Header */}
-      <div className="hidden md:grid md:grid-cols-[80px_2fr_1fr_100px_120px_100px_120px_150px] bg-gray-50 border-b border-gray-200 font-medium text-gray-500 text-xs uppercase tracking-wider">
-        <div 
-          className="px-6 py-3 cursor-pointer select-none flex items-center hover:bg-gray-100 transition-colors" 
-          onClick={() => setSortDesc(v => !v)}
-        >
-          编号
-          <span className="ml-1 text-xs">{sortDesc ? '▼' : '▲'}</span>
+    <div className="bg-white rounded-lg shadow">
+      {selectedRowKeys.length > 0 && (
+        <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+          <span className="text-sm text-gray-700">
+            已选择 <span className="font-semibold text-blue-600">{selectedRowKeys.length}</span> 个题目
+          </span>
+          <Space>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleBatchExport}
+              type="primary"
+            >
+              批量导出
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleBatchResetStats}
+            >
+              批量归零
+            </Button>
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              onClick={handleBatchDelete}
+            >
+              批量删除
+            </Button>
+            <Button
+              onClick={() => setSelectedRowKeys([])}
+            >
+              取消选择
+            </Button>
+          </Space>
         </div>
-        <div className="px-6 py-3 flex items-center">题目</div>
-        <div className="px-6 py-3 flex items-center">答案</div>
-        <div className="px-6 py-3 flex items-center">类型</div>
-        <div className="px-6 py-3 flex items-center">出题人</div>
-        <div className="px-6 py-3 flex items-center">资源数</div>
-        <div className="px-6 py-3 flex items-center">点击统计</div>
-        <div className="px-6 py-3 flex items-center justify-end">操作</div>
-      </div>
-
-      {/* Desktop List Items */}
-      <div className="hidden md:block divide-y divide-gray-200">
-        {questions.map((question) => (
-          <div 
-            key={question.id} 
-            className="grid grid-cols-[80px_2fr_1fr_100px_120px_100px_120px_150px] hover:bg-gray-50 transition-colors"
-          >
-            {/* ID */}
-            <div className="px-6 py-4 flex items-center">
-              <span className="text-sm font-medium text-blue-600">#{question.id}</span>
-            </div>
-
-            {/* Question */}
-            <div className="px-6 py-4 flex items-center">
-              <div className="text-sm text-gray-900 line-clamp-2" title={question.question}>
-                {question.question}
-              </div>
-            </div>
-
-            {/* Answer */}
-            <div className="px-6 py-4 flex flex-col justify-center">
-              <button
-                onClick={() => setViewingAnswer(viewingAnswer === question.id ? null : question.id)}
-                className="text-blue-600 hover:text-blue-800 underline text-sm text-left"
-              >
-                {viewingAnswer === question.id ? '隐藏答案' : '查看答案'}
-              </button>
-              {viewingAnswer === question.id && (
-                <div className="mt-2 p-2 bg-green-50 rounded border border-green-200 text-xs break-all">
-                  {question.answer}
-                </div>
-              )}
-            </div>
-
-            {/* Type */}
-            <div className="px-6 py-4 flex items-center">
-              <span
-                className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  question.tag === 'concert'
-                    ? 'bg-purple-100 text-purple-800'
-                    : question.tag === 'vlog'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}
-              >
-                {question.tag === 'concert' ? '演唱会' : question.tag === 'vlog' ? 'Vlog' : '通用'}
-              </span>
-            </div>
-
-            {/* Author */}
-            <div className="px-6 py-4 flex items-center">
-              <span className="text-sm text-gray-500 truncate block w-full" title={Array.isArray(question.author) ? question.author.join(', ') : (question.author || '-')}>
-                {Array.isArray(question.author) ? question.author.join(', ') : (question.author || '-')}
-              </span>
-            </div>
-
-            {/* Resources */}
-            <div className="px-6 py-4 flex items-center">
-              <span className="text-sm text-gray-500">
-                {question.resources && question.resources.length > 0 ? `${question.resources.length} 个` : '无'}
-              </span>
-            </div>
-
-            {/* Stats */}
-            <div className="px-6 py-4 flex flex-col justify-center gap-1">
-              <span className="text-purple-600 text-xs">随机: {question.random_clicks || 0}</span>
-              <span className="text-orange-600 text-xs">隐藏: {question.hide_clicks || 0}</span>
-            </div>
-
-            {/* Actions */}
-            <div className="px-6 py-4 flex items-center justify-end gap-3">
-              <button
-                onClick={() => onEdit(question)}
-                className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-              >
-                编辑
-              </button>
-              <button
-                onClick={() => onDelete(question.id)}
-                className="text-red-600 hover:text-red-900 text-sm font-medium"
-              >
-                删除
-              </button>
-              <button
-                onClick={() => onResetStats(question.id)}
-                className="text-orange-500 hover:text-orange-700 text-sm font-medium"
-                title="归零统计数据"
-              >
-                归零
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Mobile List Items (Card View) */}
-      <div className="md:hidden divide-y divide-gray-200 bg-gray-50">
-        {questions.map((question) => (
-          <div key={question.id} className="p-4 bg-white mb-2 shadow-sm">
-            {/* Header: ID & Type */}
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                  #{question.id}
-                </span>
-                <span
-                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    question.tag === 'concert'
-                      ? 'bg-purple-100 text-purple-800'
-                      : question.tag === 'vlog'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {question.tag === 'concert' ? '演唱会' : question.tag === 'vlog' ? 'Vlog' : '通用'}
-                </span>
-              </div>
-              <div className="text-xs text-gray-400">
-                {question.resources && question.resources.length > 0 ? `${question.resources.length} 资源` : '无资源'}
-              </div>
-            </div>
-
-            {/* Question Body */}
-            <div className="mb-3">
-              <h3 className="text-base font-medium text-gray-900 mb-1 line-clamp-3">
-                {question.question}
-              </h3>
-              <div className="text-xs text-gray-500 flex items-center gap-2">
-                <span>出题人: {Array.isArray(question.author) ? question.author.join(', ') : (question.author || '-')}</span>
-              </div>
-            </div>
-
-            {/* Stats Row */}
-            <div className="flex gap-4 mb-3 text-xs bg-gray-50 p-2 rounded">
-              <span className="text-purple-600 font-medium">🎲 随机: {question.random_clicks || 0}</span>
-              <span className="text-orange-600 font-medium">👁️ 隐藏: {question.hide_clicks || 0}</span>
-            </div>
-
-            {/* Answer Section */}
-            <div className="mb-4">
-              <button
-                onClick={() => setViewingAnswer(viewingAnswer === question.id ? null : question.id)}
-                className="text-blue-600 text-sm font-medium flex items-center gap-1"
-              >
-                {viewingAnswer === question.id ? '收起答案' : '查看答案'}
-                <span className="text-xs">{viewingAnswer === question.id ? '▲' : '▼'}</span>
-              </button>
-              {viewingAnswer === question.id && (
-                <div className="mt-2 p-3 bg-green-50 rounded border border-green-100 text-sm text-gray-800 break-all animate-fadeIn">
-                  {question.answer}
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="grid grid-cols-3 gap-3 border-t pt-3">
-              <button
-                onClick={() => onEdit(question)}
-                className="flex items-center justify-center py-2 bg-blue-50 text-blue-600 rounded text-sm font-medium hover:bg-blue-100"
-              >
-                编辑
-              </button>
-              <button
-                onClick={() => onResetStats(question.id)}
-                className="flex items-center justify-center py-2 bg-orange-50 text-orange-600 rounded text-sm font-medium hover:bg-orange-100"
-              >
-                归零
-              </button>
-              <button
-                onClick={() => onDelete(question.id)}
-                className="flex items-center justify-center py-2 bg-red-50 text-red-600 rounded text-sm font-medium hover:bg-red-100"
-              >
-                删除
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      )}
+      
+      <Table
+        rowSelection={rowSelection}
+        columns={columns}
+        dataSource={questions}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          current: currentPage,
+          pageSize: pageSize,
+          total: total,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total) => `共 ${total} 个题目`,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          onChange: (page, size) => {
+            onPageChange(page, size);
+          },
+        }}
+        scroll={{ x: 1200 }}
+        locale={{
+          emptyText: searchKeyword || filterTag !== 'all' ? '没有找到匹配的题目' : '暂无题目，请添加题目',
+        }}
+      />
     </div>
   );
 };

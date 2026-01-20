@@ -1,4 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ConfigProvider, App as AntApp } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import HomePage from './pages/HomePage';
 import QuizPage from './pages/QuizPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
@@ -6,7 +9,9 @@ import MaterialManager from './pages/MaterialManager';
 import ProducerManager from './pages/ProducerManager';
 import AdminLayout from './components/AdminLayout';
 import Navbar from './components/Navbar';
+import RouterProgressBar from './components/RouterProgressBar';
 import { useEffect, useState } from 'react';
+import 'antd/dist/reset.css'; // Ant Design 样式
 
 function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -31,35 +36,53 @@ function App() {
   }, []);
 
   return (
-    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <div className="min-h-screen bg-gray-50">
-        <Routes>
-          {/* 公开页面，带有顶部导航 */}
-          <Route path="/" element={
-            <>
-              <Navbar isAdminLoggedIn={isAdminLoggedIn} />
-              <QuizPage />
-            </>
-          } />
-          <Route path="/admin/login" element={
-            <>
-              <Navbar isAdminLoggedIn={isAdminLoggedIn} />
-              <AdminLogin />
-            </>
-          } />
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        token: {
+          colorPrimary: '#1890ff',
+          borderRadius: 6,
+        },
+      }}
+    >
+      <AntApp>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <RouterProgressBar />
+          <div className="min-h-screen bg-gray-50">
+            <Routes>
+              {/* 首页 - 产品介绍 */}
+              <Route path="/" element={<HomePage />} />
+              
+              {/* 答题页面 */}
+              <Route path="/quiz" element={
+                <>
+                  <Navbar isAdminLoggedIn={isAdminLoggedIn} />
+                  <QuizPage />
+                </>
+              } />
+              
+              {/* 管理员登录 */}
+              <Route path="/admin/login" element={
+                <>
+                  <Navbar isAdminLoggedIn={isAdminLoggedIn} />
+                  <AdminLogin />
+                </>
+              } />
 
-          {/* 后台管理区域，使用 AdminLayout */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="questions" replace />} />
-            <Route path="questions" element={<AdminDashboard />} />
-            <Route path="materials" element={<MaterialManager />} />
-            <Route path="producers" element={<ProducerManager />} />
-            {/* 兼容旧路由 */}
-            <Route path="dashboard" element={<Navigate to="questions" replace />} />
-          </Route>
-        </Routes>
-      </div>
-    </Router>
+              {/* 后台管理区域，使用 AdminLayout */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="questions" replace />} />
+                <Route path="questions" element={<AdminDashboard />} />
+                <Route path="materials" element={<MaterialManager />} />
+                <Route path="producers" element={<ProducerManager />} />
+                {/* 兼容旧路由 */}
+                <Route path="dashboard" element={<Navigate to="questions" replace />} />
+              </Route>
+            </Routes>
+          </div>
+        </Router>
+      </AntApp>
+    </ConfigProvider>
   );
 }
 

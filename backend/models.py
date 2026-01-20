@@ -34,6 +34,33 @@ class QuestionUpdate(BaseModel):
     tag: Optional[Literal["concert", "vlog", "common"]] = None
     author: Optional[List[str]] = None
 
+# 批量导入题目项
+
+
+class QuestionImportItem(BaseModel):
+    id: Optional[str] = None  # 如果有ID则更新，否则创建
+    question: str
+    answer: str
+    resources: List[str] = []
+    tag: Literal["concert", "vlog", "common"] = "common"
+    author: List[str] = []
+
+
+# 批量导入请求
+
+
+class QuestionBatchImport(BaseModel):
+    questions: List[QuestionImportItem]
+
+
+# 批量导入响应
+
+
+class QuestionBatchImportResult(BaseModel):
+    success_count: int
+    fail_count: int
+    errors: List[dict] = []  # {"index": int, "id": str, "error": str}
+
 # 用户答题请求
 
 

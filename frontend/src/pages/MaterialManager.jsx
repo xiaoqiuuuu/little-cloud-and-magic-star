@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { App } from 'antd';
 import api from '../api';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
 
 function MaterialManager() {
+  const { message, modal } = App.useApp();
+  
   const [materials, setMaterials] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -103,32 +106,33 @@ function MaterialManager() {
     try {
       if (editingMaterial) {
         await api.put(`/admin/materials/${editingMaterial.id}`, data);
-        alert('更新成功!');
+        message.success('更新成功!');
       } else {
         await api.post('/admin/materials', data);
-        alert('创建成功!');
+        message.success('创建成功!');
       }
       handleCloseModal();
       fetchMaterials();
     } catch (error) {
       console.error('操作失败:', error);
-      alert('操作失败，请稍后重试');
+      message.error('操作失败，请稍后重试');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('确定要删除这个物料吗?')) {
-      return;
-    }
-
-    try {
-      await api.delete(`/admin/materials/${id}`);
-      alert('删除成功!');
-      fetchMaterials();
-    } catch (error) {
-      console.error('删除失败:', error);
-      alert('删除失败，请稍后重试');
-    }
+    modal.confirm({
+      title: '确定要删除这个物料吗?',
+      onOk: async () => {
+        try {
+          await api.delete(`/admin/materials/${id}`);
+          message.success('删除成功!');
+          fetchMaterials();
+        } catch (error) {
+          console.error('删除失败:', error);
+          message.error('删除失败，请稍后重试');
+        }
+      }
+    });
   };
 
   const totalPages = Math.ceil(total / pageSize);
@@ -373,7 +377,7 @@ function MaterialManager() {
                       let urls = [];
                       for (const file of files) {
                         if (file.size > 10 * 1024 * 1024) {
-                          alert(`${file.name} 超过10M，已跳过`);
+                          message.warning(`${file.name} 超过10M，已跳过`);
                           continue;
                         }
                         const form = new FormData();
@@ -384,7 +388,7 @@ function MaterialManager() {
                           });
                           urls.push(res.data.url);
                         } catch (err) {
-                          alert(`${file.name} 上传失败`);
+                          message.error(`${file.name} 上传失败`);
                         }
                       }
                       setFormData((prev) => ({
@@ -409,7 +413,7 @@ function MaterialManager() {
                       let urls = [];
                       for (const file of files) {
                         if (file.size > 10 * 1024 * 1024) {
-                          alert(`${file.name} 超过10M，已跳过`);
+                          message.warning(`${file.name} 超过10M，已跳过`);
                           continue;
                         }
                         const form = new FormData();
@@ -420,7 +424,7 @@ function MaterialManager() {
                           });
                           urls.push(res.data.url);
                         } catch (err) {
-                          alert(`${file.name} 上传失败`);
+                          message.error(`${file.name} 上传失败`);
                         }
                       }
                       setFormData((prev) => ({

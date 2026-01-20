@@ -31,6 +31,7 @@
 - ✅ 编辑现有题目
 - ✅ 删除题目
 - ✅ 完整的 CRUD 操作
+- ✅ **Excel 批量导入导出** - 支持批量创建、更新题目（详见 [EXCEL_FORMAT.md](EXCEL_FORMAT.md)）
 
 ## 项目结构
 

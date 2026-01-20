@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { App } from 'antd';
 import api from '../api';
 
 // Components
@@ -7,10 +8,12 @@ import StatsOverview from '../components/admin/StatsOverview';
 import QuestionFilter from '../components/admin/QuestionFilter';
 import SearchById from '../components/admin/SearchById';
 import QuestionList from '../components/admin/QuestionList';
-import Pagination from '../components/admin/Pagination';
 import QuestionModal from '../components/admin/QuestionModal';
+import ExcelImportExport from '../components/admin/ExcelImportExport';
 
 function AdminDashboard() {
+  const { message, modal } = App.useApp();
+  
   // 答题/调试模式
   const [debugMode, setDebugMode] = useState(() => localStorage.getItem('debugMode') === 'true');
   
@@ -120,33 +123,69 @@ function AdminDashboard() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('确定要删除这道题目吗?')) {
-      return;
-    }
-
-    try {
-      await api.delete(`/admin/questions/${id}`);
-      alert('删除成功!');
-      fetchQuestions();
-      fetchStats();
-    } catch (error) {
-      console.error('删除失败:', error);
-      alert('删除失败，请稍后重试');
-    }
+    modal.confirm({
+      title: '确定要删除这道题目吗?',
+      onOk: async () => {
+        try {
+          await api.delete(`/admin/questions/${id}`);
+          message.success('删除成功!');
+          fetchQuestions();
+          fetchStats();
+        } catch (error) {
+          console.error('删除失败:', error);
+          message.error('删除失败，请稍后重试');
+        }
+      }
+    });
   };
 
   const handleResetStats = async (id) => {
-    if (!window.confirm('确定要将该题的“随机/隐藏”统计归零吗？')) return;
+    modal.confirm({
+      title: '确定要将该题的"随机/隐藏"统计归零吗？',
+      onOk: async () => {
+        try {
+          await api.post(`/admin/questions/${id}/reset_stats`);
+          message.success('该题统计已归零');
+          fetchQuestions();
+        } catch (e) {
+          message.error('归零失败');
+        }
+      }
+    });
+  };
+
+  const handleBatchDelete = async (ids) => {
     try {
-      await api.post(`/admin/questions/${id}/reset_stats`);
-      alert('该题统计已归零');
+      const deletePromises = ids.map(id => api.delete(`/admin/questions/${id}`));
+      await Promise.all(deletePromises);
+      message.success(`成功删除 ${ids.length} 个题目`);
       fetchQuestions();
-    } catch (e) {
-      alert('归零失败');
+      fetchStats();
+    } catch (error) {
+      console.error('批量删除失败:', error);
+      message.error('批量删除失败，请稍后重试');
     }
   };
 
-  const totalPages = Math.ceil(total / pageSize);
+  const handleBatchResetStats = async (ids) => {
+    try {
+      const resetPromises = ids.map(id => api.post(`/admin/questions/${id}/reset_stats`));
+      await Promise.all(resetPromises);
+      message.success(`成功归零 ${ids.length} 个题目的统计数据`);
+      fetchQuestions();
+    } catch (error) {
+      console.error('批量归零失败:', error);
+      message.error('批量归零失败，请稍后重试');
+    }
+  };
+
+  const handlePageChange = (page, size) => {
+    setCurrentPage(page);
+    if (size !== pageSize) {
+      setPageSize(size);
+      setCurrentPage(1); // 改变每页数量时重置到第一页
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -181,34 +220,48 @@ function AdminDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
         {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 mb-6">
-          <button
-            onClick={() => navigate('/')}
-            className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 sm:px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm sm:text-base"
-          >
-            返回答题界面
-          </button>
-          <button
-            onClick={async () => {
-              if (!window.confirm('确定要将所有题目的“随机/隐藏”统计全部归零吗？')) return;
-              try {
-                await api.post('/admin/questions/reset_stats_all');
-                alert('全部题目统计已归零');
+        <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
+          <div className="flex flex-wrap gap-2">
+            <ExcelImportExport 
+              onImportSuccess={() => {
                 fetchQuestions();
-              } catch (e) {
-                alert('归零失败');
-              }
-            }}
-            className="flex-1 sm:flex-none bg-orange-500 text-white px-4 sm:px-6 py-2 rounded-md hover:bg-orange-600 transition-colors font-medium text-sm sm:text-base"
-          >
-            全部统计归零
-          </button>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex-1 sm:flex-none bg-green-600 text-white px-4 sm:px-6 py-2 rounded-md hover:bg-green-700 transition-colors font-medium text-sm sm:text-base shadow-sm"
-          >
-            + 新建题目
-          </button>
+                fetchStats();
+              }}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate('/quiz')}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
+            >
+              返回答题界面
+            </button>
+            <button
+              onClick={() => {
+                modal.confirm({
+                  title: '确定要将所有题目的"随机/隐藏"统计全部归零吗？',
+                  onOk: async () => {
+                    try {
+                      await api.post('/admin/questions/reset_stats_all');
+                      message.success('全部题目统计已归零');
+                      fetchQuestions();
+                    } catch (e) {
+                      message.error('归零失败');
+                    }
+                  }
+                });
+              }}
+              className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors font-medium text-sm"
+            >
+              全部统计归零
+            </button>
+            <button
+              onClick={() => handleOpenModal()}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium text-sm shadow-sm"
+            >
+              + 新建题目
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -238,19 +291,13 @@ function AdminDashboard() {
           onEdit={handleOpenModal}
           onDelete={handleDelete}
           onResetStats={handleResetStats}
+          onBatchDelete={handleBatchDelete}
+          onBatchResetStats={handleBatchResetStats}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={handlePageChange}
         />
-
-        {/* Pagination */}
-        {questions.length > 0 && (
-          <Pagination 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            setPageSize={setPageSize}
-            setCurrentPage={setCurrentPage}
-            total={total}
-          />
-        )}
       </div>
 
       {/* Modal */}

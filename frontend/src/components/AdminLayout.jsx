@@ -1,10 +1,22 @@
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { Layout, Menu, Button, Drawer, Typography } from 'antd';
+import {
+  QuestionCircleOutlined,
+  PictureOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  MenuOutlined,
+} from '@ant-design/icons';
+import { showSuccess } from '../utils/message';
+
+const { Header, Content } = Layout;
+const { Title } = Typography;
 
 function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -13,144 +25,109 @@ function AdminLayout() {
     }
   }, [navigate]);
 
-  // 路由变化时关闭菜单
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location]);
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     window.dispatchEvent(new CustomEvent('authChange', { detail: { token: null } }));
+    showSuccess('已退出登录');
     navigate('/admin/login');
   };
 
-  const isActive = (path) => location.pathname.startsWith(path);
+  const menuItems = [
+    {
+      key: '/admin/questions',
+      icon: <QuestionCircleOutlined />,
+      label: <Link to="/admin/questions">题目管理</Link>,
+    },
+    {
+      key: '/admin/materials',
+      icon: <PictureOutlined />,
+      label: <Link to="/admin/materials">物料管理</Link>,
+    },
+    {
+      key: '/admin/producers',
+      icon: <UserOutlined />,
+      label: <Link to="/admin/producers">制作人管理</Link>,
+    },
+  ];
+
+  const currentPath = location.pathname;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <div className="text-xl font-bold text-gray-800 mr-8">
-                后台管理
-              </div>
-              {/* 桌面端导航链接 */}
-              <div className="hidden md:flex space-x-4">
-                <Link
-                  to="/admin/questions"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/admin/questions')
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  题目管理
-                </Link>
-                <Link
-                  to="/admin/materials"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/admin/materials')
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  物料管理
-                </Link>
-                <Link
-                  to="/admin/producers"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/admin/producers')
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  制作人管理
-                </Link>
-              </div>
-            </div>
-            
-            {/* 桌面端退出按钮 */}
-            <div className="hidden md:flex items-center">
-              <button
-                onClick={handleLogout}
-                className="text-gray-600 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                退出登录
-              </button>
-            </div>
-
-            {/* 移动端菜单按钮 */}
-            <div className="flex items-center md:hidden">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-              >
-                <span className="sr-only">打开菜单</span>
-                {/* 汉堡菜单图标 */}
-                {!isMenuOpen ? (
-                  <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                ) : (
-                  <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
+    <Layout className="min-h-screen">
+      <Header className="bg-white shadow-sm flex items-center justify-between px-4 sticky top-0 z-10 border-b">
+        <div className="flex items-center flex-1">
+          <Title level={4} className="!mb-0 !mr-8">
+            🎵 后台管理
+          </Title>
+          
+          {/* 桌面端菜单 */}
+          <Menu
+            mode="horizontal"
+            selectedKeys={[currentPath]}
+            items={menuItems}
+            className="flex-1 border-0 hidden md:flex"
+            style={{ minWidth: 0 }}
+          />
         </div>
 
-        {/* 移动端菜单 */}
-        {isMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <Link
-                to="/admin/questions"
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/admin/questions')
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                题目管理
-              </Link>
-              <Link
-                to="/admin/materials"
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/admin/materials')
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                物料管理
-              </Link>
-              <Link
-                to="/admin/producers"
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/admin/producers')
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                制作人管理
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-red-600 hover:bg-gray-50"
-              >
-                退出登录
-              </button>
-            </div>
-          </div>
-        )}
-      </nav>
+        {/* 桌面端退出按钮 */}
+        <div className="hidden md:block">
+          <Button
+            type="text"
+            danger
+            icon={<LogoutOutlined />}
+            onClick={handleLogout}
+          >
+            退出登录
+          </Button>
+        </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <Outlet />
-      </main>
-    </div>
+        {/* 移动端菜单按钮 */}
+        <Button
+          className="md:hidden"
+          type="text"
+          icon={<MenuOutlined />}
+          onClick={() => setDrawerVisible(true)}
+        />
+      </Header>
+
+      {/* 移动端抽屉菜单 */}
+      <Drawer
+        title="后台管理"
+        placement="right"
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        className="md:hidden"
+      >
+        <Menu
+          mode="vertical"
+          selectedKeys={[currentPath]}
+          items={menuItems}
+          className="border-0"
+          onClick={() => setDrawerVisible(false)}
+        />
+        <div className="mt-4 pt-4 border-t">
+          <Button
+            type="text"
+            danger
+            icon={<LogoutOutlined />}
+            onClick={() => {
+              setDrawerVisible(false);
+              handleLogout();
+            }}
+            block
+          >
+            退出登录
+          </Button>
+        </div>
+      </Drawer>
+
+      <Content className="p-6 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <Outlet />
+        </div>
+      </Content>
+    </Layout>
   );
 }
 

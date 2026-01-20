@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { App } from 'antd';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
 import api from '../api';
 
-function QuizPage() {
-  const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
+function QuizPage() {  const { message, modal } = App.useApp();
+    const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
   const [currentQuestion, setCurrentQuestion] = useState(null); // 当前题目的完整数据
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -69,7 +70,7 @@ function QuizPage() {
       }
     } catch (error) {
       console.error('获取题目列表失败:', error);
-      alert('获取题目列表失败，请稍后重试');
+      message.error('获取题目列表失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -81,7 +82,7 @@ function QuizPage() {
       setCurrentQuestion(response.data);
     } catch (error) {
       console.error('获取题目详情失败:', error);
-      alert('获取题目详情失败，请稍后重试');
+      message.error('获取题目详情失败，请稍后重试');
     }
   };
 
@@ -92,7 +93,7 @@ function QuizPage() {
 
   const handleRandomQuestion = async () => {
     if (filteredQuestionIds.length <= 1) {
-      alert('题目数量不足，无法随机抽题');
+      message.warning('题目数量不足，无法随机抽题');
       return;
     }
     
@@ -115,22 +116,28 @@ function QuizPage() {
   };
 
   const handleHideQuestion = async () => {
-    if (confirm('确定要隐藏这道题目吗？隐藏后将不会再随机到此题。')) {
-      // 记录隐藏点击
-      try {
-        await api.post(`/track/hide/${currentQuestion.id}`);
-      } catch (error) {
-        console.error('记录隐藏点击失败:', error);
+    modal.confirm({
+      title: '确定要隐藏这道题目吗？',
+      content: '隐藏后将不会再随机到此题。',
+      okText: '确定',
+      cancelText: '取消',
+      onOk: async () => {
+        // 记录隐藏点击
+        try {
+          await api.post(`/track/hide/${currentQuestion.id}`);
+        } catch (error) {
+          console.error('记录隐藏点击失败:', error);
+        }
+        
+        setHiddenQuestions([...hiddenQuestions, currentQuestion.id]);
+        // 如果还有题目，随机跳到另一题
+        if (filteredQuestionIds.length > 1) {
+          handleRandomQuestion();
+        } else {
+          setCurrentIndex(0);
+        }
       }
-      
-      setHiddenQuestions([...hiddenQuestions, currentQuestion.id]);
-      // 如果还有题目，随机跳到另一题
-      if (filteredQuestionIds.length > 1) {
-        handleRandomQuestion();
-      } else {
-        setCurrentIndex(0);
-      }
-    }
+    });
   };
 
   const handleRestoreQuestion = (questionId) => {
@@ -138,10 +145,15 @@ function QuizPage() {
   };
 
   const handleRestoreAll = () => {
-    if (confirm('确定要恢复所有隐藏的题目吗？')) {
-      setHiddenQuestions([]);
-      setCurrentIndex(0);
-    }
+    modal.confirm({
+      title: '确定要恢复所有隐藏的题目吗？',
+      okText: '确定',
+      cancelText: '取消',
+      onOk: () => {
+        setHiddenQuestions([]);
+        setCurrentIndex(0);
+      }
+    });
   };
 
   // 在打开隐藏管理器时，按需加载隐藏的题目
@@ -275,7 +287,7 @@ function QuizPage() {
                 if (idx !== -1) {
                   setCurrentIndex(idx);
                 } else {
-                  alert('未找到该题号');
+                  message.warning('未找到该题号');
                 }
               }
             }}
