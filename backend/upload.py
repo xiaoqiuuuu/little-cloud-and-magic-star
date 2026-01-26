@@ -15,6 +15,8 @@ MAX_SIZE = 10 * 1024 * 1024  # 10MB
 
 @router.post('/api/upload')
 async def upload_file(file: UploadFile = File(...)):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail='文件名不存在')
     ext = os.path.splitext(file.filename)[-1].lower()
     if ext not in ALLOWED_EXTS:
         raise HTTPException(status_code=400, detail='文件类型不支持')

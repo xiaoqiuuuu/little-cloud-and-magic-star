@@ -2,11 +2,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ConfigProvider, App as AntApp } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import HomePage from './pages/HomePage';
+import GameRules from './pages/GameRules';
 import QuizPage from './pages/QuizPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import MaterialManager from './pages/MaterialManager';
 import ProducerManager from './pages/ProducerManager';
+import RoleManager from './pages/RoleManager';
 import AdminLayout from './components/AdminLayout';
 import Navbar from './components/Navbar';
 import RouterProgressBar from './components/RouterProgressBar';
@@ -52,6 +54,8 @@ function App() {
             <Routes>
               {/* 首页 - 产品介绍 */}
               <Route path="/" element={<HomePage />} />
+              {/* 规则介绍页面 */}
+              <Route path="/rules" element={<GameRules />} />
               
               {/* 答题页面 */}
               <Route path="/quiz" element={
@@ -75,6 +79,7 @@ function App() {
                 <Route path="questions" element={<AdminDashboard />} />
                 <Route path="materials" element={<MaterialManager />} />
                 <Route path="producers" element={<ProducerManager />} />
+                <Route path="roles" element={<RoleManager />} />
                 {/* 兼容旧路由 */}
                 <Route path="dashboard" element={<Navigate to="questions" replace />} />
               </Route>

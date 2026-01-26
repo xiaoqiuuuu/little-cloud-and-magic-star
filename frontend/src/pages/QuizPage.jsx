@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { App } from 'antd';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
+import Countdown from '../components/Countdown';
 import api from '../api';
 
 function QuizPage() {  const { message, modal } = App.useApp();
-    const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
+  const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
   const [currentQuestion, setCurrentQuestion] = useState(null); // 当前题目的完整数据
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,12 @@ function QuizPage() {  const { message, modal } = App.useApp();
   const [hiddenQuestionsCache, setHiddenQuestionsCache] = useState({}); // 缓存隐藏管理器中的题目
   // 新增：debugMode 控制题号跳转输入框
   const [debugMode, setDebugMode] = useState(() => localStorage.getItem('debugMode') === 'true');
+  
+  // 倒计时功能相关状态
+  const [quizStarted, setQuizStarted] = useState(false); // 是否已开始答题
+  const [countdownSeconds, setCountdownSeconds] = useState(60);
+  const [showCountdown, setShowCountdown] = useState(false); // 是否显示倒计时
+  const [isTimeUp, setIsTimeUp] = useState(false); // 是否时间到
 
   useEffect(() => {
     // 监听 debugMode 变化（跨标签页同步）
@@ -34,17 +41,44 @@ function QuizPage() {  const { message, modal } = App.useApp();
       if (e.detail && typeof e.detail.debugMode === 'boolean') {
         setDebugMode(e.detail.debugMode);
       }
+      if (e.detail && e.detail.countdownSeconds) {
+        setCountdownSeconds(parseInt(e.detail.countdownSeconds, 10));
+      }
     };
     window.addEventListener('debugModeChange', onCustom);
+    window.addEventListener('countdownChange', onCustom);
     return () => {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('debugModeChange', onCustom);
+      window.removeEventListener('countdownChange', onCustom);
     };
   }, []);
+  
+  // 处理调试模式 - 自动开始且无倒计时
+  useEffect(() => {
+    if (debugMode) {
+      setQuizStarted(true);
+      setShowCountdown(false);
+      setIsTimeUp(false);
+    }
+  }, [debugMode]);
 
   useEffect(() => {
     fetchQuestionIds();
+    fetchConfig();
   }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const res = await api.get('/configs/COUNTDOWN_SECONDS');
+      const seconds = parseInt(res.data.value, 10);
+      if (!isNaN(seconds)) {
+        setCountdownSeconds(seconds);
+      }
+    } catch (error) {
+       console.log('Failed to load countdown config', error); 
+    }
+  };
 
   // 保存隐藏的题目到 localStorage
   useEffect(() => {
@@ -113,6 +147,18 @@ function QuizPage() {  const { message, modal } = App.useApp();
     } while (randomIndex === currentIndex && filteredQuestionIds.length > 1);
     
     setCurrentIndex(randomIndex);
+    
+    // 重置答题状态
+    setIsTimeUp(false);
+    if (debugMode) {
+      // 调试模式下直接显示下一题，不进入准备界面，不倒计时
+      setQuizStarted(true);
+      setShowCountdown(false);
+    } else {
+      // 正常模式回到准备界面
+      setQuizStarted(false);
+      setShowCountdown(false);
+    }
   };
 
   const handleHideQuestion = async () => {
@@ -135,6 +181,15 @@ function QuizPage() {  const { message, modal } = App.useApp();
           handleRandomQuestion();
         } else {
           setCurrentIndex(0);
+          // 也要重置状态
+          setIsTimeUp(false);
+          if (debugMode) {
+            setQuizStarted(true);
+            setShowCountdown(false);
+          } else {
+            setQuizStarted(false);
+            setShowCountdown(false);
+          }
         }
       }
     });
@@ -155,6 +210,26 @@ function QuizPage() {  const { message, modal } = App.useApp();
       }
     });
   };
+
+  // 开始答题
+  const handleStartQuiz = () => {
+    // 随机抽一题
+    if (filteredQuestionIds.length > 1) {
+       let randomIndex;
+       do {
+         randomIndex = Math.floor(Math.random() * filteredQuestionIds.length);
+       } while (randomIndex === currentIndex);
+       setCurrentIndex(randomIndex);
+    }
+    setQuizStarted(true);
+    setShowCountdown(true);
+    setIsTimeUp(false);
+  };
+  
+  // 倒计时结束处理
+  const handleCountdownComplete = useCallback(() => {
+    setIsTimeUp(true);
+  }, []);
 
   // 在打开隐藏管理器时，按需加载隐藏的题目
   const loadHiddenQuestions = async () => {
@@ -238,6 +313,36 @@ function QuizPage() {  const { message, modal } = App.useApp();
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
+      {/* 如果还未开始答题，显示准备界面 */}
+      {!quizStarted ? (
+        <div className="min-h-screen flex items-center justify-center -mt-20">
+          <div className="bg-white rounded-2xl shadow-2xl p-12 text-center max-w-2xl">
+            <div className="mb-8">
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                🎯 准备答题
+              </h1>
+              <p className="text-lg text-gray-600 mb-2">
+                答题时间：<span className="font-bold text-blue-600">{Math.floor(countdownSeconds / 60)}分{countdownSeconds % 60}秒</span>
+              </p>
+              <p className="text-sm text-gray-500">
+                点击下方按钮开始答题，系统将随机抽取一道题目
+              </p>
+            </div>
+            
+            <button
+              onClick={handleStartQuiz}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-12 py-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-bold text-xl shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              开始答题 🚀
+            </button>
+            
+            <div className="mt-8 text-xs text-gray-400">
+              请确保网络连接稳定，答题过程中倒计时将持续进行
+            </div>
+          </div>
+        </div>
+      ) : (
+      <>
       {/* 题目类型筛选和管理按钮 */}
       <div className="mb-4 sm:mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -302,7 +407,25 @@ function QuizPage() {  const { message, modal } = App.useApp();
           <div className="text-xl text-gray-600">加载中...</div>
         </div>
       ) : (
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8">
+      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8 relative overflow-hidden">
+        
+        {/* 时间到遮罩层 */}
+        {isTimeUp && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 bg-opacity-95 text-white p-8 animate-fade-in">
+             <div className="text-6xl mb-8 animate-bounce">⏰</div>
+             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-center leading-tight">
+               时间到！<br/>说出你的答案
+             </h2>
+             <p className="text-xl text-gray-300 mb-12">请大声回答，争取正确！</p>
+             <button 
+               onClick={() => setIsTimeUp(false)}
+               className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-full transition-all hover:scale-105 shadow-lg border-2 border-blue-400"
+             >
+               继续答题 / 查看题目
+             </button>
+          </div>
+        )}
+
         <div className="mb-3 sm:mb-4 flex justify-between items-center">
           <span className="text-xs sm:text-sm text-gray-500">
             题目 {currentIndex + 1} / {filteredQuestionIds.length}
@@ -354,6 +477,15 @@ function QuizPage() {  const { message, modal } = App.useApp();
           </div>
         )}
 
+        {/* 倒计时显示 */}
+        {showCountdown && (
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 shadow-md border-2 border-blue-200">
+            <Countdown 
+              initialSeconds={countdownSeconds} 
+              onComplete={handleCountdownComplete}
+            />
+          </div>
+        )}
 
         {/* 操作按钮区 */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-24">
@@ -372,6 +504,8 @@ function QuizPage() {  const { message, modal } = App.useApp();
           </button>
         </div>
       </div>
+      )}
+      </>
       )}
 
       {/* 隐藏题目管理模态框 */}

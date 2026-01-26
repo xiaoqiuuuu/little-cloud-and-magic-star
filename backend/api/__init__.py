@@ -11,3 +11,8 @@ __all__ = [
     'materials_router',
     'producers_router',
 ]
+from .configs import router as configs_router
+from .roles import router as roles_router
+
+__all__.append('configs_router')
+__all__.append('roles_router')

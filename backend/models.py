@@ -129,16 +129,6 @@ class Producer(BaseModel):
     profile_url: Optional[str] = None
 
 
-class ProducerCreate(BaseModel):
-    name: str
-    profile_url: Optional[str] = None
-
-
-class ProducerUpdate(BaseModel):
-    name: Optional[str] = None
-    profile_url: Optional[str] = None
-
-
 class PaginatedQuestions(BaseModel):
     total: int
     page: int
@@ -168,3 +158,55 @@ class ProducerCreate(BaseModel):
 class ProducerUpdate(BaseModel):
     name: Optional[str] = None
     profile_url: Optional[str] = None
+
+# 系统配置相关模型
+
+
+class ConfigUpdate(BaseModel):
+    key: str
+    value: str
+
+
+class ConfigResponse(BaseModel):
+    key: str
+    value: str
+
+# 角色技能详情模型
+class RoleSkillDetail(BaseModel):
+    title: str
+    content: str
+
+# 角色模型
+class Role(BaseModel):
+    id: Optional[int] = None
+    name: str
+    desc: str
+    skill: str = "-"
+    camp: str
+    identity: str
+    color: str
+    skillDetails: List[RoleSkillDetail] = []
+    image_url: Optional[str] = None
+
+# 创建角色请求
+class RoleCreate(BaseModel):
+    name: str
+    desc: str
+    skill: str = "-"
+    camp: str
+    identity: str
+    color: str
+    skillDetails: List[RoleSkillDetail] = []
+    image_url: Optional[str] = None
+
+# 更新角色请求
+class RoleUpdate(BaseModel):
+    name: Optional[str] = None
+    desc: Optional[str] = None
+    skill: Optional[str] = None
+    camp: Optional[str] = None
+    identity: Optional[str] = None
+    color: Optional[str] = None
+    skillDetails: Optional[List[RoleSkillDetail]] = None
+    image_url: Optional[str] = None
+

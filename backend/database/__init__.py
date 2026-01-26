@@ -73,3 +73,4 @@ __all__ = [
     'update_producer',
     'delete_producer',
 ]
+from .configs import get_config, set_config

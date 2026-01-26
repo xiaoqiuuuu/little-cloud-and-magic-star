@@ -9,7 +9,9 @@ from api import (
     auth_router,
     questions_router,
     materials_router,
-    producers_router
+    producers_router,
+    configs_router,
+    roles_router
 )
 
 # 初始化数据库
@@ -37,6 +39,8 @@ app.include_router(auth_router)  # 认证接口
 app.include_router(questions_router)  # 题目接口
 app.include_router(materials_router)  # 物料接口
 app.include_router(producers_router)  # 制作人接口
+app.include_router(configs_router)  # 系统配置接口
+app.include_router(roles_router)  # 角色接口
 
 
 @app.get("/")

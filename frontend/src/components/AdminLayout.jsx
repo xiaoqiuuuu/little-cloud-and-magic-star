@@ -5,6 +5,7 @@ import {
   QuestionCircleOutlined,
   PictureOutlined,
   UserOutlined,
+  TeamOutlined,
   LogoutOutlined,
   MenuOutlined,
 } from '@ant-design/icons';
@@ -47,6 +48,11 @@ function AdminLayout() {
       key: '/admin/producers',
       icon: <UserOutlined />,
       label: <Link to="/admin/producers">制作人管理</Link>,
+    },
+    {
+      key: '/admin/roles',
+      icon: <TeamOutlined />,
+      label: <Link to="/admin/roles">角色管理</Link>,
     },
   ];
 
