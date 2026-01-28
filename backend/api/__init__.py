@@ -13,6 +13,8 @@ __all__ = [
 ]
 from .configs import router as configs_router
 from .roles import router as roles_router
+from .stats import router as stats_router
 
 __all__.append('configs_router')
 __all__.append('roles_router')
+__all__.append('stats_router')

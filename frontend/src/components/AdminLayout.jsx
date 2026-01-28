@@ -8,6 +8,7 @@ import {
   TeamOutlined,
   LogoutOutlined,
   MenuOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 
@@ -38,6 +39,11 @@ function AdminLayout() {
       key: '/admin/questions',
       icon: <QuestionCircleOutlined />,
       label: <Link to="/admin/questions">题目管理</Link>,
+    },
+    {
+      key: '/admin/stats',
+      icon: <BarChartOutlined />,
+      label: <Link to="/admin/stats">访问统计</Link>,
     },
     {
       key: '/admin/materials',

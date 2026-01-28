@@ -10,6 +10,17 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
+    # Create page visits table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS page_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            visit_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ip_address TEXT,
+            referrer TEXT,
+            user_agent TEXT
+        )
+    ''')
+
     # 创建题目表
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS questions (

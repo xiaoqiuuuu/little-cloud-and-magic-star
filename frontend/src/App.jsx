@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import MaterialManager from './pages/MaterialManager';
 import ProducerManager from './pages/ProducerManager';
 import RoleManager from './pages/RoleManager';
+import VisitStatsPage from './pages/VisitStatsPage';
 import AdminLayout from './components/AdminLayout';
 import Navbar from './components/Navbar';
 import RouterProgressBar from './components/RouterProgressBar';
@@ -77,6 +78,7 @@ function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="questions" replace />} />
                 <Route path="questions" element={<AdminDashboard />} />
+                <Route path="stats" element={<VisitStatsPage />} />
                 <Route path="materials" element={<MaterialManager />} />
                 <Route path="producers" element={<ProducerManager />} />
                 <Route path="roles" element={<RoleManager />} />
