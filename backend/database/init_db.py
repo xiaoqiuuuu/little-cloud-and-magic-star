@@ -40,7 +40,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS admins (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            role TEXT DEFAULT 'question_admin' CHECK(role IN ('super_admin', 'question_admin'))
         )
     ''')
 
@@ -95,17 +96,25 @@ def init_db():
         cursor.execute(
             'ALTER TABLE questions ADD COLUMN author TEXT DEFAULT ""')
 
+    # 检查并添加管理员新列（如果表已存在但没有这些列）
+    cursor.execute("PRAGMA table_info(admins)")
+    admin_columns = [column[1] for column in cursor.fetchall()]
+
+    if 'role' not in admin_columns:
+        cursor.execute(
+            'ALTER TABLE admins ADD COLUMN role TEXT DEFAULT "question_admin"')
+
     # 插入默认管理员账号（仅在开发环境）
     env = os.getenv('ENVIRONMENT', 'development')
     if env == 'development':
         cursor.execute('SELECT COUNT(*) FROM admins WHERE username = ?', ('admin',))
         if cursor.fetchone()[0] == 0:
-            # 使用更安全的默认密码（开发环境）
+            # 使用更安全的默认密码（开发环境），设为超级管理员
             cursor.execute(
-                'INSERT INTO admins (username, password) VALUES (?, ?)',
-                ('admin', 'CloudStar@2026!')
+                'INSERT INTO admins (username, password, role) VALUES (?, ?, ?)',
+                ('admin', 'CloudStar@2026!', 'super_admin')
             )
-            print("✅ [开发环境] 已创建默认管理员账号: admin / CloudStar@2026!")
+            print("✅ [开发环境] 已创建默认管理员账号: admin / CloudStar@2026! (角色: 超级管理员)")
     else:
         print("ℹ️  [生产环境] 跳过默认管理员账号创建，请手动创建管理员")
 

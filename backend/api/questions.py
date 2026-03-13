@@ -16,7 +16,7 @@ from database import (
     check_duplicate_question
 )
 from database.producers import get_or_create_producer
-from .dependencies import get_current_user
+from .dependencies import get_current_user, get_current_user_info_dep
 
 router = APIRouter(tags=["题目"])
 
@@ -24,24 +24,42 @@ router = APIRouter(tags=["题目"])
 # ============= 公开接口（需要登录） =============
 
 @router.get("/api/questions/ids")
-def list_question_ids(username: str = Depends(get_current_user)):
+def list_question_ids(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目ID列表（轻量级）"""
-    return get_all_question_ids()
+    username = user_info["username"]
+    role = user_info["role"]
+    # 题目管理员只能获取自己出的题目ID
+    author_filter = None if role == "super_admin" else username
+    return get_all_question_ids(author=author_filter)
 
 
 @router.get("/api/questions", response_model=List[Question])
-def list_questions(username: str = Depends(get_current_user)):
+def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目（包含答案，需登录）"""
-    questions = get_all_questions(page_size=0)
+    username = user_info["username"]
+    role = user_info["role"]
+    # 题目管理员只能获取自己出的题目
+    author_filter = None if role == "super_admin" else username
+    questions = get_all_questions(page_size=0, author=author_filter)
     return questions
 
 
 @router.get("/api/questions/{question_id}", response_model=Question)
-def get_question(question_id: str, username: str = Depends(get_current_user)):
+def get_question(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
     """获取单个题目（包含答案，需登录）"""
+    username = user_info["username"]
+    role = user_info["role"]
+
     question = get_question_by_id(question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
+
+    # 题目管理员只能查看自己创建的题目
+    if role != "super_admin":
+        author_list = question.author if isinstance(question.author, list) else []
+        if username not in author_list:
+            raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
+
     return question
 
 
@@ -86,19 +104,38 @@ def track_hide_click(question_id: str, username: str = Depends(get_current_user)
 # ============= 管理员接口 =============
 
 @router.get("/api/admin/stats")
-def get_stats(username: str = Depends(get_current_user)):
+def get_stats(user_info: dict = Depends(get_current_user_info_dep)):
     """获取题目统计信息"""
+    username = user_info["username"]
+    role = user_info["role"]
+
+    # 题目管理员只能看到自己创建的题目的统计
+    author_filter = None if role == "super_admin" else username
+
     return {
-        "total": get_questions_count(),
-        "concert": get_questions_count(tag="concert"),
-        "vlog": get_questions_count(tag="vlog"),
-        "common": get_questions_count(tag="common")
+        "total": get_questions_count(author=author_filter),
+        "concert": get_questions_count(tag="concert", author=author_filter),
+        "vlog": get_questions_count(tag="vlog", author=author_filter),
+        "common": get_questions_count(tag="common", author=author_filter)
     }
 
 
 @router.post("/api/admin/questions/{question_id}/reset_stats")
-def reset_stats_single(question_id: str, username: str = Depends(get_current_user)):
+def reset_stats_single(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
     """单题归零"""
+    # 题目管理员只能操作自己创建的题目
+    role = user_info["role"]
+    username = user_info["username"]
+
+    if role != "super_admin":
+        question = get_question_by_id(question_id)
+        if not question:
+            raise HTTPException(status_code=404, detail="题目不存在")
+        # 检查是否是本人创建的题目
+        author_list = question.author if isinstance(question.author, list) else []
+        if username not in author_list:
+            raise HTTPException(status_code=403, detail="只能操作自己创建的题目")
+
     success = reset_question_stats(question_id)
     if not success:
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -106,8 +143,12 @@ def reset_stats_single(question_id: str, username: str = Depends(get_current_use
 
 
 @router.post("/api/admin/questions/reset_stats_all")
-def reset_stats_all(username: str = Depends(get_current_user)):
-    """全部归零"""
+def reset_stats_all(user_info: dict = Depends(get_current_user_info_dep)):
+    """全部归零 - 只有超级管理员可以使用"""
+    role = user_info["role"]
+    if role != "super_admin":
+        raise HTTPException(status_code=403, detail="只有超级管理员可以执行此操作")
+
     count = reset_all_questions_stats()
     return {"message": f"已归零 {count} 道题目的统计"}
 
@@ -119,11 +160,22 @@ def admin_list_questions(
     keyword: Optional[str] = None,
     tag: Optional[str] = None,
     sort_order: str = 'asc',
-    username: str = Depends(get_current_user)
+    author: Optional[str] = None,
+    user_info: dict = Depends(get_current_user_info_dep)
 ):
-    """管理员获取所有题目（分页）"""
-    questions = get_all_questions(page, page_size, keyword, tag, sort_order)
-    total = get_questions_count(keyword, tag)
+    """管理员获取题目（分页）- 题目管理员只能看到自己创建的题目"""
+    username = user_info["username"]
+    role = user_info["role"]
+
+    # 超级管理员可以看到所有题目，题目管理员只能看到自己创建的
+    # 如果超级管理员指定了author筛选，则使用指定的作者
+    if role == "super_admin":
+        author_filter = author
+    else:
+        author_filter = username  # 题目管理员只能看到自己的
+
+    questions = get_all_questions(page, page_size, keyword, tag, sort_order, author_filter)
+    total = get_questions_count(keyword, tag, author_filter)
     return PaginatedQuestions(
         total=total,
         page=page,
@@ -133,26 +185,54 @@ def admin_list_questions(
 
 
 @router.get("/api/admin/questions/{question_id}", response_model=Question)
-def admin_get_question(question_id: str, username: str = Depends(get_current_user)):
+def admin_get_question(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
     """管理员获取单个题目（包含答案）"""
+    username = user_info["username"]
+    role = user_info["role"]
+
     question = get_question_by_id(question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
+
+    # 题目管理员只能查看自己创建的题目
+    if role != "super_admin":
+        author_list = question.author if isinstance(question.author, list) else []
+        if username not in author_list:
+            raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
+
     return question
 
 
 @router.post("/api/admin/questions", response_model=Question)
-def admin_create_question(question_data: QuestionCreate, username: str = Depends(get_current_user)):
+def admin_create_question(question_data: QuestionCreate, user_info: dict = Depends(get_current_user_info_dep)):
     """管理员创建题目"""
+    username = user_info["username"]
+    role = user_info["role"]
+
     # 生成自增ID
     question_id = get_next_question_id()
+
+    # 如果没有指定出题人，或者角色是题目管理员，则自动使用当前用户名作为出题人
+    author = question_data.author
+    if not author or role == "question_admin":
+        # 超级管理员如果没有指定出题人，使用空列表；题目管理员默认使用自己的名字
+        if role == "question_admin" and (not author or username not in author):
+            author = [username]
+    else:
+        # 如果前端传了出题人列表，超级管理员可以使用其他出题人
+        # 但题目管理员只能使用自己的名字
+        if role == "question_admin":
+            # 确保题目管理员的出题人列表中包含自己
+            if username not in author:
+                author.append(username)
+
     question = Question(
         id=question_id,
         question=question_data.question,
         answer=question_data.answer,
         resources=question_data.resources,
         tag=question_data.tag,
-        author=question_data.author
+        author=author
     )
     return create_question(question)
 
@@ -161,12 +241,21 @@ def admin_create_question(question_data: QuestionCreate, username: str = Depends
 def admin_update_question(
     question_id: str,
     question_data: QuestionUpdate,
-    username: str = Depends(get_current_user)
+    user_info: dict = Depends(get_current_user_info_dep)
 ):
     """管理员更新题目"""
+    username = user_info["username"]
+    role = user_info["role"]
+
     existing = get_question_by_id(question_id)
     if not existing:
         raise HTTPException(status_code=404, detail="题目不存在")
+
+    # 题目管理员只能更新自己创建的题目
+    if role != "super_admin":
+        author_list = existing.author if isinstance(existing.author, list) else []
+        if username not in author_list:
+            raise HTTPException(status_code=403, detail="只能更新自己创建的题目")
 
     updates = question_data.dict(exclude_unset=True)
     updated = update_question(question_id, updates)
@@ -174,8 +263,20 @@ def admin_update_question(
 
 
 @router.delete("/api/admin/questions/{question_id}")
-def admin_delete_question(question_id: str, username: str = Depends(get_current_user)):
+def admin_delete_question(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
     """管理员删除题目"""
+    username = user_info["username"]
+    role = user_info["role"]
+
+    # 题目管理员只能删除自己创建的题目
+    if role != "super_admin":
+        question = get_question_by_id(question_id)
+        if not question:
+            raise HTTPException(status_code=404, detail="题目不存在")
+        author_list = question.author if isinstance(question.author, list) else []
+        if username not in author_list:
+            raise HTTPException(status_code=403, detail="只能删除自己创建的题目")
+
     if not delete_question(question_id):
         raise HTTPException(status_code=404, detail="题目不存在")
     return {"message": "删除成功"}

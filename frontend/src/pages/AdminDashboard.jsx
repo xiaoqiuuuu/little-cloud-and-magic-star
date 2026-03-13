@@ -13,15 +13,19 @@ import ExcelImportExport from '../components/admin/ExcelImportExport';
 
 function AdminDashboard() {
   const { message, modal } = App.useApp();
-  
+
+  // 用户角色信息
+  const [userRole, setUserRole] = useState(() => localStorage.getItem('userRole') || 'question_admin');
+  const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
+
   // 答题/调试模式
   const [debugMode, setDebugMode] = useState(() => localStorage.getItem('debugMode') === 'true');
-  
+
   // 倒计时设置
   const [countdownSeconds, setCountdownSeconds] = useState(60);
   const [showCountdownModal, setShowCountdownModal] = useState(false);
   const [tempCountdown, setTempCountdown] = useState(countdownSeconds);
-  
+
   // Data State
   const [questions, setQuestions] = useState([]);
   const [total, setTotal] = useState(0);
@@ -34,6 +38,7 @@ function AdminDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filterTag, setFilterTag] = useState('all');
+  const [filterAuthor, setFilterAuthor] = useState(null);
   const [sortDesc, setSortDesc] = useState(true);
 
   // Modal State
@@ -41,6 +46,9 @@ function AdminDashboard() {
   const [editingQuestion, setEditingQuestion] = useState(null);
 
   const navigate = useNavigate();
+
+  // 判断是否是超级管理员
+  const isSuperAdmin = userRole === 'super_admin';
 
   // Debug Mode Sync
   useEffect(() => {
@@ -91,7 +99,7 @@ function AdminDashboard() {
     fetchQuestions();
     fetchStats();
     fetchConfig();
-  }, [navigate, currentPage, pageSize, searchKeyword, filterTag, sortDesc]);
+  }, [navigate, currentPage, pageSize, searchKeyword, filterTag, filterAuthor, sortDesc]);
 
   const fetchConfig = async () => {
     try {
@@ -120,7 +128,7 @@ function AdminDashboard() {
   // Reset page when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchKeyword, filterTag]);
+  }, [searchKeyword, filterTag, filterAuthor]);
 
   const fetchStats = async () => {
     try {
@@ -141,6 +149,7 @@ function AdminDashboard() {
       };
       if (searchKeyword) params.keyword = searchKeyword;
       if (filterTag !== 'all') params.tag = filterTag;
+      if (filterAuthor) params.author = filterAuthor;
 
       const response = await api.get('/admin/questions', { params });
       setQuestions(response.data.items);
@@ -233,6 +242,16 @@ function AdminDashboard() {
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-4">
               <h1 className="text-xl font-bold text-gray-800">题目管理</h1>
+              {/* 角色标识 */}
+              {isSuperAdmin ? (
+                <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
+                  超级管理员
+                </span>
+              ) : (
+                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                  题目管理员
+                </span>
+              )}
               <div className="flex items-center gap-2 bg-gray-100 rounded-full p-1">
                 <button
                   onClick={handleToggleMode}
@@ -257,51 +276,69 @@ function AdminDashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        {/* 题目管理员提示 */}
+        {!isSuperAdmin && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">
+              您是题目管理员，只能查看和管理自己创建的题目。
+            </p>
+          </div>
+        )}
+
         {/* Header Actions */}
         <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
           <div className="flex flex-wrap gap-2">
-            <ExcelImportExport 
-              onImportSuccess={() => {
-                fetchQuestions();
-                fetchStats();
-              }}
-            />
+            {/* 批量导入导出仅超级管理员可用 */}
+            {isSuperAdmin && (
+              <ExcelImportExport
+                onImportSuccess={() => {
+                  fetchQuestions();
+                  fetchStats();
+                }}
+              />
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => {
-                setTempCountdown(countdownSeconds);
-                setShowCountdownModal(true);
-              }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
-            >
-              ⏱️ 倒计时设置
-            </button>
+            {/* 倒计时设置仅超级管理员可用 */}
+            {isSuperAdmin && (
+              <button
+                onClick={() => {
+                  setTempCountdown(countdownSeconds);
+                  setShowCountdownModal(true);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
+              >
+                ⏱️ 倒计时设置
+              </button>
+            )}
             <button
               onClick={() => navigate('/quiz')}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
             >
               返回答题界面
             </button>
-            <button
-              onClick={() => {
-                modal.confirm({
-                  title: '确定要将所有题目的"随机/隐藏"统计全部归零吗？',
-                  onOk: async () => {
-                    try {
-                      await api.post('/admin/questions/reset_stats_all');
-                      message.success('全部题目统计已归零');
-                      fetchQuestions();
-                    } catch (e) {
-                      message.error('归零失败');
+            {/* 全部归零仅超级管理员可用 */}
+            {isSuperAdmin && (
+              <button
+                onClick={() => {
+                  modal.confirm({
+                    title: '确定要将所有题目的"随机/隐藏"统计全部归零吗？',
+                    onOk: async () => {
+                      try {
+                        await api.post('/admin/questions/reset_stats_all');
+                        message.success('全部题目统计已归零');
+                        fetchQuestions();
+                      } catch (e) {
+                        message.error('归零失败');
+                      }
                     }
-                  }
-                });
-              }}
-              className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors font-medium text-sm"
-            >
-              全部统计归零
-            </button>
+                  });
+                }}
+                className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors font-medium text-sm"
+              >
+                全部统计归零
+              </button>
+            )}
             <button
               onClick={() => handleOpenModal()}
               className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium text-sm shadow-sm"
@@ -318,13 +355,17 @@ function AdminDashboard() {
         <SearchById onEdit={handleOpenModal} onDelete={handleDelete} />
 
         {/* Filter */}
-        <QuestionFilter 
+        <QuestionFilter
           searchKeyword={searchKeyword}
           setSearchKeyword={setSearchKeyword}
           filterTag={filterTag}
           setFilterTag={setFilterTag}
+          filterAuthor={filterAuthor}
+          setFilterAuthor={setFilterAuthor}
           total={total}
           loading={loading}
+          producers={producers}
+          isSuperAdmin={isSuperAdmin}
         />
 
         {/* Question List */}

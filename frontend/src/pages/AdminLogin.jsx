@@ -22,14 +22,27 @@ function AdminLogin() {
         hideLoading: true, // 使用按钮的 loading，不显示全局 loading
         hideErrorMessage: true, // 手动处理错误消息
       });
-      
+
       localStorage.setItem('token', response.data.access_token);
-      
+      localStorage.setItem('username', values.username);
+
+      // 获取用户角色信息
+      try {
+        const userRes = await api.get('/admin/me', {
+          headers: { Authorization: `Bearer ${response.data.access_token}` }
+        });
+        localStorage.setItem('userRole', userRes.data.role || 'question_admin');
+        localStorage.setItem('username', userRes.data.username || values.username);
+      } catch (e) {
+        // 如果获取用户信息失败，默认设为题目管理员
+        localStorage.setItem('userRole', 'question_admin');
+      }
+
       // 通知当前窗口的登录状态变化
-      window.dispatchEvent(new CustomEvent('authChange', { 
-        detail: { token: response.data.access_token } 
+      window.dispatchEvent(new CustomEvent('authChange', {
+        detail: { token: response.data.access_token }
       }));
-      
+
       showSuccess('登录成功！');
       setTimeout(() => {
         navigate('/admin/questions');

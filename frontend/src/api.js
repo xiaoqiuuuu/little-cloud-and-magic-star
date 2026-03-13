@@ -70,6 +70,8 @@ api.interceptors.response.use(
         showError('登录已过期，请重新登录');
         setTimeout(() => {
           localStorage.removeItem('token');
+          localStorage.removeItem('username');
+          localStorage.removeItem('userRole');
           window.dispatchEvent(new Event('authChange'));
           window.location.href = '/admin/login';
         }, 1500);

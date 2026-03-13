@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 # 加载 .env 环境变量
 load_dotenv()
 
+# 导入 auth 模块（必须在 api 之前，确保 parent auth 被加载）
+import auth
+
 from database import init_db
 from upload import router as upload_router
 from api import (

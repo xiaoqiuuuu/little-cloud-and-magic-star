@@ -108,6 +108,8 @@ export const handleApiError = (error, defaultMessage = '操作失败') => {
       // 清除 token 并跳转到登录页
       setTimeout(() => {
         localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        localStorage.removeItem('userRole');
         window.dispatchEvent(new Event('authChange'));
         window.location.href = '/admin/login';
       }, 1500);

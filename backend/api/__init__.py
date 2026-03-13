@@ -1,6 +1,6 @@
 """API 路由模块 - 导出所有路由器"""
 
-from .auth import router as auth_router
+from .admin import router as auth_router
 from .questions import router as questions_router
 from .materials import router as materials_router
 from .producers import router as producers_router

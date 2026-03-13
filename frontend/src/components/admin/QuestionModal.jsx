@@ -24,6 +24,9 @@ const QuestionModal = ({
 
   useEffect(() => {
     if (isOpen) {
+      const currentUsername = localStorage.getItem('username');
+      const userRole = localStorage.getItem('userRole');
+
       if (editingQuestion) {
         setFormData({
           question: editingQuestion.question,
@@ -33,16 +36,24 @@ const QuestionModal = ({
           author: Array.isArray(editingQuestion.author) ? editingQuestion.author : (editingQuestion.author ? [editingQuestion.author] : []),
         });
       } else {
-        // 添加题目时，从 localStorage 读取上次的出题人
-        const savedAuthor = localStorage.getItem('lastAuthor');
+        // 添加题目时
         let authorArray = [];
-        if (savedAuthor) {
-          try {
-            authorArray = JSON.parse(savedAuthor);
-          } catch {
-            authorArray = savedAuthor ? [savedAuthor] : [];
+
+        // 如果是题目管理员，默认使用自己的用户名
+        if (userRole === 'question_admin' && currentUsername) {
+          authorArray = [currentUsername];
+        } else {
+          // 从 localStorage 读取上次的出题人（仅适用于超级管理员）
+          const savedAuthor = localStorage.getItem('lastAuthor');
+          if (savedAuthor) {
+            try {
+              authorArray = JSON.parse(savedAuthor);
+            } catch {
+              authorArray = savedAuthor ? [savedAuthor] : [];
+            }
           }
         }
+
         setFormData({
           question: '',
           answer: '',

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 
-const QuestionFilter = ({ 
-  searchKeyword, 
-  setSearchKeyword, 
-  filterTag, 
-  setFilterTag, 
-  total, 
-  loading 
+const QuestionFilter = ({
+  searchKeyword,
+  setSearchKeyword,
+  filterTag,
+  setFilterTag,
+  filterAuthor,
+  setFilterAuthor,
+  total,
+  loading,
+  producers,
+  isSuperAdmin = true
 }) => {
   const [inputValue, setInputValue] = useState(searchKeyword);
 
@@ -27,7 +31,7 @@ const QuestionFilter = ({
   return (
     <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-6">
       <h2 className="text-lg font-bold text-gray-800 mb-4">题目筛选</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* 模糊搜索 */}
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -58,18 +62,44 @@ const QuestionFilter = ({
             <option value="common">通用</option>
           </select>
         </div>
+
+        {/* 出题人筛选 - 仅超级管理员可见 */}
+        {isSuperAdmin && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              出题人
+            </label>
+            <select
+              value={filterAuthor || ''}
+              onChange={(e) => setFilterAuthor(e.target.value || null)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">全部出题人</option>
+              {producers && producers.map((producer) => (
+                <option key={producer.id} value={producer.name}>
+                  {producer.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* 搜索结果统计 */}
-      <div className="mt-4 text-sm text-gray-600 flex items-center">
+      <div className="mt-4 text-sm text-gray-600 flex items-center flex-wrap gap-2">
         <span>找到 <span className="font-bold text-blue-600">{total}</span> 条结果</span>
-        {loading && <span className="ml-3 text-gray-500 flex items-center"><span className="animate-spin mr-1">⟳</span> 加载中...</span>}
-        {searchKeyword && (
+        {loading && <span className="text-gray-500 flex items-center"><span className="animate-spin mr-1">⟳</span> 加载中...</span>}
+        {(searchKeyword || filterTag !== 'all' || filterAuthor) && (
           <button
-            onClick={() => setSearchKeyword('')}
+            onClick={() => {
+              setSearchKeyword('');
+              setInputValue('');
+              setFilterTag('all');
+              setFilterAuthor(null);
+            }}
             className="ml-2 text-blue-600 hover:text-blue-800 underline"
           >
-            清除搜索
+            清除筛选
           </button>
         )}
       </div>

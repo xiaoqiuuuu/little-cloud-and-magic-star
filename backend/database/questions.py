@@ -30,7 +30,7 @@ def reset_all_questions_stats() -> int:
     return count
 
 
-def get_questions_count(keyword: Optional[str] = None, tag: Optional[str] = None) -> int:
+def get_questions_count(keyword: Optional[str] = None, tag: Optional[str] = None, author: Optional[str] = None) -> int:
     """获取题目总数（支持筛选）"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -44,6 +44,10 @@ def get_questions_count(keyword: Optional[str] = None, tag: Optional[str] = None
         query += ' AND (id LIKE ? OR question LIKE ? OR answer LIKE ?)'
         wildcard = f'%{keyword}%'
         params.extend([wildcard, wildcard, wildcard])
+    if author:
+        # 题目管理员只能看到自己创建的题目
+        query += ' AND author LIKE ?'
+        params.append(f'%{author}%')
 
     cursor.execute(query, params)
     count = cursor.fetchone()[0]
@@ -51,18 +55,27 @@ def get_questions_count(keyword: Optional[str] = None, tag: Optional[str] = None
     return count
 
 
-def get_all_question_ids() -> List[dict]:
+def get_all_question_ids(author: Optional[str] = None) -> List[dict]:
     """获取所有题目的ID和Tag（轻量级）"""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        'SELECT id, tag FROM questions ORDER BY CAST(id AS INTEGER) ASC')
+
+    query = 'SELECT id, tag FROM questions WHERE 1=1'
+    params = []
+
+    if author:
+        # 作者筛选：使用 JSON 数组包含该作者
+        query += ' AND author LIKE ?'
+        params.append(f'%{author}%')
+
+    query += ' ORDER BY CAST(id AS INTEGER) ASC'
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
     return [{"id": row[0], "tag": row[1]} for row in rows]
 
 
-def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str] = None, tag: Optional[str] = None, sort_order: str = 'asc') -> List[Question]:
+def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str] = None, tag: Optional[str] = None, sort_order: str = 'asc', author: Optional[str] = None) -> List[Question]:
     """获取所有题目（分页，支持筛选，page_size=0表示获取所有）"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -77,6 +90,10 @@ def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str]
         query += ' AND (id LIKE ? OR question LIKE ? OR answer LIKE ?)'
         wildcard = f'%{keyword}%'
         params.extend([wildcard, wildcard, wildcard])
+    if author:
+        # 题目管理员只能看到自己创建的题目
+        query += ' AND author LIKE ?'
+        params.append(f'%{author}%')
 
     # 确保分页顺序一致
     order = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
