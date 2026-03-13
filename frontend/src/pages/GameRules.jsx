@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Tag, Card, Timeline, Typography, Divider, Tabs, Spin } from 'antd';
+import { Button, Tag, Card, Timeline, Typography, Divider, Tabs, Spin, Image } from 'antd';
 import { ArrowLeftOutlined, UserOutlined, ClockCircleOutlined, InfoCircleOutlined, PlayCircleOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -25,139 +25,7 @@ function GameRules() {
     fetchRoles();
   }, []);
 
-  const characters = [
-    { 
-      name: '面包雲', 
-      desc: '爱吃面包的小雲，最钟爱的是香葱肉松卷。', 
-      skill: '-', 
-      camp: '平民阵营', 
-      identity: '村民', 
-      color: 'blue' 
-    },
-    { 
-      name: '糖果雲', 
-      desc: '远远飘来甜甜的小雲，包里永远装满彩色软糖。', 
-      skill: '-', 
-      camp: '平民阵营', 
-      identity: '村民', 
-      color: 'blue' 
-    },
-    { 
-      name: '阿鬼', 
-      desc: '喜欢熬夜的鬼鬼，当看到不听话的魔星淋着雨不打伞，会非常生气。', 
-      skill: '给你一拳, 消散', 
-      camp: '坏人阵营', 
-      identity: '狼人', 
-      color: 'red',
-      skillDetails: [
-        { title: '给你一拳', content: '作为正义的克星，每晚可以与同伴投票选择一名玩家给TA“一拳”，被拳击玩家白天将会出局。' },
-        { title: '消散', content: '白天的任意时刻，可翻牌宣告“消散”。白天强制结束，游戏进入黑夜，你当即出局。' }
-      ]
-    },
-    { 
-      name: '人机雲', 
-      desc: '害羞的小雲，会在某些场合宕机大脑，化身人机放空自己，或变成E人强颜欢笑。', 
-      skill: '宕机', 
-      camp: '神职阵营', 
-      identity: '白神', 
-      color: 'gold',
-      skillDetails: [
-        { title: '宕机', content: '在白天被投票出局时，会自动触发系统“宕机”保护，让自己继续存活，保留发言权，但不再拥有投票权。' }
-      ]
-    },
-    { 
-      name: '魔星', 
-      desc: '来自浩瀚宇宙的各个角落，立志要陪面包开完一百场演唱会。', 
-      skill: '无 / 给你一拳(被动)', 
-      camp: '平民阵营', 
-      identity: '村民', 
-      color: 'blue',
-      skillDetails: [
-        { title: '盲选局被动', content: '盲选局中无任何技能，通灵师查验显示【魔星】，纯靠发言伪装。当所有【阿鬼】出局后获得【给你一拳】。' }
-      ]
-    },
-    { 
-      name: '困困雲', 
-      desc: '喜欢在梅雨季节睡懒觉的小雲，当她困到睁不开眼睛时便会再一觉睡到大天亮。', 
-      skill: '没语, 给你一拳', 
-      camp: '坏人阵营', 
-      identity: '白狼王', 
-      color: 'red',
-      skillDetails: [
-        { title: '没语 (自爆带人)', content: '小雲会惩罚一名偷偷熬夜的玩家下场睡觉，即你和被选择的玩家一同出局。\n——“昨天晚上又没好好睡觉吧”，“听吧，外面的雨声便是她为你奏响的眠歌”，嘿嘿，小雲才不会告诉你，是她想睡觉了呢。' },
-        { title: '给你一拳', content: '参与夜间狼人行动。' }
-      ]
-    },
-    { 
-      name: '回音雲', 
-      desc: '在星空中寻觅自我的小雲，会在回音中聆听真相。', 
-      skill: '回音', 
-      camp: '神职阵营', 
-      identity: '预言家', 
-      color: 'gold',
-      skillDetails: [
-        { title: '回音', content: '每晚可以聆听一名玩家在宇宙中的回音，便可知晓这名玩家的身份好坏。' }
-      ]
-    },
-    { 
-      name: '太阳雲', 
-      desc: '温柔坚定的小雲，会带走伤害大家的坏人，默默离开，光芒依旧。', 
-      skill: '逆光前行', 
-      camp: '神职阵营', 
-      identity: '猎人', 
-      color: 'gold',
-      skillDetails: [
-        { title: '逆光前行', content: '若你在白天被投票出局或者是被拳击出局，可立即指定一名玩家，将其一同带走。' }
-      ]
-    },
-    { 
-      name: '玫瑰雲', 
-      desc: '来自玫瑰星系的小雲，会用玫瑰星云做出绚丽雀跃或肆意翻涌的药剂。', 
-      skill: '雀跃之风, 消逝印记', 
-      camp: '神职阵营', 
-      identity: '女巫', 
-      color: 'gold',
-      skillDetails: [
-        { title: '雀跃之风 (药剂)', content: '夜晚可以选择救回一名当晚遭到“拳击”即将出局的玩家。\n由于风也会吹去尘埃，若被救玩家已被守卫守护，该玩家仍将出局（同守同救失效）。\n一次性技能，不能与”消逝印记“同一晚使用。' },
-        { title: '消逝印记 (毒药)', content: '夜晚可以选择一名玩家标下印记，让其在第二天白天出局。\n命定的轨迹无法收到星尘干涉，你的印记无视守护（可击穿守卫盾）。\n一次性技能，不能与”雀跃之风“同一晚使用。' }
-      ]
-    },
-    { 
-      name: '烟火雲', 
-      desc: '曾经在过去受到伤害的她，现在想要保护其他小雲。', 
-      skill: '星尘弥合', 
-      camp: '神职阵营', 
-      identity: '守卫', 
-      color: 'gold',
-      skillDetails: [
-        { title: '星尘弥合', content: '夜晚可以选择一名玩家，该玩家将被烟火尘埃弥漫守护，可以免受 “拳击”的伤害，也可以不进行选择，但不能连续两晚选择同一玩家。' }
-      ]
-    },
-    { 
-      name: '盲选雲', 
-      desc: '被魔星们从人海里找出来的小雲，她曾迷茫于来路与理想，但现在已坚定了方向。', 
-      skill: '盲选, 遇从前', 
-      camp: '坏人阵营', 
-      identity: '机械狼', 
-      color: 'red',
-      skillDetails: [
-        { title: '盲选 (学习)', content: '可且仅可在某夜选择一名玩家，学习其身份并获得对应的能力，此后将以该状态继续存在，可在夜间使用相应技能，并被查验时也是所学身份。\n- 学习“回响雲”、“太阳雲”、“魔星”：玩法对应相同。\n- 学习“玫瑰雲”：可使用一次“消逝印记”。\n- 学习“烟火雲”：可使用“星尘弥合”，且若该玩家被标下“消逝印记”，可继续存活。\n- 学习“阿鬼”：在触发“遇从前”当晚，可再次使用“给你一拳”，若对同一玩家使用，则无视“星尘弥合”、“雀跃之风”，该玩家必定出局。' },
-        { title: '遇从前 (被动)', content: '当阿鬼全部出局时，盲选雲变为带刀状态，获得技能“给你一拳”。' },
-        { title: '盲选局查验效果', content: '【3 个阿鬼】出局后，获得1 次【给你两拳】（当晚可拳击一人两次）。' } // Merged from user text details
-      ]
-    },
-    { 
-      name: '回响雲', 
-      desc: '走过漫长来路的小雲，跌跌撞撞的她以泪水拨动星弦，所有的念念不忘，终于迎来了回响。', 
-      skill: '弦上生花', 
-      camp: '神职阵营', 
-      identity: '通灵师', 
-      color: 'gold',
-      skillDetails: [
-        { title: '弦上生花', content: '每晚可查验 1 名玩家的【具体身份】（直接显示角色名）。\n- 【盲选雲】未学习技能前（首夜），查验结果显示：【盲选雲】（坏人实锤）。\n- 【盲选雲】学习技能后，查验结果显示：其学到的目标身份。' }
-      ]
-    },
-  ];
+
 
   const getCampColor = (camp) => {
     if (camp.includes('好人') || camp.includes('平民') || camp.includes('神职')) return 'success';
@@ -203,6 +71,16 @@ function GameRules() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {roles.map((char, index) => (
               <Card key={index} className="shadow-sm hover:shadow-md transition-shadow">
+                {char.image_url && (
+                  <div className="mb-4 flex justify-center bg-gray-50 rounded-lg p-2">
+                    <Image
+                      src={char.image_url.startsWith('http') ? char.image_url : char.image_url}
+                      alt={char.name}
+                      height={200}
+                      className="object-contain"
+                    />
+                  </div>
+                )}
                 <div className="flex justify-between items-start mb-2">
                   <Title level={4} style={{ margin: 0 }}>{char.name}</Title>
                   <Tag color={char.color}>{char.identity}</Tag>
