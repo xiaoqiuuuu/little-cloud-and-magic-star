@@ -8,7 +8,7 @@ Type=simple
 User=www
 Group=www
 WorkingDirectory=/www/wwwroot/little-cloud-and-magic-star/backend
-EnvironmentFile=/www/wwwroot/little-cloud-and-magic-star/backend/.env
+EnvironmentFile=/www/wwwroot/little-cloud-and-magic-star/.env
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/www/wwwroot/little-cloud-and-magic-star/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8100 --proxy-headers --forwarded-allow-ips=127.0.0.1
 Restart=on-failure

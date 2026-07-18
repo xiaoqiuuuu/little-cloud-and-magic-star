@@ -12,7 +12,7 @@ HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8100/api/health}"
 
 cd "$APP_DIR"
 test -d .git
-test -f "$BACKEND_DIR/.env"
+test -f "$APP_DIR/.env"
 
 old_sha=$(git rev-parse HEAD)
 timestamp=$(date +%Y%m%d-%H%M%S)

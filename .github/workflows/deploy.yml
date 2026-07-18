@@ -124,7 +124,7 @@ jobs:
             trap rollback ERR
 
             test -d "$APP_DIR/.git"
-            test -f "$BACKEND_DIR/.env"
+            test -f "$APP_DIR/.env"
             test -f "$ARCHIVE"
 
             OLD_SHA=$(git -C "$APP_DIR" rev-parse HEAD)

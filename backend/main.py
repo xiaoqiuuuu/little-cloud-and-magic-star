@@ -1,12 +1,15 @@
 import os
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# 加载 .env 环境变量
-load_dotenv()
+# 所有运行方式统一从项目根目录加载环境变量。
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 # 导入 auth 模块（必须在 api 之前，确保 parent auth 被加载）
 import auth
