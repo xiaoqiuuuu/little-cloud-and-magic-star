@@ -2,8 +2,9 @@ import hashlib
 import os
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 
 os.environ["LOG_API_KEY_SHA256"] = hashlib.sha256(b"test-key").hexdigest()
@@ -54,6 +55,34 @@ class LogApiTests(unittest.TestCase):
         self.assertIsNotNone(error_time)
         self.assertIsNotNone(access_time)
 
+    def test_nginx_error_window_keeps_only_recent_entry_and_continuation(self):
+        local_timezone = timezone(timedelta(hours=8))
+        cutoff = datetime(2026, 7, 18, 22, 0, 0, tzinfo=local_timezone)
+        lines = [
+            "orphaned continuation",
+            "2026/07/18 21:00:00 [error] old entry",
+            "old continuation",
+            "2026/07/18 23:00:00 [error] recent entry",
+            "recent continuation",
+        ]
+        self.assertEqual(
+            log_api.filter_nginx_time_window(
+                lines, "nginx-error", cutoff, local_timezone
+            ),
+            lines[-2:],
+        )
+
+    def test_nginx_access_window_excludes_unparseable_lines(self):
+        local_timezone = timezone(timedelta(hours=8))
+        cutoff = datetime(2026, 7, 18, 22, 0, 0, tzinfo=local_timezone)
+        recent = '127.0.0.1 - - [18/Jul/2026:23:00:00 +0800] "GET / HTTP/1.1" 200'
+        self.assertEqual(
+            log_api.filter_nginx_time_window(
+                ["unparseable", recent], "nginx-access", cutoff, local_timezone
+            ),
+            [recent],
+        )
+
     def test_response_is_bounded_and_redacted(self):
         lines = ["INFO normal", "ERROR token=secret-value"]
         result, truncated = log_api.bound_response(lines, 1)
@@ -69,6 +98,20 @@ class LogApiTests(unittest.TestCase):
             log_api._enforce_rate_limit(client)
         self.assertEqual(raised.exception.status_code, 429)
         log_api._rate_buckets.pop(client, None)
+
+    def test_rate_bucket_eviction_keeps_current_client_limit(self):
+        log_api._rate_buckets.clear()
+        with patch.object(log_api, "MAX_RATE_BUCKETS", 3):
+            for client in ("old-a", "old-b", "old-c", "current"):
+                log_api._enforce_rate_limit(client)
+            self.assertLessEqual(len(log_api._rate_buckets), 3)
+            self.assertIn("current", log_api._rate_buckets)
+            for _ in range(log_api.RATE_LIMIT_REQUESTS - 1):
+                log_api._enforce_rate_limit("current")
+            with self.assertRaises(HTTPException) as raised:
+                log_api._enforce_rate_limit("current")
+            self.assertEqual(raised.exception.status_code, 429)
+        log_api._rate_buckets.clear()
 
 
 if __name__ == "__main__":
