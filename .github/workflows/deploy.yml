@@ -47,6 +47,11 @@ jobs:
           print(f"Backend smoke test passed with {len(paths)} routes")
           PY
 
+      - name: Verify production log API
+        run: |
+          python -m compileall -q ops .agents/skills/query-production-logs
+          python -m unittest discover -s ops/tests -v
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -113,6 +118,7 @@ jobs:
               fi
 
               sudo -n systemctl restart little-cloud.service || true
+              sudo -n systemctl restart little-cloud-log-api.service || true
               exit "$exit_code"
             }
             trap rollback ERR
@@ -157,6 +163,7 @@ jobs:
             DIST_SWAPPED=1
 
             sudo -n systemctl restart little-cloud.service
+            sudo -n systemctl restart little-cloud-log-api.service
 
             healthy=0
             for attempt in 1 2 3 4 5 6 7 8 9 10; do
@@ -169,6 +176,18 @@ jobs:
               sleep 2
             done
             test "$healthy" -eq 1
+
+            log_api_healthy=0
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if response=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8110/health); then
+                if printf '%s' "$response" | grep -q '"status":"ok"'; then
+                  log_api_healthy=1
+                  break
+                fi
+              fi
+              sleep 2
+            done
+            test "$log_api_healthy" -eq 1
 
             rm -rf "$DEPLOY_STATE/dist-previous"
             rm -f "$ARCHIVE"

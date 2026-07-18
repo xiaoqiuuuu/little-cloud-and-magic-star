@@ -18,6 +18,14 @@ old_sha=$(git rev-parse HEAD)
 timestamp=$(date +%Y%m%d-%H%M%S)
 mkdir -p "$BACKEND_DIR/backups"
 
+rollback() {
+  echo "Health check failed; rolling back to $old_sha." >&2
+  git reset --hard "$old_sha"
+  sudo -n systemctl restart "$SERVICE_NAME"
+  sudo -n systemctl restart little-cloud-log-api.service
+  exit 1
+}
+
 if [ -f "$BACKEND_DIR/quiz.db" ]; then
   sqlite3 "$BACKEND_DIR/quiz.db" \
     ".backup '$BACKEND_DIR/backups/quiz-${timestamp}-${old_sha:0:12}.db'"
@@ -47,18 +55,34 @@ elif [ ! -f "$BACKEND_DIR/dist/index.html" ]; then
 fi
 
 sudo -n systemctl restart "$SERVICE_NAME"
+sudo -n systemctl restart little-cloud-log-api.service
 
+main_healthy=0
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if response=$(curl --fail --silent --show-error --max-time 5 "$HEALTH_URL"); then
     if printf '%s' "$response" | grep -q '"status":"ok"'; then
-      echo "Deployment $(git rev-parse --short HEAD) succeeded."
-      exit 0
+      main_healthy=1
+      break
     fi
   fi
   sleep 2
 done
+if [ "$main_healthy" -ne 1 ]; then
+  rollback
+fi
 
-echo "Health check failed; rolling back to $old_sha." >&2
-git reset --hard "$old_sha"
-sudo -n systemctl restart "$SERVICE_NAME"
-exit 1
+log_api_healthy=0
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  if response=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8110/health); then
+    if printf '%s' "$response" | grep -q '"status":"ok"'; then
+      log_api_healthy=1
+      break
+    fi
+  fi
+  sleep 2
+done
+if [ "$log_api_healthy" -ne 1 ]; then
+  rollback
+fi
+
+echo "Deployment $(git rev-parse --short HEAD) succeeded."

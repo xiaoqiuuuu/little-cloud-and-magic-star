@@ -36,6 +36,8 @@ GitHub 仓库需要配置以下 Actions secrets：
 
 systemd 配置模板位于 `ops/little-cloud.service`，生产服务以服务器现有的 `www` 用户运行，监听 `127.0.0.1:8100`，由 Nginx 对外提供 HTTPS。GitHub Actions 使用独立的 `littlecloud` 用户部署，该用户只能免密重启本项目的 systemd 服务。数据库和上传文件直接保存在新项目目录中，并通过 `.gitignore` 与代码发布隔离。
 
+只读生产日志 API 使用独立的 `littlecloud-logs` 用户运行，监听 `127.0.0.1:8110`。外部只能通过 `https://feiyinluguo.cn/__ops/logs` 并携带 `X-Log-API-Key` 查询。服务端只保存 API Key 的 SHA-256 摘要；原始 Key 只能放在 Codex 执行环境或 GitHub Secret `PROD_LOG_API_KEY` 中，禁止提交到 Git。
+
 每次自动发布会：
 
 1. 在 GitHub Actions 中检查后端并构建前端。
@@ -43,8 +45,18 @@ systemd 配置模板位于 `ops/little-cloud.service`，生产服务以服务器
 3. 使用 SQLite 在线备份生产数据库。
 4. 将服务器代码切换到触发发布的 `main` 提交。
 5. 更新 Python 依赖并原子替换前端构建目录。
-6. 重启 `little-cloud.service`。
-7. 请求 `http://127.0.0.1:8100/api/health`；失败时回滚代码和前端。
+6. 重启 `little-cloud.service` 和 `little-cloud-log-api.service`。
+7. 分别请求 `http://127.0.0.1:8100/api/health` 和 `http://127.0.0.1:8110/health`；失败时回滚代码和前端。
+
+## 生产日志查询
+
+日志 API 仅允许以下固定数据源：
+
+- `app`：`little-cloud.service` 的 journald 日志
+- `nginx-error`：主域名 Nginx 错误日志
+- `nginx-access`：主域名 Nginx 访问日志
+
+查询窗口最大 3 天，每次最多返回 500 行，并自动脱敏常见密码、Cookie、Token、Authorization 和 API Key。GitHub Actions 中的 `Query production logs` 工作流可以手动查询并生成保留 3 天的 Artifact。
 
 ## 手动发布
 
