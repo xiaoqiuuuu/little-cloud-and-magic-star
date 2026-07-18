@@ -7,8 +7,8 @@
 以下内容只保存在服务器，不进入 Git，也不会被 `git reset` 覆盖：
 
 - `backend/.env`：生产环境变量
-- `backend/quiz.db`：指向服务器持久化生产 SQLite 数据库的符号链接
-- `backend/uploads/`：指向服务器持久化上传目录的符号链接
+- `backend/quiz.db`：生产 SQLite 数据库
+- `backend/uploads/`：生产上传文件
 - `backend/backups/`：发布前自动生成的数据库备份，保留最近 10 份
 
 本地开发默认使用仓库目录下的 `backend/quiz.db`。生产环境应在 `.env` 中用绝对路径明确指定：
@@ -16,7 +16,7 @@
 ```dotenv
 ENVIRONMENT=production
 SECRET_KEY=请使用足够长的随机值
-DATABASE_FILE=/www/wwwroot/dati/backend/quiz.db
+DATABASE_FILE=/www/wwwroot/little-cloud-and-magic-star/backend/quiz.db
 HOST=127.0.0.1
 PORT=8100
 ```
@@ -34,7 +34,7 @@ GitHub 仓库需要配置以下 Actions secrets：
 
 ## 服务器运行方式
 
-systemd 配置模板位于 `ops/little-cloud.service`，生产服务以服务器现有的 `www` 用户运行，监听 `127.0.0.1:8100`，由 Nginx 对外提供 HTTPS。GitHub Actions 使用独立的 `littlecloud` 用户部署，该用户只能免密重启本项目的 systemd 服务。旧宝塔目录中的数据库和上传文件通过符号链接挂载到新代码目录，代码发布不会覆盖生产数据。
+systemd 配置模板位于 `ops/little-cloud.service`，生产服务以服务器现有的 `www` 用户运行，监听 `127.0.0.1:8100`，由 Nginx 对外提供 HTTPS。GitHub Actions 使用独立的 `littlecloud` 用户部署，该用户只能免密重启本项目的 systemd 服务。数据库和上传文件直接保存在新项目目录中，并通过 `.gitignore` 与代码发布隔离。
 
 每次自动发布会：
 
