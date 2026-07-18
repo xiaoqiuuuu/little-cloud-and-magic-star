@@ -31,7 +31,7 @@
 - ✅ 编辑现有题目
 - ✅ 删除题目
 - ✅ 完整的 CRUD 操作
-- ✅ **Excel 批量导入导出** - 支持批量创建、更新题目（详见 [EXCEL_FORMAT.md](EXCEL_FORMAT.md)）
+- ✅ **Excel 批量导入导出** - 支持批量创建、更新题目（详见 [Excel 格式说明](docs/EXCEL_FORMAT.md)）
 
 ## 项目结构
 
@@ -197,6 +197,8 @@ DELETE /api/admin/questions/{question_id}
 如果 `backend/questions.json` 文件存在，系统会在首次启动时自动导入题目数据到数据库。
 
 ## 生产部署建议
+
+当前生产环境的自动部署、数据持久化和回滚流程请参考 [生产部署文档](docs/DEPLOYMENT.md)。
 
 1. **修改 JWT 密钥**: 在 `backend/auth.py` 中修改 `SECRET_KEY`
 2. **修改默认管理员密码**: 在数据库中更新或通过代码修改
