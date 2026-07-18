@@ -8,9 +8,10 @@ from dotenv import load_dotenv
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-load_dotenv(BACKEND_DIR / ".env")
+PROJECT_ROOT = BACKEND_DIR.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
-# 本地默认使用 backend/quiz.db；生产环境通过 .env 显式指定绝对路径。
+# 本地默认使用 backend/quiz.db；生产环境通过根目录 .env 显式指定绝对路径。
 DATABASE_FILE = os.getenv("DATABASE_FILE", str(BACKEND_DIR / "quiz.db"))
 
 

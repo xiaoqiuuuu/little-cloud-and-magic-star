@@ -6,12 +6,12 @@
 
 以下内容只保存在服务器，不进入 Git，也不会被 `git reset` 覆盖：
 
-- `backend/.env`：生产环境变量
+- `.env`：生产环境变量
 - `backend/quiz.db`：生产 SQLite 数据库
 - `backend/uploads/`：生产上传文件
 - `backend/backups/`：发布前自动生成的数据库备份，保留最近 10 份
 
-本地开发默认使用仓库目录下的 `backend/quiz.db`。生产环境应在 `.env` 中用绝对路径明确指定：
+本地和生产环境都从项目根目录的 `.env` 加载配置。本地开发默认使用仓库目录下的 `backend/quiz.db`；生产环境应使用绝对路径明确指定：
 
 ```dotenv
 ENVIRONMENT=production

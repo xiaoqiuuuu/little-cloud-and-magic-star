@@ -37,6 +37,7 @@
 
 ```
 feiyinluguo2/
+├── .env.example             # 根目录环境变量模板
 ├── backend/                 # 后端目录
 │   ├── main.py             # FastAPI 主应用
 │   ├── models.py           # Pydantic 数据模型
@@ -71,17 +72,22 @@ feiyinluguo2/
 
 ### 后端启动
 
-1. 进入后端目录：
+1. 在项目根目录创建本地环境文件（首次运行）：
+```bash
+cp .env.example .env
+```
+
+2. 进入后端目录：
 ```bash
 cd backend
 ```
 
-2. 安装 Python 依赖：
+3. 安装 Python 依赖：
 ```bash
 pip install -r requirements.txt
 ```
 
-3. 启动后端服务：
+4. 启动后端服务：
 ```bash
 python main.py
 ```
@@ -193,7 +199,7 @@ DELETE /api/admin/questions/{question_id}
 
 当前生产环境的自动部署、数据持久化和回滚流程请参考 [生产部署文档](docs/DEPLOYMENT.md)。
 
-1. **修改 JWT 密钥**: 在 `backend/auth.py` 中修改 `SECRET_KEY`
+1. **设置 JWT 密钥**: 在项目根目录 `.env` 中设置足够长的 `SECRET_KEY`
 2. **修改默认管理员密码**: 在数据库中更新或通过代码修改
 3. **配置 CORS**: 在 `backend/main.py` 中指定允许的前端域名
 4. **使用环境变量**: 将敏感配置移至环境变量

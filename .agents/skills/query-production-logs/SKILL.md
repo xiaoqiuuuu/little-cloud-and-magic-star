@@ -26,6 +26,11 @@ Use the protected log API as the first diagnostic source. It exposes only the ap
      source "$HOME/.config/little-cloud/log-api.env"
      set +a
    fi
+   if [ -z "${PROD_LOG_API_KEY:-}" ] && [ -f ".env" ]; then
+     set -a
+     source ".env"
+     set +a
+   fi
    test -n "$PROD_LOG_API_KEY"
    ```
 
