@@ -26,6 +26,8 @@
 
 ### 管理员功能（需要登录）
 - ✅ 管理员登录认证
+- ✅ Access Token（1 天）+ Refresh Token（30 天）自动续期
+- ✅ 超级管理员专属人员管理（创建、编辑、停用、删除、重置密码）
 - ✅ 查看题目统计信息
 - ✅ 创建新题目
 - ✅ 编辑现有题目
@@ -147,6 +149,27 @@ Body: {
 }
 ```
 
+登录成功会同时返回 `access_token` 和 `refresh_token`。业务接口只接受 Access Token；Access Token 有效期为 1 天，Refresh Token 有效期为 30 天。
+
+#### 刷新双 Token
+```
+POST /api/admin/refresh
+Body: {
+  "refresh_token": "string"
+}
+```
+
+Refresh Token 每次使用后都会轮换，旧 Token 不能重复使用。
+
+#### 人员管理（仅超级管理员）
+```
+GET    /api/admin/users
+POST   /api/admin/users
+PATCH  /api/admin/users/{admin_id}
+PUT    /api/admin/users/{admin_id}/password
+DELETE /api/admin/users/{admin_id}
+```
+
 #### 获取所有题目（含答案）
 ```
 GET /api/admin/questions
@@ -200,7 +223,7 @@ DELETE /api/admin/questions/{question_id}
 当前生产环境的自动部署、数据持久化和回滚流程请参考 [生产部署文档](docs/DEPLOYMENT.md)。
 
 1. **设置 JWT 密钥**: 在项目根目录 `.env` 中设置足够长的 `SECRET_KEY`
-2. **修改默认管理员密码**: 在数据库中更新或通过代码修改
+2. **维护管理员账号**: 使用现有超级管理员登录后台，通过“人员管理”创建和维护账号
 3. **配置 CORS**: 在 `backend/main.py` 中指定允许的前端域名
 4. **使用环境变量**: 将敏感配置移至环境变量
 5. **使用生产级数据库**: 考虑使用 PostgreSQL 或 MySQL

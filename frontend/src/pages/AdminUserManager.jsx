@@ -1,0 +1,354 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import {
+  App,
+  Button,
+  Card,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Switch,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
+import {
+  DeleteOutlined,
+  EditOutlined,
+  KeyOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
+import api, { clearAuthSession } from '../api';
+
+
+const { Title, Text } = Typography;
+
+const roleOptions = [
+  { value: 'question_admin', label: '题目管理员' },
+  { value: 'super_admin', label: '超级管理员' },
+];
+
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN');
+}
+
+
+function AdminUserManager() {
+  const { message, modal } = App.useApp();
+  const { currentUser } = useOutletContext();
+  const navigate = useNavigate();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [passwordUser, setPasswordUser] = useState(null);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [accountForm] = Form.useForm();
+  const [passwordForm] = Form.useForm();
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/admin/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('获取人员列表失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const openCreateModal = () => {
+    setEditingUser(null);
+    accountForm.resetFields();
+    accountForm.setFieldsValue({ role: 'question_admin', is_active: true });
+    setAccountModalOpen(true);
+  };
+
+  const openEditModal = (user) => {
+    setEditingUser(user);
+    accountForm.setFieldsValue({
+      username: user.username,
+      role: user.role,
+      is_active: user.is_active,
+    });
+    setAccountModalOpen(true);
+  };
+
+  const submitAccount = async () => {
+    const values = await accountForm.validateFields();
+    try {
+      setSaving(true);
+      if (editingUser) {
+        await api.patch(`/admin/users/${editingUser.id}`, {
+          username: values.username,
+          role: values.role,
+          is_active: values.is_active,
+        });
+        message.success('账号信息已更新');
+      } else {
+        await api.post('/admin/users', {
+          username: values.username,
+          password: values.password,
+          role: values.role,
+        });
+        message.success('账号创建成功');
+      }
+      setAccountModalOpen(false);
+      await fetchUsers();
+    } catch (error) {
+      console.error('保存账号失败:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openPasswordModal = (user) => {
+    setPasswordUser(user);
+    passwordForm.resetFields();
+    setPasswordModalOpen(true);
+  };
+
+  const submitPassword = async () => {
+    const values = await passwordForm.validateFields();
+    try {
+      setSaving(true);
+      await api.put(`/admin/users/${passwordUser.id}/password`, {
+        password: values.password,
+      });
+      const isCurrentUser = passwordUser.id === currentUser.id;
+      message.success(isCurrentUser
+        ? '密码已更新，请使用新密码重新登录'
+        : '密码已重置，该账号的现有登录状态已失效');
+      setPasswordModalOpen(false);
+      if (isCurrentUser) {
+        clearAuthSession();
+        navigate('/admin/login', { replace: true });
+      }
+    } catch (error) {
+      console.error('重置密码失败:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteUser = (user) => {
+    modal.confirm({
+      title: `确定删除账号“${user.username}”吗？`,
+      content: '删除后，该账号将无法登录，已有 Token 也会失效。',
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await api.delete(`/admin/users/${user.id}`);
+          message.success('账号已删除');
+          await fetchUsers();
+        } catch (error) {
+          console.error('删除账号失败:', error);
+        }
+      },
+    });
+  };
+
+  const columns = [
+    {
+      title: '用户名',
+      dataIndex: 'username',
+      key: 'username',
+      render: (username, record) => (
+        <Space>
+          <Text strong>{username}</Text>
+          {record.id === currentUser.id && <Tag color="blue">当前账号</Tag>}
+        </Space>
+      ),
+    },
+    {
+      title: '角色',
+      dataIndex: 'role',
+      key: 'role',
+      render: (role) => role === 'super_admin'
+        ? <Tag color="purple">超级管理员</Tag>
+        : <Tag color="cyan">题目管理员</Tag>,
+    },
+    {
+      title: '状态',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      render: (isActive) => isActive
+        ? <Tag color="success">启用</Tag>
+        : <Tag>停用</Tag>,
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      responsive: ['md'],
+      render: formatDateTime,
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 280,
+      render: (_, record) => {
+        const isCurrentUser = record.id === currentUser.id;
+        return (
+          <Space wrap>
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              disabled={isCurrentUser}
+              onClick={() => openEditModal(record)}
+            >
+              编辑
+            </Button>
+            <Button
+              size="small"
+              icon={<KeyOutlined />}
+              onClick={() => openPasswordModal(record)}
+            >
+              重置密码
+            </Button>
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              disabled={isCurrentUser}
+              onClick={() => deleteUser(record)}
+            >
+              删除
+            </Button>
+          </Space>
+        );
+      },
+    },
+  ];
+
+  return (
+    <Card bordered={false}>
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+        <div>
+          <Title level={2} className="!mb-1">人员管理</Title>
+          <Text type="secondary">
+            创建和管理后台登录账号。账号权限变化、停用和密码重置会立即使其现有 Token 失效。
+          </Text>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+          创建账号
+        </Button>
+      </div>
+
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={users}
+        loading={loading}
+        pagination={{ pageSize: 10, showSizeChanger: false }}
+        scroll={{ x: 760 }}
+      />
+
+      <Modal
+        title={editingUser ? '编辑账号' : '创建账号'}
+        open={accountModalOpen}
+        onOk={submitAccount}
+        onCancel={() => setAccountModalOpen(false)}
+        confirmLoading={saving}
+        okText={editingUser ? '保存' : '创建'}
+        cancelText="取消"
+        destroyOnHidden
+      >
+        <Form form={accountForm} layout="vertical" className="pt-3">
+          <Form.Item
+            name="username"
+            label="用户名"
+            rules={[
+              { required: true, message: '请输入用户名' },
+              { min: 2, max: 50, message: '用户名长度应为 2–50 个字符' },
+            ]}
+          >
+            <Input autoComplete="off" />
+          </Form.Item>
+
+          {!editingUser && (
+            <Form.Item
+              name="password"
+              label="初始密码"
+              rules={[
+                { required: true, message: '请输入初始密码' },
+                { min: 8, max: 128, message: '密码长度应为 8–128 个字符' },
+              ]}
+            >
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+          )}
+
+          <Form.Item name="role" label="角色" rules={[{ required: true }]}>
+            <Select options={roleOptions} />
+          </Form.Item>
+
+          {editingUser && (
+            <Form.Item name="is_active" label="账号状态" valuePropName="checked">
+              <Switch checkedChildren="启用" unCheckedChildren="停用" />
+            </Form.Item>
+          )}
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`重置“${passwordUser?.username || ''}”的密码`}
+        open={passwordModalOpen}
+        onOk={submitPassword}
+        onCancel={() => setPasswordModalOpen(false)}
+        confirmLoading={saving}
+        okText="重置密码"
+        cancelText="取消"
+        destroyOnHidden
+      >
+        <Form form={passwordForm} layout="vertical" className="pt-3">
+          <Form.Item
+            name="password"
+            label="新密码"
+            rules={[
+              { required: true, message: '请输入新密码' },
+              { min: 8, max: 128, message: '密码长度应为 8–128 个字符' },
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item
+            name="confirmPassword"
+            label="确认新密码"
+            dependencies={['password']}
+            rules={[
+              { required: true, message: '请再次输入新密码' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('两次输入的密码不一致'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </Card>
+  );
+}
+
+
+export default AdminUserManager;

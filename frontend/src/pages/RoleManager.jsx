@@ -102,9 +102,18 @@ function RoleManager() {
   // 图片上传属性
   const uploadProps = {
     name: 'file',
-    action: '/api/upload', // 上传接口
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
+    customRequest: async ({ file, onSuccess, onError }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const response = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          hideLoading: true,
+        });
+        onSuccess(response.data);
+      } catch (error) {
+        onError(error);
+      }
     },
     onChange(info) {
       if (info.file.status === 'done') {

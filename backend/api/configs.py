@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from models import ConfigUpdate, ConfigResponse
 from database import get_config, set_config
-from .dependencies import get_current_user
+from .dependencies import get_current_user, require_super_admin
 
 router = APIRouter(tags=["系统配置"])
 
@@ -16,8 +16,8 @@ def get_config_item(key: str, username: str = Depends(get_current_user)):
     return ConfigResponse(key=key, value=value)
 
 @router.put("/api/configs", response_model=ConfigResponse)
-def update_config_item(config: ConfigUpdate, username: str = Depends(get_current_user)):
-    """更新配置项（需登录）"""
+def update_config_item(config: ConfigUpdate, _: dict = Depends(require_super_admin)):
+    """更新配置项（仅超级管理员）"""
     success = set_config(config.key, config.value)
     if not success:
         raise HTTPException(status_code=500, detail="更新配置失败")

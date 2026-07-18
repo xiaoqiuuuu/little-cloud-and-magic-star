@@ -10,7 +10,9 @@ import MaterialManager from './pages/MaterialManager';
 import ProducerManager from './pages/ProducerManager';
 import RoleManager from './pages/RoleManager';
 import VisitStatsPage from './pages/VisitStatsPage';
+import AdminUserManager from './pages/AdminUserManager';
 import AdminLayout from './components/AdminLayout';
+import RequireSuperAdmin from './components/RequireSuperAdmin';
 import Navbar from './components/Navbar';
 import RouterProgressBar from './components/RouterProgressBar';
 import { useEffect, useState } from 'react';
@@ -86,6 +88,11 @@ function App() {
                 <Route path="materials" element={<MaterialManager />} />
                 <Route path="producers" element={<ProducerManager />} />
                 <Route path="roles" element={<RoleManager />} />
+                <Route path="users" element={
+                  <RequireSuperAdmin>
+                    <AdminUserManager />
+                  </RequireSuperAdmin>
+                } />
                 {/* 兼容旧路由 */}
                 <Route path="dashboard" element={<Navigate to="questions" replace />} />
               </Route>

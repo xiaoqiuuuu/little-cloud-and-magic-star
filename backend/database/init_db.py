@@ -1,6 +1,7 @@
 """数据库初始化"""
 
 from .config import get_connection
+from passwords import hash_password, is_password_hash
 
 
 def init_db():
@@ -39,7 +40,11 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role TEXT DEFAULT 'question_admin' CHECK(role IN ('super_admin', 'question_admin'))
+            role TEXT NOT NULL DEFAULT 'question_admin' CHECK(role IN ('super_admin', 'question_admin')),
+            is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
+            token_version INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -101,6 +106,50 @@ def init_db():
     if 'role' not in admin_columns:
         cursor.execute(
             'ALTER TABLE admins ADD COLUMN role TEXT DEFAULT "question_admin"')
+
+    if 'is_active' not in admin_columns:
+        cursor.execute(
+            'ALTER TABLE admins ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1')
+
+    if 'token_version' not in admin_columns:
+        cursor.execute(
+            'ALTER TABLE admins ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0')
+
+    if 'created_at' not in admin_columns:
+        cursor.execute('ALTER TABLE admins ADD COLUMN created_at TEXT')
+
+    if 'updated_at' not in admin_columns:
+        cursor.execute('ALTER TABLE admins ADD COLUMN updated_at TEXT')
+
+    cursor.execute('''
+        UPDATE admins
+        SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+            updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+    ''')
+
+    # 将历史明文密码一次性迁移为不可逆哈希。
+    cursor.execute('SELECT id, password FROM admins')
+    for admin_id, stored_password in cursor.fetchall():
+        if not is_password_hash(stored_password):
+            cursor.execute(
+                'UPDATE admins SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                (hash_password(stored_password), admin_id),
+            )
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admin_refresh_tokens (
+            jti TEXT PRIMARY KEY,
+            admin_id INTEGER NOT NULL,
+            expires_at TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            revoked_at TEXT,
+            replaced_by TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_admin_refresh_tokens_admin_id
+        ON admin_refresh_tokens(admin_id)
+    ''')
 
     # 创建系统配置表
     cursor.execute('''

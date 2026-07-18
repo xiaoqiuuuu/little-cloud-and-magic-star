@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 
 # 题目模型
@@ -79,15 +79,51 @@ class AnswerResponse(BaseModel):
 
 
 class AdminLogin(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=2, max_length=50)
+    password: str = Field(min_length=1, max_length=128)
 
-# Token响应
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(min_length=20, max_length=4096)
+
+
+# Token 响应
 
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: str
+    token_type: str = "bearer"
+    access_token_expires_in: int
+    refresh_token_expires_in: int
+
+
+# 管理员账号管理
+
+
+class AdminUser(BaseModel):
+    id: int
+    username: str
+    role: Literal["super_admin", "question_admin"]
+    is_active: bool
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class AdminUserCreate(BaseModel):
+    username: str = Field(min_length=2, max_length=50)
+    password: str = Field(min_length=8, max_length=128)
+    role: Literal["super_admin", "question_admin"] = "question_admin"
+
+
+class AdminUserUpdate(BaseModel):
+    username: Optional[str] = Field(default=None, min_length=2, max_length=50)
+    role: Optional[Literal["super_admin", "question_admin"]] = None
+    is_active: Optional[bool] = None
+
+
+class AdminPasswordReset(BaseModel):
+    password: str = Field(min_length=8, max_length=128)
 
 
 # 物料模型
@@ -209,4 +245,3 @@ class RoleUpdate(BaseModel):
     color: Optional[str] = None
     skillDetails: Optional[List[RoleSkillDetail]] = None
     image_url: Optional[str] = None
-
