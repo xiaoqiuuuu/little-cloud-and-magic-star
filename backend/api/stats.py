@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from database.stats import add_visit, get_visit_stats
-from .dependencies import get_current_user
+from .dependencies import require_content_admin
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -25,7 +25,7 @@ async def record_visit(request: Request, visit: VisitRequest):
         return {"status": "error", "message": str(e)}
 
 @router.get("/")
-async def get_stats(_: str = Depends(get_current_user)):
+async def get_stats(_: dict = Depends(require_content_admin)):
     try:
         data = get_visit_stats()
         return data

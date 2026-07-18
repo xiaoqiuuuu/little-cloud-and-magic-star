@@ -10,6 +10,7 @@ import {
   MenuOutlined,
   BarChartOutlined,
   UsergroupAddOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession } from '../api';
@@ -41,6 +42,9 @@ function AdminLayout() {
         localStorage.setItem('username', response.data.username);
         localStorage.setItem('userRole', response.data.role);
         localStorage.setItem('currentUserId', String(response.data.id));
+        if (response.data.role === 'quiz_operator') {
+          navigate('/quiz', { replace: true });
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -106,6 +110,10 @@ function AdminLayout() {
       label: <Link to="/admin/roles">角色管理</Link>,
     },
     ...(isSuperAdmin ? [{
+      key: '/admin/activities',
+      icon: <CalendarOutlined />,
+      label: <Link to="/admin/activities">答题活动</Link>,
+    }, {
       key: '/admin/users',
       icon: <UsergroupAddOutlined />,
       label: <Link to="/admin/users">人员管理</Link>,

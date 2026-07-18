@@ -8,6 +8,7 @@ api/
 ├── dependencies.py     # 公共依赖项（如认证依赖）
 ├── admin.py           # 双 Token 认证 API
 ├── users.py           # 超级管理员人员管理 API
+├── activities.py      # 答题活动、题目范围与活动状态 API
 ├── questions.py       # 题目相关的所有API
 ├── materials.py       # 物料相关的所有API
 └── producers.py       # 制作人相关的所有API
@@ -35,6 +36,15 @@ api/
 - `PATCH /{admin_id}`: 修改用户名、角色或启停状态
 - `PUT /{admin_id}/password`: 重置密码
 - `DELETE /{admin_id}`: 删除账号
+
+### activities.py（答题活动模块）
+
+- `GET /api/quiz/active-activity`: 获取当前进行中的活动
+- `GET/POST /api/admin/activities`: 查询或创建活动（仅超级管理员）
+- `GET/PUT/DELETE /api/admin/activities/{id}`: 活动详情、编辑或删除草稿
+- `POST /api/admin/activities/{id}/start`: 开始活动；自动暂停其他活动
+- `POST /api/admin/activities/{id}/pause`: 暂停并保留统计
+- `POST /api/admin/activities/{id}/end`: 结束活动并转为只读
 
 ### questions.py（题目模块）
 **前缀**: 无（直接使用 `/api/...`）

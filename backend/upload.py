@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 
-from auth import verify_token
+from auth import get_current_user_info
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -18,8 +18,10 @@ MAX_SIZE = 10 * 1024 * 1024  # 10MB
 @router.post('/api/upload')
 async def upload_file(
     file: UploadFile = File(...),
-    _: tuple = Depends(verify_token),
+    user_info: dict = Depends(get_current_user_info),
 ):
+    if user_info["role"] == "quiz_operator":
+        raise HTTPException(status_code=403, detail="答题人员不能上传文件")
     if not file.filename:
         raise HTTPException(status_code=400, detail='文件名不存在')
     ext = os.path.splitext(file.filename)[-1].lower()

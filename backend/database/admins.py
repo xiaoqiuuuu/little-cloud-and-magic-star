@@ -90,7 +90,11 @@ def list_admins() -> List[Dict[str, Any]]:
             f"""
             SELECT {ADMIN_COLUMNS}
             FROM admins
-            ORDER BY CASE role WHEN 'super_admin' THEN 0 ELSE 1 END,
+            ORDER BY CASE role
+                         WHEN 'super_admin' THEN 0
+                         WHEN 'question_admin' THEN 1
+                         ELSE 2
+                     END,
                      username COLLATE NOCASE
             """
         ).fetchall()

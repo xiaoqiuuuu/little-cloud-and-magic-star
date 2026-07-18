@@ -104,7 +104,7 @@ class Token(BaseModel):
 class AdminUser(BaseModel):
     id: int
     username: str
-    role: Literal["super_admin", "question_admin"]
+    role: Literal["super_admin", "question_admin", "quiz_operator"]
     is_active: bool
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -113,17 +113,62 @@ class AdminUser(BaseModel):
 class AdminUserCreate(BaseModel):
     username: str = Field(min_length=2, max_length=50)
     password: str = Field(min_length=8, max_length=128)
-    role: Literal["super_admin", "question_admin"] = "question_admin"
+    role: Literal["super_admin", "question_admin", "quiz_operator"] = "question_admin"
 
 
 class AdminUserUpdate(BaseModel):
     username: Optional[str] = Field(default=None, min_length=2, max_length=50)
-    role: Optional[Literal["super_admin", "question_admin"]] = None
+    role: Optional[Literal["super_admin", "question_admin", "quiz_operator"]] = None
     is_active: Optional[bool] = None
 
 
 class AdminPasswordReset(BaseModel):
     password: str = Field(min_length=8, max_length=128)
+
+
+# 答题活动
+
+
+class QuizActivityQuestionStat(BaseModel):
+    question_id: str
+    question: str
+    tag: str
+    position: int
+    random_clicks: int = 0
+    hide_clicks: int = 0
+    question_exists: bool = True
+
+
+class QuizActivity(BaseModel):
+    id: int
+    name: str
+    description: str = ""
+    status: Literal["draft", "active", "paused", "ended"]
+    created_by: str
+    question_count: int = 0
+    total_random_clicks: int = 0
+    total_hide_clicks: int = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+
+
+class QuizActivityDetail(QuizActivity):
+    question_ids: List[str] = Field(default_factory=list)
+    questions: List[QuizActivityQuestionStat] = Field(default_factory=list)
+
+
+class QuizActivityCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=500)
+    question_ids: List[str] = Field(default_factory=list)
+
+
+class QuizActivityUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    description: Optional[str] = Field(default=None, max_length=500)
+    question_ids: Optional[List[str]] = None
 
 
 # 物料模型

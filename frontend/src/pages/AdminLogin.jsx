@@ -39,7 +39,10 @@ function AdminLogin() {
       }));
 
       showSuccess('登录成功！');
-      navigate('/admin/questions', { replace: true });
+      navigate(
+        userRes.data.role === 'quiz_operator' ? '/quiz' : '/admin/questions',
+        { replace: true },
+      );
     } catch (error) {
       console.error('登录失败:', error);
       clearAuthSession();
@@ -62,10 +65,10 @@ function AdminLogin() {
         <Space direction="vertical" size="large" className="w-full">
           <div className="text-center">
             <Title level={2} className="!mb-2">
-              管理员登录
+              账号登录
             </Title>
             <Text type="secondary">
-              请使用管理员账号登录
+              请使用后台管理或现场答题账号登录
             </Text>
           </div>
 

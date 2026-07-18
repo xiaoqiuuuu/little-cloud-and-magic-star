@@ -202,7 +202,7 @@ const QuestionList = ({
       ),
     },
     {
-      title: '点击统计',
+      title: '历史/调试统计',
       key: 'stats',
       width: 120,
       render: (_, record) => (

@@ -25,6 +25,7 @@ from api import (
     roles_router,
     stats_router,
     users_router,
+    activities_router,
 )
 
 # 初始化数据库
@@ -58,6 +59,7 @@ app.include_router(configs_router)  # 系统配置接口
 app.include_router(roles_router)  # 角色接口
 app.include_router(stats_router)  # 统计接口
 app.include_router(users_router)  # 人员管理接口
+app.include_router(activities_router)  # 答题活动接口
 
 
 @app.get("/api/health")
