@@ -467,7 +467,11 @@ def get_started_activity_using_question(question_id: str) -> Optional[Dict[str, 
         conn.close()
 
 
-def increment_active_activity_stat(question_id: str, stat: str) -> Optional[int]:
+def increment_active_activity_stat(
+    question_id: str,
+    stat: str,
+    expected_activity_id: int,
+) -> Optional[int]:
     columns = {
         "random": "random_clicks",
         "hide": "hide_clicks",
@@ -480,25 +484,28 @@ def increment_active_activity_stat(question_id: str, stat: str) -> Optional[int]
     try:
         conn.execute("BEGIN IMMEDIATE")
         active_row = conn.execute(
-            "SELECT id FROM quiz_activities WHERE status = 'active' LIMIT 1"
+            """
+            SELECT id FROM quiz_activities
+            WHERE id = ? AND status = 'active'
+            """,
+            (expected_activity_id,),
         ).fetchone()
         if not active_row:
             conn.rollback()
             return None
-        activity_id = int(active_row[0])
         cursor = conn.execute(
             f"""
             UPDATE quiz_activity_questions
             SET {column} = {column} + 1
             WHERE question_id = ? AND activity_id = ?
             """,
-            (question_id, activity_id),
+            (question_id, expected_activity_id),
         )
         if cursor.rowcount != 1:
             conn.rollback()
             return None
         conn.commit()
-        return activity_id
+        return expected_activity_id
     except Exception:
         conn.rollback()
         raise

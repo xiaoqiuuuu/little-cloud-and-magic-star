@@ -16,7 +16,12 @@ os.environ["DATABASE_FILE"] = str(Path(TEST_DATABASE_DIR.name) / "quiz.db")
 os.environ["ENVIRONMENT"] = "test"
 os.environ["SECRET_KEY"] = "test-secret-key-for-admin-auth-tests"
 
-from database import create_admin, create_question, init_db  # noqa: E402
+from database import (  # noqa: E402
+    create_admin,
+    create_question,
+    get_next_question_id,
+    init_db,
+)
 from database.config import get_connection  # noqa: E402
 from main import app  # noqa: E402
 from models import Question  # noqa: E402
@@ -192,7 +197,7 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         second = await self.client.post(
             "/api/admin/activities",
             headers=super_headers,
-            json={"name": "第二场", "description": "", "question_ids": ["3"]},
+            json={"name": "第二场", "description": "", "question_ids": ["2", "3"]},
         )
         self.assertEqual(first.status_code, 201, first.text)
         self.assertEqual(second.status_code, 201, second.text)
@@ -213,10 +218,12 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         random_click = await self.client.post(
             "/api/track/random/1",
             headers=operator_headers,
+            params={"activity_id": first.json()["id"]},
         )
         hide_click = await self.client.post(
             "/api/track/hide/1",
             headers=operator_headers,
+            params={"activity_id": first.json()["id"]},
         )
         update_live_question = await self.client.put(
             "/api/admin/questions/1",
@@ -235,8 +242,19 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             headers=super_headers,
         )
         self.assertEqual(started_second.status_code, 200, started_second.text)
+        stale_click = await self.client.post(
+            "/api/track/random/2",
+            headers=operator_headers,
+            params={"activity_id": first.json()["id"]},
+        )
+        self.assertEqual(stale_click.status_code, 409)
         second_ids = await self.client.get("/api/questions/ids", headers=operator_headers)
-        self.assertEqual([item["id"] for item in second_ids.json()], ["3"])
+        self.assertEqual([item["id"] for item in second_ids.json()], ["2", "3"])
+        second_detail = await self.client.get(
+            f"/api/admin/activities/{second.json()['id']}",
+            headers=super_headers,
+        )
+        self.assertEqual(second_detail.json()["questions"][0]["random_clicks"], 0)
 
         first_detail = await self.client.get(
             f"/api/admin/activities/{first.json()['id']}",
@@ -283,6 +301,59 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         finally:
             conn.close()
         self.assertEqual(tuple(legacy_stats), (0, 0))
+
+    async def test_deleting_questions_does_not_rebind_activity_references(self):
+        create_question(Question(
+            id="9",
+            question="草稿原题",
+            answer="A",
+            tag="common",
+        ))
+        super_tokens = await self.login("rootadmin", "StrongPass123")
+        super_headers = self.auth_headers(super_tokens["access_token"])
+        draft = await self.client.post(
+            "/api/admin/activities",
+            headers=super_headers,
+            json={"name": "草稿活动", "description": "", "question_ids": ["9"]},
+        )
+        self.assertEqual(draft.status_code, 201, draft.text)
+
+        deleted = await self.client.delete("/api/admin/questions/9", headers=super_headers)
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        create_question(Question(
+            id="9",
+            question="复用题号的新题",
+            answer="B",
+            tag="vlog",
+        ))
+
+        draft_detail = await self.client.get(
+            f"/api/admin/activities/{draft.json()['id']}",
+            headers=super_headers,
+        )
+        self.assertEqual(draft_detail.json()["question_ids"], [])
+        self.assertEqual(draft_detail.json()["question_count"], 0)
+        start_empty_draft = await self.client.post(
+            f"/api/admin/activities/{draft.json()['id']}/start",
+            headers=super_headers,
+        )
+        self.assertEqual(start_empty_draft.status_code, 400)
+
+        historical = await self.client.post(
+            "/api/admin/activities",
+            headers=super_headers,
+            json={"name": "历史活动", "description": "", "question_ids": ["9"]},
+        )
+        await self.client.post(
+            f"/api/admin/activities/{historical.json()['id']}/start",
+            headers=super_headers,
+        )
+        await self.client.post(
+            f"/api/admin/activities/{historical.json()['id']}/end",
+            headers=super_headers,
+        )
+        await self.client.delete("/api/admin/questions/9", headers=super_headers)
+        self.assertEqual(get_next_question_id(), "10")
 
     async def test_super_admin_can_create_and_disable_a_hashed_account(self):
         tokens = await self.login("rootadmin", "StrongPass123")

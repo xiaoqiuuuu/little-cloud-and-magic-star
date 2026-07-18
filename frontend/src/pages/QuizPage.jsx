@@ -10,6 +10,7 @@ function QuizPage() {
   const { message, modal } = App.useApp();
   const isQuizOperator = localStorage.getItem('userRole') === 'quiz_operator';
   const activeActivityIdRef = useRef(undefined);
+  const activityGenerationRef = useRef(0);
   const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
   const [currentQuestion, setCurrentQuestion] = useState(null); // 当前题目的完整数据
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -118,27 +119,37 @@ function QuizPage() {
   // 当索引改变时，加载当前题目
   useEffect(() => {
     if (filteredQuestionIds.length > 0 && currentIndex >= 0 && currentIndex < filteredQuestionIds.length) {
-      fetchCurrentQuestion(filteredQuestionIds[currentIndex].id);
+      fetchCurrentQuestion(
+        filteredQuestionIds[currentIndex].id,
+        activityGenerationRef.current,
+      );
     }
   }, [currentIndex]);
 
-  const fetchQuestionIds = async (hiddenIds = hiddenQuestions) => {
+  const fetchQuestionIds = async (
+    hiddenIds = hiddenQuestions,
+    generation = activityGenerationRef.current,
+  ) => {
     try {
       setLoading(true);
       const response = await api.get('/questions/ids');
+      if (isQuizOperator && generation !== activityGenerationRef.current) return;
       setQuestionIds(response.data);
       // 加载第一题
       const filtered = response.data.filter(q => !hiddenIds.includes(q.id));
       if (filtered.length > 0) {
-        fetchCurrentQuestion(filtered[0].id);
+        fetchCurrentQuestion(filtered[0].id, generation);
       } else {
         setCurrentQuestion(null);
       }
     } catch (error) {
+      if (isQuizOperator && generation !== activityGenerationRef.current) return;
       console.error('获取题目列表失败:', error);
       message.error('获取题目列表失败，请稍后重试');
     } finally {
-      setLoading(false);
+      if (!isQuizOperator || generation === activityGenerationRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -156,6 +167,8 @@ function QuizPage() {
         return;
       }
 
+      const generation = activityGenerationRef.current + 1;
+      activityGenerationRef.current = generation;
       activeActivityIdRef.current = nextActivityId;
       setActiveActivity(nextActivity);
       setQuestionIds([]);
@@ -180,7 +193,7 @@ function QuizPage() {
           }
         }
         setHiddenQuestions(hiddenIds);
-        await fetchQuestionIds(hiddenIds);
+        await fetchQuestionIds(hiddenIds, generation);
       } else {
         setHiddenQuestions([]);
         setLoading(false);
@@ -191,11 +204,16 @@ function QuizPage() {
     }
   };
 
-  const fetchCurrentQuestion = async (questionId) => {
+  const fetchCurrentQuestion = async (
+    questionId,
+    generation = activityGenerationRef.current,
+  ) => {
     try {
       const response = await api.get(`/questions/${questionId}`);
+      if (isQuizOperator && generation !== activityGenerationRef.current) return;
       setCurrentQuestion(response.data);
     } catch (error) {
+      if (isQuizOperator && generation !== activityGenerationRef.current) return;
       console.error('获取题目详情失败:', error);
       message.error('获取题目详情失败，请稍后重试');
     }
@@ -215,7 +233,11 @@ function QuizPage() {
     // 记录当前题目的随机点击
     if (currentQuestion) {
       try {
-        await api.post(`/track/random/${currentQuestion.id}`);
+        await api.post(`/track/random/${currentQuestion.id}`, null, {
+          params: isQuizOperator && activeActivity
+            ? { activity_id: activeActivity.id }
+            : undefined,
+        });
       } catch (error) {
         console.error('记录随机点击失败:', error);
       }
@@ -251,7 +273,11 @@ function QuizPage() {
       onOk: async () => {
         // 记录隐藏点击
         try {
-          await api.post(`/track/hide/${currentQuestion.id}`);
+          await api.post(`/track/hide/${currentQuestion.id}`, null, {
+            params: isQuizOperator && activeActivity
+              ? { activity_id: activeActivity.id }
+              : undefined,
+          });
         } catch (error) {
           console.error('记录隐藏点击失败:', error);
         }
@@ -314,10 +340,12 @@ function QuizPage() {
 
   // 在打开隐藏管理器时，按需加载隐藏的题目
   const loadHiddenQuestions = async () => {
+    const generation = activityGenerationRef.current;
     const uncached = hiddenQuestions.filter(id => !hiddenQuestionsCache[id]);
     if (uncached.length > 0) {
       const promises = uncached.map(id => api.get(`/questions/${id}`).catch(() => null));
       const results = await Promise.all(promises);
+      if (isQuizOperator && generation !== activityGenerationRef.current) return;
       const newCache = { ...hiddenQuestionsCache };
       results.forEach((res, idx) => {
         if (res) {

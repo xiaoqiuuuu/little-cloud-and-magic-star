@@ -123,16 +123,26 @@ def submit_answer(submit: AnswerSubmit, user_info: dict = Depends(get_current_us
 
 
 @router.post("/api/track/random/{question_id}")
-def track_random_click(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
+def track_random_click(
+    question_id: str,
+    activity_id: Optional[int] = None,
+    user_info: dict = Depends(get_current_user_info_dep),
+):
     """记录随机按钮点击（需登录）"""
     if user_info["role"] == "quiz_operator":
-        activity_id = increment_active_activity_stat(question_id, "random")
         if activity_id is None:
+            raise HTTPException(status_code=400, detail="缺少当前活动 ID")
+        recorded_activity_id = increment_active_activity_stat(
+            question_id,
+            "random",
+            activity_id,
+        )
+        if recorded_activity_id is None:
             raise HTTPException(status_code=409, detail="当前活动已切换或题目不在活动中")
         return {
             "message": "记录成功",
             "question_id": question_id,
-            "activity_id": activity_id,
+            "activity_id": recorded_activity_id,
         }
     success = increment_random_clicks(question_id)
     if not success:
@@ -142,16 +152,26 @@ def track_random_click(question_id: str, user_info: dict = Depends(get_current_u
 
 
 @router.post("/api/track/hide/{question_id}")
-def track_hide_click(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
+def track_hide_click(
+    question_id: str,
+    activity_id: Optional[int] = None,
+    user_info: dict = Depends(get_current_user_info_dep),
+):
     """记录隐藏按钮点击（需登录）"""
     if user_info["role"] == "quiz_operator":
-        activity_id = increment_active_activity_stat(question_id, "hide")
         if activity_id is None:
+            raise HTTPException(status_code=400, detail="缺少当前活动 ID")
+        recorded_activity_id = increment_active_activity_stat(
+            question_id,
+            "hide",
+            activity_id,
+        )
+        if recorded_activity_id is None:
             raise HTTPException(status_code=409, detail="当前活动已切换或题目不在活动中")
         return {
             "message": "记录成功",
             "question_id": question_id,
-            "activity_id": activity_id,
+            "activity_id": recorded_activity_id,
         }
     success = increment_hide_clicks(question_id)
     if not success:
