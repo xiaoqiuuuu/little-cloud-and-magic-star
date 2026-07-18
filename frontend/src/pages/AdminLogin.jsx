@@ -21,6 +21,7 @@ function AdminLogin() {
       }, {
         hideLoading: true, // 使用按钮的 loading，不显示全局 loading
         hideErrorMessage: true, // 手动处理错误消息
+        skipAuthRedirect: true, // 登录失败时不要按“登录过期”处理
       });
 
       localStorage.setItem('token', response.data.access_token);
@@ -44,9 +45,7 @@ function AdminLogin() {
       }));
 
       showSuccess('登录成功！');
-      setTimeout(() => {
-        navigate('/admin/questions');
-      }, 500);
+      navigate('/admin/questions', { replace: true });
     } catch (error) {
       console.error('登录失败:', error);
       if (error.response?.status === 401) {
@@ -71,7 +70,7 @@ function AdminLogin() {
               管理员登录
             </Title>
             <Text type="secondary">
-              默认账号: admin / CloudStar@2026!
+              请使用管理员账号登录
             </Text>
           </div>
 

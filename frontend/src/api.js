@@ -13,6 +13,18 @@ const api = axios.create({
 let requestCount = 0;
 let loadingInstance = null;
 
+const finishLoading = (config) => {
+  if (!config?.usesGlobalLoading) {
+    return;
+  }
+
+  requestCount = Math.max(0, requestCount - 1);
+  if (requestCount === 0 && loadingInstance) {
+    loadingInstance();
+    loadingInstance = null;
+  }
+};
+
 // 添加请求拦截器
 api.interceptors.request.use(
   (config) => {
@@ -25,6 +37,7 @@ api.interceptors.request.use(
     // 显示全局 loading（可通过 config.hideLoading = true 禁用）
     if (!config.hideLoading) {
       requestCount++;
+      config.usesGlobalLoading = true;
       if (requestCount === 1) {
         loadingInstance = showLoading('加载中...');
       }
@@ -33,11 +46,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    requestCount--;
-    if (requestCount === 0 && loadingInstance) {
-      loadingInstance();
-      loadingInstance = null;
-    }
+    finishLoading(error.config);
     return Promise.reject(error);
   }
 );
@@ -45,21 +54,11 @@ api.interceptors.request.use(
 // 添加响应拦截器
 api.interceptors.response.use(
   (response) => {
-    // 关闭 loading
-    requestCount--;
-    if (requestCount === 0 && loadingInstance) {
-      loadingInstance();
-      loadingInstance = null;
-    }
+    finishLoading(response.config);
     return response;
   },
   (error) => {
-    // 关闭 loading
-    requestCount--;
-    if (requestCount === 0 && loadingInstance) {
-      loadingInstance();
-      loadingInstance = null;
-    }
+    finishLoading(error.config);
 
     // 处理错误
     if (error.response) {
@@ -67,14 +66,16 @@ api.interceptors.response.use(
       const errorMsg = data?.detail || data?.message || '操作失败';
 
       if (status === 401) {
-        showError('登录已过期，请重新登录');
-        setTimeout(() => {
-          localStorage.removeItem('token');
-          localStorage.removeItem('username');
-          localStorage.removeItem('userRole');
-          window.dispatchEvent(new Event('authChange'));
-          window.location.href = '/admin/login';
-        }, 1500);
+        if (!error.config?.skipAuthRedirect) {
+          showError('登录已过期，请重新登录');
+          setTimeout(() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            localStorage.removeItem('userRole');
+            window.dispatchEvent(new Event('authChange'));
+            window.location.href = '/admin/login';
+          }, 1500);
+        }
       } else if (status === 403) {
         showError('没有权限执行此操作');
       } else if (status === 404) {
