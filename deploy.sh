@@ -20,9 +20,9 @@ mkdir -p "$BACKEND_DIR/backups"
 
 rollback() {
   echo "Health check failed; rolling back to $old_sha." >&2
-  git reset --hard "$old_sha"
-  sudo -n systemctl restart "$SERVICE_NAME"
-  sudo -n systemctl restart little-cloud-log-api.service
+  git reset --hard "$old_sha" || true
+  sudo -n systemctl restart "$SERVICE_NAME" || true
+  sudo -n systemctl restart little-cloud-log-api.service || true
   exit 1
 }
 

@@ -35,6 +35,7 @@ MAX_RESPONSE_CHARS = 256_000
 MAX_TAIL_BYTES = 2 * 1024 * 1024
 RATE_LIMIT_REQUESTS = 30
 RATE_LIMIT_WINDOW_SECONDS = 60
+MAX_RATE_BUCKETS = 10_000
 
 SINCE_OPTIONS = {
     "15m": timedelta(minutes=15),
@@ -115,8 +116,32 @@ def _enforce_rate_limit(client: str) -> None:
                 detail="查询过于频繁，请稍后再试",
             )
         bucket.append(now)
-        if len(_rate_buckets) > 10_000:
-            _rate_buckets.clear()
+        _evict_rate_buckets(now, client)
+
+
+def _evict_rate_buckets(now: float, current_client: str) -> None:
+    if len(_rate_buckets) <= MAX_RATE_BUCKETS:
+        return
+
+    for client, bucket in list(_rate_buckets.items()):
+        if client == current_client:
+            continue
+        while bucket and now - bucket[0] >= RATE_LIMIT_WINDOW_SECONDS:
+            bucket.popleft()
+        if not bucket:
+            del _rate_buckets[client]
+
+    overflow = len(_rate_buckets) - MAX_RATE_BUCKETS
+    if overflow <= 0:
+        return
+
+    oldest_clients = sorted(
+        (bucket[-1], client)
+        for client, bucket in _rate_buckets.items()
+        if client != current_client and bucket
+    )
+    for _, client in oldest_clients[:overflow]:
+        del _rate_buckets[client]
 
 
 def require_api_key(
@@ -193,10 +218,21 @@ def query_nginx(source: str, since: str, scan_lines: int) -> list[str]:
     lines = tail_lines(path, scan_lines)
     now = datetime.now().astimezone()
     cutoff = now - SINCE_OPTIONS[since]
+    return filter_nginx_time_window(lines, source, cutoff, now.tzinfo)
+
+
+def filter_nginx_time_window(
+    lines: list[str], source: str, cutoff: datetime, local_tz
+) -> list[str]:
     filtered = []
+    current_timestamp: datetime | None = None
     for line in lines:
-        timestamp = _parse_nginx_time(line, source, now.tzinfo)
-        if timestamp is None or timestamp >= cutoff:
+        timestamp = _parse_nginx_time(line, source, local_tz)
+        if timestamp is not None:
+            current_timestamp = timestamp
+        elif source != "nginx-error":
+            current_timestamp = None
+        if current_timestamp is not None and current_timestamp >= cutoff:
             filtered.append(line)
     return filtered
 

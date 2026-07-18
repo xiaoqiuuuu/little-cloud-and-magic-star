@@ -13,6 +13,7 @@ Treat the branch-and-PR workflow as a repository invariant. Read-only inspection
 - Never commit or push directly to `main` or `master`.
 - Never use `git push origin HEAD:main`, a local merge followed by a direct push, or another shortcut that bypasses a Pull Request.
 - Apply the rule to code, docs, tests, configuration, workflows, deployment scripts, generated tracked files, and hotfixes.
+- Keep every hand-maintained tracked text file at or below 1,000 lines. Split responsibilities before a file crosses the limit. Binary assets and generated dependency lock files are exempt.
 - Preserve existing user changes. Never reset, discard, stash, or include unrelated changes without authorization.
 - If authentication, permissions, CI, or mergeability blocks the PR workflow, stop and report the blocker. Do not fall back to a direct push.
 
@@ -56,6 +57,7 @@ Treat the branch-and-PR workflow as a repository invariant. Read-only inspection
    git diff --check
    git status --short
    git add <task-files>
+   python3 .agents/skills/enforce-pull-request-workflow/scripts/git_flow_guard.py lines
    git commit -m "<type>: <summary>"
    ```
 
