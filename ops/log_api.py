@@ -21,6 +21,11 @@ from fastapi.responses import JSONResponse
 
 LOGGER = logging.getLogger("little_cloud_log_api")
 LOGGER.setLevel(logging.INFO)
+LOGGER.propagate = False
+if not LOGGER.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
+    LOGGER.addHandler(handler)
 APP_UNIT = "little-cloud.service"
 NGINX_ERROR_LOG = Path("/www/wwwlogs/feiyinluguo.cn.error.log")
 NGINX_ACCESS_LOG = Path("/www/wwwlogs/feiyinluguo.cn.log")
