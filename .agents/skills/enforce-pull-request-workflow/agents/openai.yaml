@@ -1,0 +1,7 @@
+interface:
+  display_name: "Enforce Pull Request Workflow"
+  short_description: "Require branches and PRs before main merges"
+  default_prompt: "Use $enforce-pull-request-workflow to make this repository change through a branch and Pull Request."
+
+policy:
+  allow_implicit_invocation: true
