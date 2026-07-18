@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/admin", tags=["认证"])
 @router.post("/login", response_model=Token)
 def admin_login(login: AdminLogin):
     """管理员登录"""
-    print(f"🔐 登录尝试 - 用户名: '{login.username}', 密码: '{login.password}'")
+    print(f"🔐 登录尝试 - 用户名: '{login.username}'")
 
     admin_info = verify_admin(login.username, login.password)
     if not admin_info:

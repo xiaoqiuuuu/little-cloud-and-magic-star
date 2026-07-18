@@ -54,13 +54,21 @@ app.include_router(configs_router)  # 系统配置接口
 app.include_router(roles_router)  # 角色接口
 app.include_router(stats_router)  # 统计接口
 
+
+@app.get("/api/health")
+def health_check():
+    """供负载均衡和自动部署使用的健康检查。"""
+    return {"status": "ok", "message": "Backend is running"}
+
 # 生产环境：挂载前端静态文件
 # 假设前端构建后的 dist 目录被放置在 backend/dist 下
 dist_dir = os.path.join(os.path.dirname(__file__), "dist")
 
 if os.path.exists(dist_dir):
     # 挂载静态资源 assets
-    app.mount("/assets", StaticFiles(directory=os.path.join(dist_dir, "assets")), name="assets")
+    assets_dir = os.path.join(dist_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
     
     # 挂载 favicon 等根目录静态文件 (排除 index.html以免冲突)
     # 这里简单起见，主要处理 SPA 的路由
@@ -78,17 +86,11 @@ if os.path.exists(dist_dir):
         # 其余所有路径返回 index.html (SPA 支持)
         return FileResponse(os.path.join(dist_dir, "index.html"))
 
-@app.get("/api/health")
-def read_root():
-    """健康检查"""
-    return {"status": "ok", "message": "Backend is running"}
-
-
-
 if __name__ == "__main__":
     import uvicorn
-    # uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
-    # m命令行启动
-    # uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-    # ENVIRONMENT=production uvicorn main:app --host 0.0.0.0 --port 8000
-    pass
+    uvicorn.run(
+        "main:app",
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "8000")),
+        reload=os.getenv("ENVIRONMENT", "development") == "development",
+    )

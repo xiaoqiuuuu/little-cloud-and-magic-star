@@ -8,7 +8,7 @@ def verify_admin(username: str, password: str) -> Optional[Tuple[str, str]]:
     """验证管理员，返回(用户名, 角色)或None"""
     conn = get_connection()
     cursor = conn.cursor()
-    print(f"🔍 数据库查询 - 用户名: '{username}', 密码: '{password}'")
+    print(f"🔍 数据库查询 - 用户名: '{username}'")
     cursor.execute('SELECT username, role FROM admins WHERE username = ? AND password = ?',
                    (username, password))
     result = cursor.fetchone()
