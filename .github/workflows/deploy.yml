@@ -1,0 +1,176 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Verify, build and deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Verify backend
+        working-directory: backend
+        env:
+          ENVIRONMENT: production
+          SECRET_KEY: ci-smoke-test-only
+          DATABASE_FILE: ${{ runner.temp }}/little-cloud-ci.db
+        run: |
+          python -m pip install -r requirements.txt
+          python -m compileall -q .
+          python - <<'PY'
+          from main import app
+
+          paths = {route.path for route in app.routes}
+          assert "/api/health" in paths
+          print(f"Backend smoke test passed with {len(paths)} routes")
+          PY
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package frontend
+        run: tar -C frontend/dist -czf frontend-dist.tar.gz .
+
+      - name: Upload frontend artifact to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          fingerprint: ${{ secrets.SERVER_FINGERPRINT }}
+          source: frontend-dist.tar.gz
+          target: /tmp
+          overwrite: true
+
+      - name: Deploy and restart service
+        uses: appleboy/ssh-action@v1
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          RELEASE_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          fingerprint: ${{ secrets.SERVER_FINGERPRINT }}
+          envs: DEPLOY_PATH,RELEASE_SHA
+          command_timeout: 20m
+          script: |
+            set -Eeuo pipefail
+
+            APP_DIR="$DEPLOY_PATH"
+            BACKEND_DIR="$APP_DIR/backend"
+            ARCHIVE="/tmp/frontend-dist.tar.gz"
+            DEPLOY_STATE="$BACKEND_DIR/.deploy"
+            OLD_SHA=""
+            DIST_SWAPPED=0
+
+            rollback() {
+              exit_code=$?
+              trap - ERR
+              echo "Deployment failed; rolling back to ${OLD_SHA:-unknown}."
+
+              if [ -n "$OLD_SHA" ]; then
+                git -C "$APP_DIR" reset --hard "$OLD_SHA" || true
+              fi
+
+              if [ "$DIST_SWAPPED" -eq 1 ] && [ -d "$DEPLOY_STATE/dist-previous" ]; then
+                rm -rf "$BACKEND_DIR/dist"
+                mv "$DEPLOY_STATE/dist-previous" "$BACKEND_DIR/dist"
+              fi
+
+              sudo -n systemctl restart little-cloud.service || true
+              exit "$exit_code"
+            }
+            trap rollback ERR
+
+            test -d "$APP_DIR/.git"
+            test -f "$BACKEND_DIR/.env"
+            test -f "$ARCHIVE"
+
+            OLD_SHA=$(git -C "$APP_DIR" rev-parse HEAD)
+
+            mkdir -p "$BACKEND_DIR/backups" "$DEPLOY_STATE"
+            if [ -f "$BACKEND_DIR/quiz.db" ]; then
+              timestamp=$(date +%Y%m%d-%H%M%S)
+              backup="$BACKEND_DIR/backups/quiz-${timestamp}-${RELEASE_SHA:0:12}.db"
+              sqlite3 "$BACKEND_DIR/quiz.db" ".backup '$backup'"
+              find "$BACKEND_DIR/backups" -maxdepth 1 -type f -name 'quiz-*.db' -printf '%T@ %p\n' \
+                | sort -nr \
+                | tail -n +11 \
+                | cut -d' ' -f2- \
+                | xargs -r rm -f
+            fi
+
+            git -C "$APP_DIR" fetch --prune origin main
+            git -C "$APP_DIR" reset --hard "$RELEASE_SHA"
+
+            if [ ! -x "$BACKEND_DIR/venv/bin/python" ]; then
+              python3 -m venv "$BACKEND_DIR/venv"
+            fi
+            pip_index_url="https://mirrors.aliyun.com/pypi/simple"
+            "$BACKEND_DIR/venv/bin/python" -m pip install --quiet --index-url "$pip_index_url" --upgrade pip
+            "$BACKEND_DIR/venv/bin/python" -m pip install --quiet --index-url "$pip_index_url" -r "$BACKEND_DIR/requirements.txt"
+
+            rm -rf "$DEPLOY_STATE/dist-new" "$DEPLOY_STATE/dist-previous"
+            mkdir -p "$DEPLOY_STATE/dist-new"
+            tar -xzf "$ARCHIVE" -C "$DEPLOY_STATE/dist-new"
+            test -f "$DEPLOY_STATE/dist-new/index.html"
+
+            if [ -d "$BACKEND_DIR/dist" ]; then
+              mv "$BACKEND_DIR/dist" "$DEPLOY_STATE/dist-previous"
+            fi
+            mv "$DEPLOY_STATE/dist-new" "$BACKEND_DIR/dist"
+            DIST_SWAPPED=1
+
+            sudo -n systemctl restart little-cloud.service
+
+            healthy=0
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if response=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8100/api/health); then
+                if printf '%s' "$response" | grep -q '"status":"ok"'; then
+                  healthy=1
+                  break
+                fi
+              fi
+              sleep 2
+            done
+            test "$healthy" -eq 1
+
+            rm -rf "$DEPLOY_STATE/dist-previous"
+            rm -f "$ARCHIVE"
+            trap - ERR
+            echo "Deployment ${RELEASE_SHA:0:12} succeeded."

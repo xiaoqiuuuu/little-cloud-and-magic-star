@@ -1,0 +1,1 @@
+littlecloud ALL=(root) NOPASSWD: /usr/bin/systemctl restart little-cloud.service, /usr/bin/systemctl is-active little-cloud.service, /usr/bin/systemctl status little-cloud.service

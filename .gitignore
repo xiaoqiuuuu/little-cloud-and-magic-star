@@ -11,4 +11,6 @@ venv/
 .vscode/
 *.log
 
-uploads/
+uploads
+backend/backups/
+backend/.deploy/
