@@ -4,9 +4,23 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
+
+
+MAX_MANUAL_TEXT_LINES = 1_000
+GENERATED_DEPENDENCY_FILES = {
+    "bun.lock",
+    "bun.lockb",
+    "package-lock.json",
+    "Pipfile.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "uv.lock",
+    "yarn.lock",
+}
 
 
 def git(*args: str, check: bool = True) -> str:
@@ -32,6 +46,44 @@ def current_branch() -> str:
     if not branch:
         fail("detached HEAD is not allowed for repository changes")
     return branch
+
+
+def tracked_paths() -> list[Path]:
+    result = subprocess.run(
+        ["git", "ls-files", "-z"],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        message = result.stderr.decode("utf-8", "replace").strip()
+        raise RuntimeError(message or "git ls-files failed")
+    return [Path(os.fsdecode(raw)) for raw in result.stdout.split(b"\0") if raw]
+
+
+def verify_line_limits(root: Path) -> None:
+    violations: list[tuple[Path, int]] = []
+    for relative_path in tracked_paths():
+        if relative_path.name in GENERATED_DEPENDENCY_FILES:
+            continue
+        path = root / relative_path
+        if path.is_symlink() or not path.is_file():
+            continue
+        data = path.read_bytes()
+        if b"\0" in data[:8_192]:
+            continue
+        line_count = data.count(b"\n") + (1 if data and not data.endswith(b"\n") else 0)
+        if line_count > MAX_MANUAL_TEXT_LINES:
+            violations.append((relative_path, line_count))
+
+    if violations:
+        details = ", ".join(f"{path} ({count} lines)" for path, count in violations)
+        fail(
+            f"hand-maintained text files must not exceed {MAX_MANUAL_TEXT_LINES} lines: "
+            f"{details}"
+        )
+    print(
+        f"OK: tracked hand-maintained text files are at most {MAX_MANUAL_TEXT_LINES} lines"
+    )
 
 
 def verify_write(branch: str, protected: set[str]) -> None:
@@ -74,7 +126,7 @@ def verify_pr(branch: str, protected: set[str], remote: str, base: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("phase", choices=("write", "pr"))
+    parser.add_argument("phase", choices=("write", "lines", "pr"))
     parser.add_argument("--base", default="main")
     parser.add_argument("--remote", default="origin")
     parser.add_argument(
@@ -96,8 +148,12 @@ def main() -> None:
 
     if args.phase == "write":
         verify_write(branch, protected)
+    elif args.phase == "lines":
+        verify_write(branch, protected)
+        verify_line_limits(root)
     else:
         verify_pr(branch, protected, args.remote, args.base)
+        verify_line_limits(root)
 
 
 if __name__ == "__main__":
