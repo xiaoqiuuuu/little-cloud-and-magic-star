@@ -184,10 +184,17 @@ def check_duplicate_question(question: str, answer: str) -> Optional[str]:
 
 
 def get_next_question_id() -> str:
-    """获取下一个题目ID（自增）"""
+    """获取下一个题目ID，避免复用仍被历史活动引用的ID。"""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT MAX(CAST(id AS INTEGER)) FROM questions')
+    cursor.execute('''
+        SELECT MAX(numeric_id) FROM (
+            SELECT CAST(id AS INTEGER) AS numeric_id FROM questions
+            UNION ALL
+            SELECT CAST(question_id AS INTEGER) AS numeric_id
+            FROM quiz_activity_questions
+        )
+    ''')
     result = cursor.fetchone()
     conn.close()
 
@@ -240,12 +247,47 @@ def update_question(question_id: str, updates: dict) -> Optional[Question]:
 def delete_question(question_id: str) -> bool:
     """删除题目"""
     conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM questions WHERE id = ?', (question_id,))
-    deleted = cursor.rowcount > 0
-    conn.commit()
-    conn.close()
-    return deleted
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        draft_rows = conn.execute(
+            """
+            SELECT DISTINCT aq.activity_id
+            FROM quiz_activity_questions aq
+            JOIN quiz_activities a ON a.id = aq.activity_id
+            WHERE aq.question_id = ? AND a.status = 'draft'
+            """,
+            (question_id,),
+        ).fetchall()
+        draft_activity_ids = [int(row[0]) for row in draft_rows]
+        conn.execute(
+            """
+            DELETE FROM quiz_activity_questions
+            WHERE question_id = ? AND activity_id IN (
+                SELECT id FROM quiz_activities WHERE status = 'draft'
+            )
+            """,
+            (question_id,),
+        )
+        if draft_activity_ids:
+            placeholders = ",".join("?" for _ in draft_activity_ids)
+            conn.execute(
+                f"""
+                UPDATE quiz_activities
+                SET updated_at = CURRENT_TIMESTAMP
+                WHERE id IN ({placeholders})
+                """,
+                draft_activity_ids,
+            )
+
+        cursor = conn.execute('DELETE FROM questions WHERE id = ?', (question_id,))
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        return deleted
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def increment_random_clicks(question_id: str) -> bool:
