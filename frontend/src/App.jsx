@@ -68,10 +68,14 @@ function App() {
               
               {/* 管理员登录 */}
               <Route path="/admin/login" element={
-                <>
-                  <Navbar isAdminLoggedIn={isAdminLoggedIn} />
-                  <AdminLogin />
-                </>
+                isAdminLoggedIn ? (
+                  <Navigate to="/admin/questions" replace />
+                ) : (
+                  <>
+                    <Navbar isAdminLoggedIn={isAdminLoggedIn} />
+                    <AdminLogin />
+                  </>
+                )
               } />
 
               {/* 后台管理区域，使用 AdminLayout */}
