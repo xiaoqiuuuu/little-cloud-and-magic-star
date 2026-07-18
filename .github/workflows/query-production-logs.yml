@@ -1,0 +1,79 @@
+name: Query production logs
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Log source
+        required: true
+        default: app
+        type: choice
+        options:
+          - app
+          - nginx-error
+          - nginx-access
+      since:
+        description: Time window
+        required: true
+        default: 1h
+        type: choice
+        options:
+          - 15m
+          - 1h
+          - 6h
+          - 24h
+          - 3d
+      level:
+        description: Minimum text severity filter
+        required: true
+        default: error
+        type: choice
+        options:
+          - error
+          - warning
+          - critical
+          - all
+      limit:
+        description: Maximum lines, 1-500
+        required: true
+        default: "200"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  query:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate limit
+        env:
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          case "$LIMIT" in
+            ''|*[!0-9]*) exit 1 ;;
+          esac
+          test "$LIMIT" -ge 1
+          test "$LIMIT" -le 500
+
+      - name: Query protected log API
+        env:
+          PROD_LOG_API_KEY: ${{ secrets.PROD_LOG_API_KEY }}
+        run: |
+          python3 .agents/skills/query-production-logs/scripts/query_logs.py \
+            --source "${{ inputs.source }}" \
+            --since "${{ inputs.since }}" \
+            --level "${{ inputs.level }}" \
+            --limit "${{ inputs.limit }}" \
+            --json > production-logs.json
+
+      - name: Upload restricted log artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-logs-${{ github.run_id }}
+          path: production-logs.json
+          retention-days: 3
+          if-no-files-found: error

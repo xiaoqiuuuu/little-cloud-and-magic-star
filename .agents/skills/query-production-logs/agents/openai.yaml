@@ -1,0 +1,7 @@
+interface:
+  display_name: "Query Production Logs"
+  short_description: "Query protected production logs safely"
+  default_prompt: "Use $query-production-logs to inspect recent production errors without exposing the API key."
+
+policy:
+  allow_implicit_invocation: true

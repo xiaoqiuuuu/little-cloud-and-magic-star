@@ -1,0 +1,35 @@
+[Unit]
+Description=Little Cloud read-only production log API
+After=network-online.target systemd-journald.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=littlecloud-logs
+Group=littlecloud-logs
+SupplementaryGroups=systemd-journal
+WorkingDirectory=/www/wwwroot/little-cloud-and-magic-star
+EnvironmentFile=/etc/little-cloud-log-api.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/www/wwwroot/little-cloud-and-magic-star/backend/venv/bin/uvicorn log_api:app --app-dir /www/wwwroot/little-cloud-and-magic-star/ops --host 127.0.0.1 --port 8110 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=30
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
