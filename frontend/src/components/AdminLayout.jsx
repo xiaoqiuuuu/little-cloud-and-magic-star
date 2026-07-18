@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Layout, Menu, Button, Drawer, Typography } from 'antd';
+import { Layout, Menu, Button, Drawer, Typography, Spin } from 'antd';
 import {
   QuestionCircleOutlined,
   PictureOutlined,
@@ -9,8 +9,10 @@ import {
   LogoutOutlined,
   MenuOutlined,
   BarChartOutlined,
+  UsergroupAddOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
+import api, { clearAuthSession } from '../api';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -19,22 +21,63 @@ function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const hasSession = localStorage.getItem('token') || localStorage.getItem('refreshToken');
+    if (!hasSession) {
+      setAuthLoading(false);
       navigate('/admin/login');
+      return;
     }
+
+    let cancelled = false;
+    api.get('/admin/me', { hideLoading: true, hideErrorMessage: true })
+      .then((response) => {
+        if (cancelled) return;
+        setCurrentUser(response.data);
+        localStorage.setItem('username', response.data.username);
+        localStorage.setItem('userRole', response.data.role);
+        localStorage.setItem('currentUserId', String(response.data.id));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          navigate('/admin/login');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAuthLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    localStorage.removeItem('userRole');
-    window.dispatchEvent(new CustomEvent('authChange', { detail: { token: null } }));
-    showSuccess('已退出登录');
-    navigate('/admin/login');
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      await api.post('/admin/logout', {}, {
+        hideLoading: true,
+        hideErrorMessage: true,
+      });
+    } catch {
+      // 本地会话仍需清除，服务端 Token 可能已经过期或失效。
+    } finally {
+      clearAuthSession();
+      setLogoutLoading(false);
+      showSuccess('已退出登录');
+      navigate('/admin/login');
+    }
   };
+
+  const username = currentUser?.username || '';
+  const userRole = currentUser?.role || '';
+  const isSuperAdmin = userRole === 'super_admin';
 
   const menuItems = [
     {
@@ -62,14 +105,14 @@ function AdminLayout() {
       icon: <TeamOutlined />,
       label: <Link to="/admin/roles">角色管理</Link>,
     },
+    ...(isSuperAdmin ? [{
+      key: '/admin/users',
+      icon: <UsergroupAddOutlined />,
+      label: <Link to="/admin/users">人员管理</Link>,
+    }] : []),
   ];
 
   const currentPath = location.pathname;
-
-  // 获取当前用户信息
-  const username = localStorage.getItem('username') || '';
-  const userRole = localStorage.getItem('userRole') || 'question_admin';
-  const isSuperAdmin = userRole === 'super_admin';
 
   return (
     <Layout className="min-h-screen">
@@ -112,6 +155,7 @@ function AdminLayout() {
             danger
             icon={<LogoutOutlined />}
             onClick={handleLogout}
+            loading={logoutLoading}
           >
             退出登录
           </Button>
@@ -166,6 +210,7 @@ function AdminLayout() {
               handleLogout();
             }}
             block
+            loading={logoutLoading}
           >
             退出登录
           </Button>
@@ -174,7 +219,13 @@ function AdminLayout() {
 
       <Content className="p-6 bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <Outlet />
+          {authLoading ? (
+            <div className="flex justify-center py-20">
+              <Spin size="large" tip="正在验证登录状态..." />
+            </div>
+          ) : (
+            <Outlet context={{ currentUser, authLoading }} />
+          )}
         </div>
       </Content>
     </Layout>

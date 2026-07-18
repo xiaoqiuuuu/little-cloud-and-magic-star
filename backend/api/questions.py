@@ -16,7 +16,11 @@ from database import (
     check_duplicate_question
 )
 from database.producers import get_or_create_producer
-from .dependencies import get_current_user, get_current_user_info_dep
+from .dependencies import (
+    get_current_user,
+    get_current_user_info_dep,
+    require_super_admin,
+)
 
 router = APIRouter(tags=["题目"])
 
@@ -212,19 +216,8 @@ def admin_create_question(question_data: QuestionCreate, user_info: dict = Depen
     # 生成自增ID
     question_id = get_next_question_id()
 
-    # 如果没有指定出题人，或者角色是题目管理员，则自动使用当前用户名作为出题人
-    author = question_data.author
-    if not author or role == "question_admin":
-        # 超级管理员如果没有指定出题人，使用空列表；题目管理员默认使用自己的名字
-        if role == "question_admin" and (not author or username not in author):
-            author = [username]
-    else:
-        # 如果前端传了出题人列表，超级管理员可以使用其他出题人
-        # 但题目管理员只能使用自己的名字
-        if role == "question_admin":
-            # 确保题目管理员的出题人列表中包含自己
-            if username not in author:
-                author.append(username)
+    # 题目管理员不能伪造或追加其他出题人。
+    author = [username] if role == "question_admin" else question_data.author
 
     question = Question(
         id=question_id,
@@ -258,6 +251,8 @@ def admin_update_question(
             raise HTTPException(status_code=403, detail="只能更新自己创建的题目")
 
     updates = question_data.dict(exclude_unset=True)
+    if role != "super_admin" and "author" in updates:
+        updates["author"] = [username]
     updated = update_question(question_id, updates)
     return updated
 
@@ -285,9 +280,9 @@ def admin_delete_question(question_id: str, user_info: dict = Depends(get_curren
 @router.post("/api/admin/questions/batch_import", response_model=QuestionBatchImportResult)
 def admin_batch_import_questions(
     batch_data: QuestionBatchImport,
-    username: str = Depends(get_current_user)
+    _: dict = Depends(require_super_admin),
 ):
-    """管理员批量导入题目"""
+    """仅超级管理员可以批量导入题目。"""
     success_count = 0
     fail_count = 0
     errors = []

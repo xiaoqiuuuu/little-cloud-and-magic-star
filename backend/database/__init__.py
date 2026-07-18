@@ -16,7 +16,18 @@ from .questions import (
     reset_question_stats,
     reset_all_questions_stats
 )
-from .admins import verify_admin
+from .admins import (
+    count_active_super_admins,
+    create_admin,
+    delete_admin,
+    get_admin_by_id,
+    get_admin_by_username,
+    increment_admin_token_version,
+    list_admins,
+    reset_admin_password,
+    update_admin,
+    verify_admin,
+)
 from .materials import (
     get_materials_count,
     get_all_materials,
@@ -57,6 +68,15 @@ __all__ = [
     'reset_all_questions_stats',
     # 管理员相关
     'verify_admin',
+    'get_admin_by_username',
+    'get_admin_by_id',
+    'list_admins',
+    'create_admin',
+    'update_admin',
+    'reset_admin_password',
+    'increment_admin_token_version',
+    'delete_admin',
+    'count_active_super_admins',
     # 物料相关
     'get_materials_count',
     'get_all_materials',

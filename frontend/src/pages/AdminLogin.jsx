@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, Space } from 'antd';
 import { UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons';
-import api from '../api';
+import api, { clearAuthSession, saveTokenPair } from '../api';
 import { showSuccess, showError } from '../utils/message';
 
 const { Title, Text } = Typography;
@@ -22,22 +22,16 @@ function AdminLogin() {
         hideLoading: true, // 使用按钮的 loading，不显示全局 loading
         hideErrorMessage: true, // 手动处理错误消息
         skipAuthRedirect: true, // 登录失败时不要按“登录过期”处理
+        skipAuthRefresh: true,
       });
 
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('username', values.username);
+      saveTokenPair(response.data);
 
       // 获取用户角色信息
-      try {
-        const userRes = await api.get('/admin/me', {
-          headers: { Authorization: `Bearer ${response.data.access_token}` }
-        });
-        localStorage.setItem('userRole', userRes.data.role || 'question_admin');
-        localStorage.setItem('username', userRes.data.username || values.username);
-      } catch (e) {
-        // 如果获取用户信息失败，默认设为题目管理员
-        localStorage.setItem('userRole', 'question_admin');
-      }
+      const userRes = await api.get('/admin/me', { hideLoading: true });
+      localStorage.setItem('userRole', userRes.data.role);
+      localStorage.setItem('username', userRes.data.username);
+      localStorage.setItem('currentUserId', String(userRes.data.id));
 
       // 通知当前窗口的登录状态变化
       window.dispatchEvent(new CustomEvent('authChange', {
@@ -48,6 +42,7 @@ function AdminLogin() {
       navigate('/admin/questions', { replace: true });
     } catch (error) {
       console.error('登录失败:', error);
+      clearAuthSession();
       if (error.response?.status === 401) {
         showError('用户名或密码错误');
       } else {

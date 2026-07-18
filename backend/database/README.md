@@ -9,6 +9,7 @@ database/
 ├── init_db.py           # 数据库初始化（创建所有表）
 ├── questions.py         # 题目表相关操作
 ├── admins.py            # 管理员表相关操作
+├── tokens.py            # Refresh Token 轮换与撤销状态
 ├── materials.py         # 物料表相关操作
 └── producers.py         # 制作人表相关操作
 ```
@@ -53,6 +54,14 @@ from database import (
 
 ### admins.py（管理员表）
 - `verify_admin()`: 验证管理员账号密码
+- `list_admins()` / `create_admin()` / `update_admin()`: 人员管理 CRUD
+- `reset_admin_password()`: 重置哈希密码并使旧 Token 失效
+- `increment_admin_token_version()`: 注销账号现有 JWT
+
+### tokens.py（Refresh Token 表）
+- `create_refresh_token()`: 登记登录时签发的 Refresh Token
+- `rotate_refresh_token()`: 原子消费旧 Token 并登记新 Token
+- `revoke_all_refresh_tokens()`: 撤销账号全部 Refresh Token
 
 ### materials.py（物料表）
 - `get_materials_count()`: 获取物料总数
