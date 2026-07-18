@@ -28,6 +28,9 @@
 - ✅ 管理员登录认证
 - ✅ Access Token（1 天）+ Refresh Token（30 天）自动续期
 - ✅ 超级管理员专属人员管理（创建、编辑、停用、删除、重置密码）
+- ✅ 独立“答题人员”账号，只能进入现场答题页面
+- ✅ 答题活动管理（草稿、开始、暂停切换、结束）
+- ✅ 每场活动独立选择题目，并保存每道题的独立随机/隐藏统计
 - ✅ 查看题目统计信息
 - ✅ 创建新题目
 - ✅ 编辑现有题目
@@ -169,6 +172,22 @@ PATCH  /api/admin/users/{admin_id}
 PUT    /api/admin/users/{admin_id}/password
 DELETE /api/admin/users/{admin_id}
 ```
+
+人员角色包括：`super_admin`（超级管理员）、`question_admin`（题目管理员）和 `quiz_operator`（现场答题人员）。答题人员不能访问后台管理接口。
+
+#### 答题活动（仅超级管理员管理）
+```
+GET    /api/admin/activities
+POST   /api/admin/activities
+GET    /api/admin/activities/{activity_id}
+PUT    /api/admin/activities/{activity_id}
+DELETE /api/admin/activities/{activity_id}
+POST   /api/admin/activities/{activity_id}/start
+POST   /api/admin/activities/{activity_id}/pause
+POST   /api/admin/activities/{activity_id}/end
+```
+
+同一时间只能有一个进行中的活动。开始另一个活动会自动暂停当前活动，切回时会继续使用原活动统计；活动结束后只读。现场答题页面通过 `GET /api/quiz/active-activity` 自动跟随当前活动，原有随机、隐藏、倒计时和答案判断逻辑保持不变。
 
 #### 获取所有题目（含答案）
 ```

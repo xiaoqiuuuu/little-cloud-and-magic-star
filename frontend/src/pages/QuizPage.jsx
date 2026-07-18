@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { App } from 'antd';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
@@ -6,21 +6,35 @@ import AudioPreview from '../components/AudioPreview';
 import Countdown from '../components/Countdown';
 import api from '../api';
 
-function QuizPage() {  const { message, modal } = App.useApp();
+function QuizPage() {
+  const { message, modal } = App.useApp();
+  const isQuizOperator = localStorage.getItem('userRole') === 'quiz_operator';
+  const activeActivityIdRef = useRef(undefined);
   const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
   const [currentQuestion, setCurrentQuestion] = useState(null); // 当前题目的完整数据
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState('all');
+  const [activeActivity, setActiveActivity] = useState(null);
   const [hiddenQuestions, setHiddenQuestions] = useState(() => {
+    if (isQuizOperator) return [];
     // 从 localStorage 读取隐藏的题目
     const saved = localStorage.getItem('hiddenQuestions');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      localStorage.removeItem('hiddenQuestions');
+      return [];
+    }
   });
   const [showHiddenManager, setShowHiddenManager] = useState(false);
   const [hiddenQuestionsCache, setHiddenQuestionsCache] = useState({}); // 缓存隐藏管理器中的题目
   // 新增：debugMode 控制题号跳转输入框
-  const [debugMode, setDebugMode] = useState(() => localStorage.getItem('debugMode') === 'true');
+  const [debugMode, setDebugMode] = useState(
+    () => !isQuizOperator && localStorage.getItem('debugMode') === 'true',
+  );
   
   // 倒计时功能相关状态
   const [quizStarted, setQuizStarted] = useState(false); // 是否已开始答题
@@ -31,14 +45,14 @@ function QuizPage() {  const { message, modal } = App.useApp();
   useEffect(() => {
     // 监听 debugMode 变化（跨标签页同步）
     const onStorage = (e) => {
-      if (e.key === 'debugMode') {
+      if (!isQuizOperator && e.key === 'debugMode') {
         setDebugMode(e.newValue === 'true');
       }
     };
     window.addEventListener('storage', onStorage);
     // 监听自定义事件（同标签页）
     const onCustom = (e) => {
-      if (e.detail && typeof e.detail.debugMode === 'boolean') {
+      if (!isQuizOperator && e.detail && typeof e.detail.debugMode === 'boolean') {
         setDebugMode(e.detail.debugMode);
       }
       if (e.detail && e.detail.countdownSeconds) {
@@ -64,8 +78,15 @@ function QuizPage() {  const { message, modal } = App.useApp();
   }, [debugMode]);
 
   useEffect(() => {
-    fetchQuestionIds();
     fetchConfig();
+    if (!isQuizOperator) {
+      fetchQuestionIds();
+      return undefined;
+    }
+
+    refreshActiveActivity();
+    const timer = window.setInterval(refreshActiveActivity, 5000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const fetchConfig = async () => {
@@ -82,8 +103,17 @@ function QuizPage() {  const { message, modal } = App.useApp();
 
   // 保存隐藏的题目到 localStorage
   useEffect(() => {
+    if (isQuizOperator) {
+      if (activeActivity?.id) {
+        localStorage.setItem(
+          `hiddenQuestions:activity:${activeActivity.id}`,
+          JSON.stringify(hiddenQuestions),
+        );
+      }
+      return;
+    }
     localStorage.setItem('hiddenQuestions', JSON.stringify(hiddenQuestions));
-  }, [hiddenQuestions]);
+  }, [hiddenQuestions, activeActivity?.id]);
 
   // 当索引改变时，加载当前题目
   useEffect(() => {
@@ -92,20 +122,71 @@ function QuizPage() {  const { message, modal } = App.useApp();
     }
   }, [currentIndex]);
 
-  const fetchQuestionIds = async () => {
+  const fetchQuestionIds = async (hiddenIds = hiddenQuestions) => {
     try {
       setLoading(true);
       const response = await api.get('/questions/ids');
       setQuestionIds(response.data);
       // 加载第一题
-      const filtered = response.data.filter(q => !hiddenQuestions.includes(q.id));
+      const filtered = response.data.filter(q => !hiddenIds.includes(q.id));
       if (filtered.length > 0) {
         fetchCurrentQuestion(filtered[0].id);
+      } else {
+        setCurrentQuestion(null);
       }
     } catch (error) {
       console.error('获取题目列表失败:', error);
       message.error('获取题目列表失败，请稍后重试');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshActiveActivity = async () => {
+    try {
+      const response = await api.get('/quiz/active-activity', {
+        hideLoading: true,
+        hideErrorMessage: true,
+      });
+      const nextActivity = response.data || null;
+      const nextActivityId = nextActivity?.id || null;
+
+      if (activeActivityIdRef.current === nextActivityId) {
+        setActiveActivity(nextActivity);
+        return;
+      }
+
+      activeActivityIdRef.current = nextActivityId;
+      setActiveActivity(nextActivity);
+      setQuestionIds([]);
+      setCurrentQuestion(null);
+      setCurrentIndex(0);
+      setSelectedTag('all');
+      setHiddenQuestionsCache({});
+      setQuizStarted(false);
+      setShowCountdown(false);
+      setIsTimeUp(false);
+
+      if (nextActivity) {
+        const storageKey = `hiddenQuestions:activity:${nextActivity.id}`;
+        const saved = localStorage.getItem(storageKey);
+        let hiddenIds = [];
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            hiddenIds = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            localStorage.removeItem(storageKey);
+          }
+        }
+        setHiddenQuestions(hiddenIds);
+        await fetchQuestionIds(hiddenIds);
+      } else {
+        setHiddenQuestions([]);
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('获取当前答题活动失败:', error);
       setLoading(false);
     }
   };
@@ -255,6 +336,20 @@ function QuizPage() {  const { message, modal } = App.useApp();
     );
   }
 
+  if (isQuizOperator && !activeActivity) {
+    return (
+      <div className="flex justify-center items-center min-h-screen px-4">
+        <div className="bg-white rounded-2xl shadow-xl p-10 text-center max-w-xl">
+          <div className="text-5xl mb-5">⏳</div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-3">等待活动开始</h1>
+          <p className="text-gray-500">
+            当前没有进行中的答题活动。管理员开始或切换活动后，本页面会自动更新。
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (questionIds.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -313,6 +408,12 @@ function QuizPage() {  const { message, modal } = App.useApp();
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
+      {isQuizOperator && activeActivity && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800">
+          <span className="font-semibold">当前活动：</span>{activeActivity.name}
+          <span className="ml-2 text-sm text-green-600">({activeActivity.question_count} 道题)</span>
+        </div>
+      )}
       {/* 如果还未开始答题，显示准备界面 */}
       {!quizStarted ? (
         <div className="min-h-screen flex items-center justify-center -mt-20">

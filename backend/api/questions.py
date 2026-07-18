@@ -13,16 +13,40 @@ from database import (
     get_next_question_id, get_questions_count,
     increment_random_clicks, increment_hide_clicks,
     reset_question_stats, reset_all_questions_stats,
-    check_duplicate_question
+    check_duplicate_question,
+    active_activity_contains_question,
+    get_active_activity,
+    get_active_activity_question_ids,
+    get_active_activity_questions,
+    get_started_activity_using_question,
+    increment_active_activity_stat,
 )
 from database.producers import get_or_create_producer
 from .dependencies import (
-    get_current_user,
     get_current_user_info_dep,
+    require_content_admin,
     require_super_admin,
 )
 
 router = APIRouter(tags=["题目"])
+
+
+def _ensure_quiz_operator_question(question_id: str, role: str) -> None:
+    if role != "quiz_operator":
+        return
+    if not get_active_activity():
+        raise HTTPException(status_code=409, detail="当前没有进行中的答题活动")
+    if not active_activity_contains_question(question_id):
+        raise HTTPException(status_code=403, detail="该题目不属于当前答题活动")
+
+
+def _ensure_question_not_in_started_activity(question_id: str) -> None:
+    activity = get_started_activity_using_question(question_id)
+    if activity:
+        raise HTTPException(
+            status_code=409,
+            detail=f"题目正在被活动“{activity['name']}”使用，请先结束该活动",
+        )
 
 
 # ============= 公开接口（需要登录） =============
@@ -32,6 +56,8 @@ def list_question_ids(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目ID列表（轻量级）"""
     username = user_info["username"]
     role = user_info["role"]
+    if role == "quiz_operator":
+        return get_active_activity_question_ids() if get_active_activity() else []
     # 题目管理员只能获取自己出的题目ID
     author_filter = None if role == "super_admin" else username
     return get_all_question_ids(author=author_filter)
@@ -42,6 +68,14 @@ def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目（包含答案，需登录）"""
     username = user_info["username"]
     role = user_info["role"]
+    if role == "quiz_operator":
+        if not get_active_activity():
+            return []
+        return [
+            question
+            for question_id in get_active_activity_questions()
+            if (question := get_question_by_id(question_id)) is not None
+        ]
     # 题目管理员只能获取自己出的题目
     author_filter = None if role == "super_admin" else username
     questions = get_all_questions(page_size=0, author=author_filter)
@@ -54,12 +88,14 @@ def get_question(question_id: str, user_info: dict = Depends(get_current_user_in
     username = user_info["username"]
     role = user_info["role"]
 
+    _ensure_quiz_operator_question(question_id, role)
+
     question = get_question_by_id(question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
 
     # 题目管理员只能查看自己创建的题目
-    if role != "super_admin":
+    if role == "question_admin":
         author_list = question.author if isinstance(question.author, list) else []
         if username not in author_list:
             raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
@@ -68,8 +104,9 @@ def get_question(question_id: str, user_info: dict = Depends(get_current_user_in
 
 
 @router.post("/api/answer", response_model=AnswerResponse)
-def submit_answer(submit: AnswerSubmit, username: str = Depends(get_current_user)):
+def submit_answer(submit: AnswerSubmit, user_info: dict = Depends(get_current_user_info_dep)):
     """提交答案（需登录）"""
+    _ensure_quiz_operator_question(submit.question_id, user_info["role"])
     question = get_question_by_id(submit.question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -86,8 +123,17 @@ def submit_answer(submit: AnswerSubmit, username: str = Depends(get_current_user
 
 
 @router.post("/api/track/random/{question_id}")
-def track_random_click(question_id: str, username: str = Depends(get_current_user)):
+def track_random_click(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
     """记录随机按钮点击（需登录）"""
+    if user_info["role"] == "quiz_operator":
+        activity_id = increment_active_activity_stat(question_id, "random")
+        if activity_id is None:
+            raise HTTPException(status_code=409, detail="当前活动已切换或题目不在活动中")
+        return {
+            "message": "记录成功",
+            "question_id": question_id,
+            "activity_id": activity_id,
+        }
     success = increment_random_clicks(question_id)
     if not success:
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -96,8 +142,17 @@ def track_random_click(question_id: str, username: str = Depends(get_current_use
 
 
 @router.post("/api/track/hide/{question_id}")
-def track_hide_click(question_id: str, username: str = Depends(get_current_user)):
+def track_hide_click(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
     """记录隐藏按钮点击（需登录）"""
+    if user_info["role"] == "quiz_operator":
+        activity_id = increment_active_activity_stat(question_id, "hide")
+        if activity_id is None:
+            raise HTTPException(status_code=409, detail="当前活动已切换或题目不在活动中")
+        return {
+            "message": "记录成功",
+            "question_id": question_id,
+            "activity_id": activity_id,
+        }
     success = increment_hide_clicks(question_id)
     if not success:
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -108,7 +163,7 @@ def track_hide_click(question_id: str, username: str = Depends(get_current_user)
 # ============= 管理员接口 =============
 
 @router.get("/api/admin/stats")
-def get_stats(user_info: dict = Depends(get_current_user_info_dep)):
+def get_stats(user_info: dict = Depends(require_content_admin)):
     """获取题目统计信息"""
     username = user_info["username"]
     role = user_info["role"]
@@ -125,7 +180,7 @@ def get_stats(user_info: dict = Depends(get_current_user_info_dep)):
 
 
 @router.post("/api/admin/questions/{question_id}/reset_stats")
-def reset_stats_single(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
+def reset_stats_single(question_id: str, user_info: dict = Depends(require_content_admin)):
     """单题归零"""
     # 题目管理员只能操作自己创建的题目
     role = user_info["role"]
@@ -147,12 +202,8 @@ def reset_stats_single(question_id: str, user_info: dict = Depends(get_current_u
 
 
 @router.post("/api/admin/questions/reset_stats_all")
-def reset_stats_all(user_info: dict = Depends(get_current_user_info_dep)):
+def reset_stats_all(_: dict = Depends(require_super_admin)):
     """全部归零 - 只有超级管理员可以使用"""
-    role = user_info["role"]
-    if role != "super_admin":
-        raise HTTPException(status_code=403, detail="只有超级管理员可以执行此操作")
-
     count = reset_all_questions_stats()
     return {"message": f"已归零 {count} 道题目的统计"}
 
@@ -165,7 +216,7 @@ def admin_list_questions(
     tag: Optional[str] = None,
     sort_order: str = 'asc',
     author: Optional[str] = None,
-    user_info: dict = Depends(get_current_user_info_dep)
+    user_info: dict = Depends(require_content_admin)
 ):
     """管理员获取题目（分页）- 题目管理员只能看到自己创建的题目"""
     username = user_info["username"]
@@ -189,7 +240,7 @@ def admin_list_questions(
 
 
 @router.get("/api/admin/questions/{question_id}", response_model=Question)
-def admin_get_question(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
+def admin_get_question(question_id: str, user_info: dict = Depends(require_content_admin)):
     """管理员获取单个题目（包含答案）"""
     username = user_info["username"]
     role = user_info["role"]
@@ -208,7 +259,7 @@ def admin_get_question(question_id: str, user_info: dict = Depends(get_current_u
 
 
 @router.post("/api/admin/questions", response_model=Question)
-def admin_create_question(question_data: QuestionCreate, user_info: dict = Depends(get_current_user_info_dep)):
+def admin_create_question(question_data: QuestionCreate, user_info: dict = Depends(require_content_admin)):
     """管理员创建题目"""
     username = user_info["username"]
     role = user_info["role"]
@@ -234,7 +285,7 @@ def admin_create_question(question_data: QuestionCreate, user_info: dict = Depen
 def admin_update_question(
     question_id: str,
     question_data: QuestionUpdate,
-    user_info: dict = Depends(get_current_user_info_dep)
+    user_info: dict = Depends(require_content_admin)
 ):
     """管理员更新题目"""
     username = user_info["username"]
@@ -250,6 +301,8 @@ def admin_update_question(
         if username not in author_list:
             raise HTTPException(status_code=403, detail="只能更新自己创建的题目")
 
+    _ensure_question_not_in_started_activity(question_id)
+
     updates = question_data.dict(exclude_unset=True)
     if role != "super_admin" and "author" in updates:
         updates["author"] = [username]
@@ -258,7 +311,7 @@ def admin_update_question(
 
 
 @router.delete("/api/admin/questions/{question_id}")
-def admin_delete_question(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
+def admin_delete_question(question_id: str, user_info: dict = Depends(require_content_admin)):
     """管理员删除题目"""
     username = user_info["username"]
     role = user_info["role"]
@@ -271,6 +324,8 @@ def admin_delete_question(question_id: str, user_info: dict = Depends(get_curren
         author_list = question.author if isinstance(question.author, list) else []
         if username not in author_list:
             raise HTTPException(status_code=403, detail="只能删除自己创建的题目")
+
+    _ensure_question_not_in_started_activity(question_id)
 
     if not delete_question(question_id):
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -303,6 +358,16 @@ def admin_batch_import_questions(
                         "index": index,
                         "id": item.id or "",
                         "error": f"题目ID {item.id} 不存在"
+                    })
+                    fail_count += 1
+                    continue
+
+                activity = get_started_activity_using_question(item.id)
+                if activity:
+                    errors.append({
+                        "index": index,
+                        "id": item.id,
+                        "error": f"题目正在被活动“{activity['name']}”使用，跳过更新"
                     })
                     fail_count += 1
                     continue

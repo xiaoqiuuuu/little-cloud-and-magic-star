@@ -32,3 +32,13 @@ def require_super_admin(user_info: dict = Depends(get_current_user_info)) -> dic
             detail="只有超级管理员可以执行此操作",
         )
     return user_info
+
+
+def require_content_admin(user_info: dict = Depends(get_current_user_info)) -> dict:
+    """允许超级管理员和题目管理员，拒绝仅用于现场答题的账号。"""
+    if user_info["role"] not in {"super_admin", "question_admin"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="答题人员不能访问后台管理功能",
+        )
+    return user_info

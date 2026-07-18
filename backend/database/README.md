@@ -9,6 +9,7 @@ database/
 ├── init_db.py           # 数据库初始化（创建所有表）
 ├── questions.py         # 题目表相关操作
 ├── admins.py            # 管理员表相关操作
+├── activities.py        # 答题活动、活动题目与独立统计
 ├── tokens.py            # Refresh Token 轮换与撤销状态
 ├── materials.py         # 物料表相关操作
 └── producers.py         # 制作人表相关操作
@@ -62,6 +63,12 @@ from database import (
 - `create_refresh_token()`: 登记登录时签发的 Refresh Token
 - `rotate_refresh_token()`: 原子消费旧 Token 并登记新 Token
 - `revoke_all_refresh_tokens()`: 撤销账号全部 Refresh Token
+
+### activities.py（答题活动表）
+- `create_activity()` / `update_activity()`: 创建草稿并选择本场题目
+- `start_activity()` / `pause_activity()` / `end_activity()`: 管理活动生命周期与切换
+- `increment_active_activity_stat()`: 将随机/隐藏统计写入当前活动题目
+- `get_active_activity_question_ids()`: 为现场答题账号提供当前活动题目范围
 
 ### materials.py（物料表）
 - `get_materials_count()`: 获取物料总数

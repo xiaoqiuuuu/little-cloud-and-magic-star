@@ -5,6 +5,7 @@ from .questions import router as questions_router
 from .materials import router as materials_router
 from .producers import router as producers_router
 from .users import router as users_router
+from .activities import router as activities_router
 
 __all__ = [
     'auth_router',
@@ -12,6 +13,7 @@ __all__ = [
     'materials_router',
     'producers_router',
     'users_router',
+    'activities_router',
 ]
 from .configs import router as configs_router
 from .roles import router as roles_router

@@ -7,7 +7,7 @@ from database import (
     create_material, update_material, delete_material,
     get_materials_count
 )
-from .dependencies import get_current_user
+from .dependencies import require_content_admin
 
 router = APIRouter(prefix="/api/admin", tags=["物料管理"])
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/admin", tags=["物料管理"])
 def admin_list_materials(
     page: int = 1,
     page_size: int = 10,
-    username: str = Depends(get_current_user)
+    _: dict = Depends(require_content_admin)
 ):
     """管理员获取所有物料（分页）"""
     materials = get_all_materials(page, page_size)
@@ -30,7 +30,7 @@ def admin_list_materials(
 
 
 @router.get("/materials/{material_id}", response_model=Material)
-def admin_get_material(material_id: str, username: str = Depends(get_current_user)):
+def admin_get_material(material_id: str, _: dict = Depends(require_content_admin)):
     """管理员获取单个物料"""
     material = get_material_by_id(material_id)
     if not material:
@@ -41,7 +41,7 @@ def admin_get_material(material_id: str, username: str = Depends(get_current_use
 @router.post("/materials", response_model=Material)
 def admin_create_material(
     material_data: MaterialCreate,
-    username: str = Depends(get_current_user)
+    _: dict = Depends(require_content_admin)
 ):
     """管理员创建物料"""
     material_id = get_next_material_id()
@@ -59,7 +59,7 @@ def admin_create_material(
 def admin_update_material(
     material_id: str,
     material_data: MaterialUpdate,
-    username: str = Depends(get_current_user)
+    _: dict = Depends(require_content_admin)
 ):
     """管理员更新物料"""
     existing = get_material_by_id(material_id)
@@ -72,7 +72,7 @@ def admin_update_material(
 
 
 @router.delete("/materials/{material_id}")
-def admin_delete_material(material_id: str, username: str = Depends(get_current_user)):
+def admin_delete_material(material_id: str, _: dict = Depends(require_content_admin)):
     """管理员删除物料"""
     if not delete_material(material_id):
         raise HTTPException(status_code=404, detail="物料不存在")

@@ -27,6 +27,7 @@ const { Title, Text } = Typography;
 
 const roleOptions = [
   { value: 'question_admin', label: '题目管理员' },
+  { value: 'quiz_operator', label: '答题人员' },
   { value: 'super_admin', label: '超级管理员' },
 ];
 
@@ -178,9 +179,11 @@ function AdminUserManager() {
       title: '角色',
       dataIndex: 'role',
       key: 'role',
-      render: (role) => role === 'super_admin'
-        ? <Tag color="purple">超级管理员</Tag>
-        : <Tag color="cyan">题目管理员</Tag>,
+      render: (role) => {
+        if (role === 'super_admin') return <Tag color="purple">超级管理员</Tag>;
+        if (role === 'quiz_operator') return <Tag color="green">答题人员</Tag>;
+        return <Tag color="cyan">题目管理员</Tag>;
+      },
     },
     {
       title: '状态',
@@ -241,7 +244,7 @@ function AdminUserManager() {
         <div>
           <Title level={2} className="!mb-1">人员管理</Title>
           <Text type="secondary">
-            创建和管理后台登录账号。账号权限变化、停用和密码重置会立即使其现有 Token 失效。
+            创建和管理登录账号。答题人员只能进入现场答题页，不能访问后台管理。
           </Text>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>

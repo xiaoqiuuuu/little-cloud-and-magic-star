@@ -16,9 +16,10 @@ os.environ["DATABASE_FILE"] = str(Path(TEST_DATABASE_DIR.name) / "quiz.db")
 os.environ["ENVIRONMENT"] = "test"
 os.environ["SECRET_KEY"] = "test-secret-key-for-admin-auth-tests"
 
-from database import create_admin, init_db  # noqa: E402
+from database import create_admin, create_question, init_db  # noqa: E402
 from database.config import get_connection  # noqa: E402
 from main import app  # noqa: E402
+from models import Question  # noqa: E402
 
 
 class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
@@ -26,6 +27,9 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         init_db()
         conn = get_connection()
         try:
+            conn.execute("DELETE FROM quiz_activity_questions")
+            conn.execute("DELETE FROM quiz_activities")
+            conn.execute("DELETE FROM questions")
             conn.execute("DELETE FROM admin_refresh_tokens")
             conn.execute("DELETE FROM admins")
             conn.commit()
@@ -41,6 +45,11 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             "editor",
             "EditorPass123",
             "question_admin",
+        )
+        self.quiz_operator = create_admin(
+            "operator",
+            "OperatorPass123",
+            "quiz_operator",
         )
 
     async def asyncSetUp(self):
@@ -129,6 +138,152 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(update_config.status_code, 403)
         self.assertEqual(batch_import.status_code, 403)
 
+    async def test_quiz_operator_is_limited_to_the_live_quiz_surface(self):
+        tokens = await self.login("operator", "OperatorPass123")
+        headers = self.auth_headers(tokens["access_token"])
+
+        admin_questions = await self.client.get("/api/admin/questions", headers=headers)
+        materials = await self.client.get("/api/admin/materials", headers=headers)
+        activities = await self.client.get("/api/admin/activities", headers=headers)
+        countdown = await self.client.get(
+            "/api/configs/COUNTDOWN_SECONDS",
+            headers=headers,
+        )
+
+        self.assertEqual(admin_questions.status_code, 403)
+        self.assertEqual(materials.status_code, 403)
+        self.assertEqual(activities.status_code, 403)
+        self.assertEqual(countdown.status_code, 200)
+
+    async def test_activity_switching_scopes_questions_and_keeps_independent_stats(self):
+        create_question(Question(
+            id="1",
+            question="第一题",
+            answer="A",
+            tag="common",
+        ))
+        create_question(Question(
+            id="2",
+            question="第二题",
+            answer="B",
+            tag="concert",
+        ))
+        create_question(Question(
+            id="3",
+            question="第三题",
+            answer="C",
+            tag="vlog",
+        ))
+
+        super_tokens = await self.login("rootadmin", "StrongPass123")
+        operator_tokens = await self.login("operator", "OperatorPass123")
+        super_headers = self.auth_headers(super_tokens["access_token"])
+        operator_headers = self.auth_headers(operator_tokens["access_token"])
+
+        before_start = await self.client.get("/api/questions/ids", headers=operator_headers)
+        self.assertEqual(before_start.status_code, 200)
+        self.assertEqual(before_start.json(), [])
+
+        first = await self.client.post(
+            "/api/admin/activities",
+            headers=super_headers,
+            json={"name": "第一场", "description": "", "question_ids": ["1", "2"]},
+        )
+        second = await self.client.post(
+            "/api/admin/activities",
+            headers=super_headers,
+            json={"name": "第二场", "description": "", "question_ids": ["3"]},
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        self.assertEqual(second.status_code, 201, second.text)
+
+        started_first = await self.client.post(
+            f"/api/admin/activities/{first.json()['id']}/start",
+            headers=super_headers,
+        )
+        self.assertEqual(started_first.status_code, 200, started_first.text)
+
+        first_ids = await self.client.get("/api/questions/ids", headers=operator_headers)
+        forbidden_question = await self.client.get("/api/questions/3", headers=operator_headers)
+        answer = await self.client.post(
+            "/api/answer",
+            headers=operator_headers,
+            json={"question_id": "1", "answer": "a"},
+        )
+        random_click = await self.client.post(
+            "/api/track/random/1",
+            headers=operator_headers,
+        )
+        hide_click = await self.client.post(
+            "/api/track/hide/1",
+            headers=operator_headers,
+        )
+        update_live_question = await self.client.put(
+            "/api/admin/questions/1",
+            headers=super_headers,
+            json={"question": "活动中不应被修改"},
+        )
+        self.assertEqual([item["id"] for item in first_ids.json()], ["1", "2"])
+        self.assertEqual(forbidden_question.status_code, 403)
+        self.assertTrue(answer.json()["correct"])
+        self.assertEqual(random_click.status_code, 200)
+        self.assertEqual(hide_click.status_code, 200)
+        self.assertEqual(update_live_question.status_code, 409)
+
+        started_second = await self.client.post(
+            f"/api/admin/activities/{second.json()['id']}/start",
+            headers=super_headers,
+        )
+        self.assertEqual(started_second.status_code, 200, started_second.text)
+        second_ids = await self.client.get("/api/questions/ids", headers=operator_headers)
+        self.assertEqual([item["id"] for item in second_ids.json()], ["3"])
+
+        first_detail = await self.client.get(
+            f"/api/admin/activities/{first.json()['id']}",
+            headers=super_headers,
+        )
+        self.assertEqual(first_detail.json()["status"], "paused")
+        first_question_stat = first_detail.json()["questions"][0]
+        self.assertEqual(first_question_stat["random_clicks"], 1)
+        self.assertEqual(first_question_stat["hide_clicks"], 1)
+
+        immutable = await self.client.put(
+            f"/api/admin/activities/{first.json()['id']}",
+            headers=super_headers,
+            json={"question_ids": ["1"]},
+        )
+        self.assertEqual(immutable.status_code, 400)
+
+        switched_back = await self.client.post(
+            f"/api/admin/activities/{first.json()['id']}/start",
+            headers=super_headers,
+        )
+        self.assertEqual(switched_back.status_code, 200)
+        self.assertEqual(switched_back.json()["total_random_clicks"], 1)
+        self.assertEqual(switched_back.json()["total_hide_clicks"], 1)
+
+        ended = await self.client.post(
+            f"/api/admin/activities/{first.json()['id']}/end",
+            headers=super_headers,
+        )
+        self.assertEqual(ended.status_code, 200)
+        restart_ended = await self.client.post(
+            f"/api/admin/activities/{first.json()['id']}/start",
+            headers=super_headers,
+        )
+        self.assertEqual(restart_ended.status_code, 400)
+        after_end = await self.client.get("/api/questions/ids", headers=operator_headers)
+        self.assertEqual(after_end.json(), [])
+
+        conn = get_connection()
+        try:
+            legacy_stats = conn.execute(
+                "SELECT random_clicks, hide_clicks FROM questions WHERE id = '1'"
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(tuple(legacy_stats), (0, 0))
+
     async def test_super_admin_can_create_and_disable_a_hashed_account(self):
         tokens = await self.login("rootadmin", "StrongPass123")
         headers = self.auth_headers(tokens["access_token"])
@@ -186,6 +341,7 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
                     username TEXT UNIQUE NOT NULL,
                     password TEXT NOT NULL,
                     role TEXT DEFAULT 'question_admin'
+                        CHECK(role IN ('super_admin', 'question_admin'))
                 )
                 """
             )
@@ -207,12 +363,18 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             columns = {
                 row[1] for row in conn.execute("PRAGMA table_info(admins)").fetchall()
             }
+            migrated_schema = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE name = 'admins'"
+            ).fetchone()[0]
         finally:
             conn.close()
 
         self.assertTrue(stored_password.startswith("pbkdf2_sha256$"))
         self.assertTrue({"is_active", "token_version", "created_at", "updated_at"} <= columns)
+        self.assertIn("quiz_operator", migrated_schema)
         await self.login("legacyeditor", "LegacyPass123")
+        create_admin("migratedoperator", "OperatorPass123", "quiz_operator")
+        await self.login("migratedoperator", "OperatorPass123")
 
     async def test_role_change_invalidates_existing_tokens(self):
         super_tokens = await self.login("rootadmin", "StrongPass123")

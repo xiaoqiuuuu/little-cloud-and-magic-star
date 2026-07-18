@@ -1,8 +1,38 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from 'antd';
-import { HomeOutlined, LoginOutlined, DashboardOutlined } from '@ant-design/icons';
+import {
+  DashboardOutlined,
+  HomeOutlined,
+  LoginOutlined,
+  LogoutOutlined,
+} from '@ant-design/icons';
+import api, { clearAuthSession } from '../api';
+import { showSuccess } from '../utils/message';
 
-function Navbar({ isAdminLoggedIn }) {
+
+function Navbar({ isAdminLoggedIn, userRole = '' }) {
+  const navigate = useNavigate();
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const isQuizOperator = isAdminLoggedIn && userRole === 'quiz_operator';
+
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    try {
+      await api.post('/admin/logout', {}, {
+        hideLoading: true,
+        hideErrorMessage: true,
+      });
+    } catch {
+      // 无论服务端状态如何，都清理本地现场账号会话。
+    } finally {
+      clearAuthSession();
+      setLogoutLoading(false);
+      showSuccess('已退出登录');
+      navigate('/admin/login', { replace: true });
+    }
+  };
+
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,29 +48,42 @@ function Navbar({ isAdminLoggedIn }) {
                 <span className="hidden sm:inline">回到主页</span>
               </Button>
             </Link>
-            <Link to={isAdminLoggedIn ? '/admin/questions' : '/admin/login'}>
-              <Button 
-                type={isAdminLoggedIn ? "primary" : "default"}
-                icon={isAdminLoggedIn ? <DashboardOutlined /> : <LoginOutlined />}
+            {isQuizOperator ? (
+              <Button
+                danger
+                icon={<LogoutOutlined />}
+                loading={logoutLoading}
+                onClick={handleLogout}
               >
-                {isAdminLoggedIn ? (
-                  <>
-                    <span className="hidden sm:inline">后台管理</span>
-                    <span className="sm:hidden">管理</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="hidden sm:inline">管理员登录</span>
-                    <span className="sm:hidden">登录</span>
-                  </>
-                )}
+                <span className="hidden sm:inline">退出答题账号</span>
+                <span className="sm:hidden">退出</span>
               </Button>
-            </Link>
+            ) : (
+              <Link to={isAdminLoggedIn ? '/admin/questions' : '/admin/login'}>
+                <Button
+                  type={isAdminLoggedIn ? 'primary' : 'default'}
+                  icon={isAdminLoggedIn ? <DashboardOutlined /> : <LoginOutlined />}
+                >
+                  {isAdminLoggedIn ? (
+                    <>
+                      <span className="hidden sm:inline">后台管理</span>
+                      <span className="sm:hidden">管理</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="hidden sm:inline">账号登录</span>
+                      <span className="sm:hidden">登录</span>
+                    </>
+                  )}
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
     </nav>
   );
 }
+
 
 export default Navbar;

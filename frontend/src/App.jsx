@@ -11,6 +11,7 @@ import ProducerManager from './pages/ProducerManager';
 import RoleManager from './pages/RoleManager';
 import VisitStatsPage from './pages/VisitStatsPage';
 import AdminUserManager from './pages/AdminUserManager';
+import QuizActivityManager from './pages/QuizActivityManager';
 import AdminLayout from './components/AdminLayout';
 import RequireSuperAdmin from './components/RequireSuperAdmin';
 import Navbar from './components/Navbar';
@@ -20,17 +21,22 @@ import 'antd/dist/reset.css'; // Ant Design 样式
 
 function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || '');
 
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === 'token') {
         setIsAdminLoggedIn(!!e.newValue);
       }
+      if (e.key === 'userRole') {
+        setUserRole(e.newValue || '');
+      }
     };
     window.addEventListener('storage', onStorage);
     // 监听自定义事件，处理当前窗口内的登录/登出变更
     const onAuthChange = (e) => {
       setIsAdminLoggedIn(!!localStorage.getItem('token'));
+      setUserRole(localStorage.getItem('userRole') || '');
     };
     window.addEventListener('authChange', onAuthChange);
     return () => {
@@ -63,7 +69,7 @@ function App() {
               {/* 答题页面 */}
               <Route path="/quiz" element={
                 <>
-                  <Navbar isAdminLoggedIn={isAdminLoggedIn} />
+                  <Navbar isAdminLoggedIn={isAdminLoggedIn} userRole={userRole} />
                   <QuizPage />
                 </>
               } />
@@ -71,10 +77,13 @@ function App() {
               {/* 管理员登录 */}
               <Route path="/admin/login" element={
                 isAdminLoggedIn ? (
-                  <Navigate to="/admin/questions" replace />
+                  <Navigate
+                    to={userRole === 'quiz_operator' ? '/quiz' : '/admin/questions'}
+                    replace
+                  />
                 ) : (
                   <>
-                    <Navbar isAdminLoggedIn={isAdminLoggedIn} />
+                    <Navbar isAdminLoggedIn={isAdminLoggedIn} userRole={userRole} />
                     <AdminLogin />
                   </>
                 )
@@ -91,6 +100,11 @@ function App() {
                 <Route path="users" element={
                   <RequireSuperAdmin>
                     <AdminUserManager />
+                  </RequireSuperAdmin>
+                } />
+                <Route path="activities" element={
+                  <RequireSuperAdmin>
+                    <QuizActivityManager />
                   </RequireSuperAdmin>
                 } />
                 {/* 兼容旧路由 */}

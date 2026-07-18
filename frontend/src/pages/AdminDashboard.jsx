@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { App } from 'antd';
+import { Alert, App } from 'antd';
 import api from '../api';
 
 // Components
@@ -276,6 +276,15 @@ function AdminDashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        {isSuperAdmin && (
+          <Alert
+            className="mb-4"
+            type="info"
+            showIcon
+            message="现场答题统计已按活动独立保存"
+            description="请在“答题活动”中查看每场活动的题目统计。本页点击数仅保留旧版累计和管理员调试记录，不会计入现场活动。"
+          />
+        )}
         {/* 题目管理员提示 */}
         {!isSuperAdmin && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
