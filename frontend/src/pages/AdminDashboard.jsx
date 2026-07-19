@@ -324,7 +324,7 @@ function AdminDashboard() {
               onClick={() => navigate('/quiz')}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
             >
-              返回答题界面
+              进入现场答题
             </button>
             {/* 全部归零仅超级管理员可用 */}
             {isSuperAdmin && (

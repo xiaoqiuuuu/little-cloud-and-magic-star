@@ -186,8 +186,14 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         operator_headers = self.auth_headers(operator_tokens["access_token"])
 
         before_start = await self.client.get("/api/questions/ids", headers=operator_headers)
+        super_before_start = await self.client.get(
+            "/api/questions/ids",
+            headers=super_headers,
+        )
         self.assertEqual(before_start.status_code, 200)
         self.assertEqual(before_start.json(), [])
+        self.assertEqual(super_before_start.status_code, 200)
+        self.assertEqual(super_before_start.json(), [])
 
         first = await self.client.post(
             "/api/admin/activities",
@@ -209,7 +215,15 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(started_first.status_code, 200, started_first.text)
 
         first_ids = await self.client.get("/api/questions/ids", headers=operator_headers)
+        super_first_ids = await self.client.get(
+            "/api/questions/ids",
+            headers=super_headers,
+        )
         forbidden_question = await self.client.get("/api/questions/3", headers=operator_headers)
+        super_forbidden_question = await self.client.get(
+            "/api/questions/3",
+            headers=super_headers,
+        )
         answer = await self.client.post(
             "/api/answer",
             headers=operator_headers,
@@ -225,16 +239,24 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             headers=operator_headers,
             params={"activity_id": first.json()["id"]},
         )
+        super_random_click = await self.client.post(
+            "/api/track/random/2",
+            headers=super_headers,
+            params={"activity_id": first.json()["id"]},
+        )
         update_live_question = await self.client.put(
             "/api/admin/questions/1",
             headers=super_headers,
             json={"question": "活动中不应被修改"},
         )
         self.assertEqual([item["id"] for item in first_ids.json()], ["1", "2"])
+        self.assertEqual([item["id"] for item in super_first_ids.json()], ["1", "2"])
         self.assertEqual(forbidden_question.status_code, 403)
+        self.assertEqual(super_forbidden_question.status_code, 403)
         self.assertTrue(answer.json()["correct"])
         self.assertEqual(random_click.status_code, 200)
         self.assertEqual(hide_click.status_code, 200)
+        self.assertEqual(super_random_click.status_code, 200)
         self.assertEqual(update_live_question.status_code, 409)
 
         started_second = await self.client.post(
@@ -264,6 +286,7 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         first_question_stat = first_detail.json()["questions"][0]
         self.assertEqual(first_question_stat["random_clicks"], 1)
         self.assertEqual(first_question_stat["hide_clicks"], 1)
+        self.assertEqual(first_detail.json()["questions"][1]["random_clicks"], 1)
 
         immutable = await self.client.put(
             f"/api/admin/activities/{first.json()['id']}",
@@ -277,7 +300,7 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             headers=super_headers,
         )
         self.assertEqual(switched_back.status_code, 200)
-        self.assertEqual(switched_back.json()["total_random_clicks"], 1)
+        self.assertEqual(switched_back.json()["total_random_clicks"], 2)
         self.assertEqual(switched_back.json()["total_hide_clicks"], 1)
 
         ended = await self.client.post(
@@ -291,7 +314,12 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(restart_ended.status_code, 400)
         after_end = await self.client.get("/api/questions/ids", headers=operator_headers)
+        super_after_end = await self.client.get(
+            "/api/questions/ids",
+            headers=super_headers,
+        )
         self.assertEqual(after_end.json(), [])
+        self.assertEqual(super_after_end.json(), [])
 
         conn = get_connection()
         try:
