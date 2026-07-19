@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Alert,
   App,
@@ -370,9 +371,14 @@ function QuizActivityManager() {
             每个活动独立选择题目并统计。切换活动会暂停当前活动，不会清空已有数据。
           </Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-          创建活动
-        </Button>
+        <Space wrap>
+          <Link to="/quiz">
+            <Button icon={<PlayCircleOutlined />}>进入现场答题</Button>
+          </Link>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            创建活动
+          </Button>
+        </Space>
       </div>
 
       {activeActivity ? (
@@ -381,7 +387,7 @@ function QuizActivityManager() {
           type="success"
           showIcon
           message={`当前进行中：${activeActivity.name}`}
-          description={`现场答题人员可见 ${activeActivity.question_count} 道题目。`}
+          description={`现场答题页可见 ${activeActivity.question_count} 道题目，超级管理员也可以直接进入。`}
         />
       ) : (
         <Alert
@@ -389,7 +395,7 @@ function QuizActivityManager() {
           type="warning"
           showIcon
           message="当前没有进行中的答题活动"
-          description="答题人员登录后会看到等待活动开始的提示。"
+          description="进入现场答题页后会看到等待活动开始的提示。"
         />
       )}
 

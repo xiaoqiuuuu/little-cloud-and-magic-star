@@ -11,6 +11,7 @@ import {
   BarChartOutlined,
   UsergroupAddOutlined,
   CalendarOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession } from '../api';
@@ -110,6 +111,10 @@ function AdminLayout() {
       label: <Link to="/admin/roles">角色管理</Link>,
     },
     ...(isSuperAdmin ? [{
+      key: '/quiz',
+      icon: <PlayCircleOutlined />,
+      label: <Link to="/quiz">现场答题</Link>,
+    }, {
       key: '/admin/activities',
       icon: <CalendarOutlined />,
       label: <Link to="/admin/activities">答题活动</Link>,

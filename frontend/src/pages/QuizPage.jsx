@@ -8,7 +8,8 @@ import api from '../api';
 
 function QuizPage() {
   const { message, modal } = App.useApp();
-  const isQuizOperator = localStorage.getItem('userRole') === 'quiz_operator';
+  const userRole = localStorage.getItem('userRole') || '';
+  const usesActiveActivity = ['super_admin', 'quiz_operator'].includes(userRole);
   const activeActivityIdRef = useRef(undefined);
   const activityGenerationRef = useRef(0);
   const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
@@ -18,7 +19,7 @@ function QuizPage() {
   const [selectedTag, setSelectedTag] = useState('all');
   const [activeActivity, setActiveActivity] = useState(null);
   const [hiddenQuestions, setHiddenQuestions] = useState(() => {
-    if (isQuizOperator) return [];
+    if (usesActiveActivity) return [];
     // 从 localStorage 读取隐藏的题目
     const saved = localStorage.getItem('hiddenQuestions');
     if (!saved) return [];
@@ -34,7 +35,7 @@ function QuizPage() {
   const [hiddenQuestionsCache, setHiddenQuestionsCache] = useState({}); // 缓存隐藏管理器中的题目
   // 新增：debugMode 控制题号跳转输入框
   const [debugMode, setDebugMode] = useState(
-    () => !isQuizOperator && localStorage.getItem('debugMode') === 'true',
+    () => !usesActiveActivity && localStorage.getItem('debugMode') === 'true',
   );
   
   // 倒计时功能相关状态
@@ -46,14 +47,14 @@ function QuizPage() {
   useEffect(() => {
     // 监听 debugMode 变化（跨标签页同步）
     const onStorage = (e) => {
-      if (!isQuizOperator && e.key === 'debugMode') {
+      if (!usesActiveActivity && e.key === 'debugMode') {
         setDebugMode(e.newValue === 'true');
       }
     };
     window.addEventListener('storage', onStorage);
     // 监听自定义事件（同标签页）
     const onCustom = (e) => {
-      if (!isQuizOperator && e.detail && typeof e.detail.debugMode === 'boolean') {
+      if (!usesActiveActivity && e.detail && typeof e.detail.debugMode === 'boolean') {
         setDebugMode(e.detail.debugMode);
       }
       if (e.detail && e.detail.countdownSeconds) {
@@ -80,7 +81,7 @@ function QuizPage() {
 
   useEffect(() => {
     fetchConfig();
-    if (!isQuizOperator) {
+    if (!usesActiveActivity) {
       fetchQuestionIds();
       return undefined;
     }
@@ -104,7 +105,7 @@ function QuizPage() {
 
   // 保存隐藏的题目到 localStorage
   useEffect(() => {
-    if (isQuizOperator) {
+    if (usesActiveActivity) {
       if (activeActivity?.id) {
         localStorage.setItem(
           `hiddenQuestions:activity:${activeActivity.id}`,
@@ -133,7 +134,7 @@ function QuizPage() {
     try {
       setLoading(true);
       const response = await api.get('/questions/ids');
-      if (isQuizOperator && generation !== activityGenerationRef.current) return;
+      if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       setQuestionIds(response.data);
       // 加载第一题
       const filtered = response.data.filter(q => !hiddenIds.includes(q.id));
@@ -143,11 +144,11 @@ function QuizPage() {
         setCurrentQuestion(null);
       }
     } catch (error) {
-      if (isQuizOperator && generation !== activityGenerationRef.current) return;
+      if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       console.error('获取题目列表失败:', error);
       message.error('获取题目列表失败，请稍后重试');
     } finally {
-      if (!isQuizOperator || generation === activityGenerationRef.current) {
+      if (!usesActiveActivity || generation === activityGenerationRef.current) {
         setLoading(false);
       }
     }
@@ -210,10 +211,10 @@ function QuizPage() {
   ) => {
     try {
       const response = await api.get(`/questions/${questionId}`);
-      if (isQuizOperator && generation !== activityGenerationRef.current) return;
+      if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       setCurrentQuestion(response.data);
     } catch (error) {
-      if (isQuizOperator && generation !== activityGenerationRef.current) return;
+      if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       console.error('获取题目详情失败:', error);
       message.error('获取题目详情失败，请稍后重试');
     }
@@ -234,7 +235,7 @@ function QuizPage() {
     if (currentQuestion) {
       try {
         await api.post(`/track/random/${currentQuestion.id}`, null, {
-          params: isQuizOperator && activeActivity
+          params: usesActiveActivity && activeActivity
             ? { activity_id: activeActivity.id }
             : undefined,
         });
@@ -274,7 +275,7 @@ function QuizPage() {
         // 记录隐藏点击
         try {
           await api.post(`/track/hide/${currentQuestion.id}`, null, {
-            params: isQuizOperator && activeActivity
+            params: usesActiveActivity && activeActivity
               ? { activity_id: activeActivity.id }
               : undefined,
           });
@@ -345,7 +346,7 @@ function QuizPage() {
     if (uncached.length > 0) {
       const promises = uncached.map(id => api.get(`/questions/${id}`).catch(() => null));
       const results = await Promise.all(promises);
-      if (isQuizOperator && generation !== activityGenerationRef.current) return;
+      if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       const newCache = { ...hiddenQuestionsCache };
       results.forEach((res, idx) => {
         if (res) {
@@ -364,7 +365,7 @@ function QuizPage() {
     );
   }
 
-  if (isQuizOperator && !activeActivity) {
+  if (usesActiveActivity && !activeActivity) {
     return (
       <div className="flex justify-center items-center min-h-screen px-4">
         <div className="bg-white rounded-2xl shadow-xl p-10 text-center max-w-xl">
@@ -436,7 +437,7 @@ function QuizPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
-      {isQuizOperator && activeActivity && (
+      {usesActiveActivity && activeActivity && (
         <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800">
           <span className="font-semibold">当前活动：</span>{activeActivity.name}
           <span className="ml-2 text-sm text-green-600">({activeActivity.question_count} 道题)</span>

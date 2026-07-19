@@ -31,8 +31,12 @@ from .dependencies import (
 router = APIRouter(tags=["题目"])
 
 
-def _ensure_quiz_operator_question(question_id: str, role: str) -> None:
-    if role != "quiz_operator":
+def _uses_active_activity(role: str) -> bool:
+    return role in {"super_admin", "quiz_operator"}
+
+
+def _ensure_live_quiz_question(question_id: str, role: str) -> None:
+    if not _uses_active_activity(role):
         return
     if not get_active_activity():
         raise HTTPException(status_code=409, detail="当前没有进行中的答题活动")
@@ -56,7 +60,7 @@ def list_question_ids(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目ID列表（轻量级）"""
     username = user_info["username"]
     role = user_info["role"]
-    if role == "quiz_operator":
+    if _uses_active_activity(role):
         return get_active_activity_question_ids() if get_active_activity() else []
     # 题目管理员只能获取自己出的题目ID
     author_filter = None if role == "super_admin" else username
@@ -68,7 +72,7 @@ def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目（包含答案，需登录）"""
     username = user_info["username"]
     role = user_info["role"]
-    if role == "quiz_operator":
+    if _uses_active_activity(role):
         if not get_active_activity():
             return []
         return [
@@ -88,7 +92,7 @@ def get_question(question_id: str, user_info: dict = Depends(get_current_user_in
     username = user_info["username"]
     role = user_info["role"]
 
-    _ensure_quiz_operator_question(question_id, role)
+    _ensure_live_quiz_question(question_id, role)
 
     question = get_question_by_id(question_id)
     if not question:
@@ -106,7 +110,7 @@ def get_question(question_id: str, user_info: dict = Depends(get_current_user_in
 @router.post("/api/answer", response_model=AnswerResponse)
 def submit_answer(submit: AnswerSubmit, user_info: dict = Depends(get_current_user_info_dep)):
     """提交答案（需登录）"""
-    _ensure_quiz_operator_question(submit.question_id, user_info["role"])
+    _ensure_live_quiz_question(submit.question_id, user_info["role"])
     question = get_question_by_id(submit.question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -129,7 +133,7 @@ def track_random_click(
     user_info: dict = Depends(get_current_user_info_dep),
 ):
     """记录随机按钮点击（需登录）"""
-    if user_info["role"] == "quiz_operator":
+    if _uses_active_activity(user_info["role"]):
         if activity_id is None:
             raise HTTPException(status_code=400, detail="缺少当前活动 ID")
         recorded_activity_id = increment_active_activity_stat(
@@ -158,7 +162,7 @@ def track_hide_click(
     user_info: dict = Depends(get_current_user_info_dep),
 ):
     """记录隐藏按钮点击（需登录）"""
-    if user_info["role"] == "quiz_operator":
+    if _uses_active_activity(user_info["role"]):
         if activity_id is None:
             raise HTTPException(status_code=400, detail="缺少当前活动 ID")
         recorded_activity_id = increment_active_activity_stat(
