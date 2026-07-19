@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
 import api from '../../api';
+import { getQuestionTagMeta } from '../../constants/questionTags';
+
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN');
+};
 
 const SearchById = ({ onEdit, onDelete }) => {
   const [searchId, setSearchId] = useState('');
@@ -62,13 +70,16 @@ const SearchById = ({ onEdit, onDelete }) => {
               <div className="flex justify-between items-start mb-2">
                 <span className="font-bold text-blue-800">#{searchResult.id}</span>
                 <span className="text-xs text-gray-500">
-                  {searchResult.tag === 'concert' ? '演唱会' : searchResult.tag === 'vlog' ? 'Vlog' : '通用'}
+                  {getQuestionTagMeta(searchResult.tag).label}
                 </span>
               </div>
               <p className="font-medium text-gray-900 mb-2">{searchResult.question}</p>
               <p className="text-sm text-gray-700 mb-2">答案: {searchResult.answer}</p>
               <p className="text-xs text-gray-500 mb-3">
                 出题人: {Array.isArray(searchResult.author) ? searchResult.author.join(', ') : (searchResult.author || '-')}
+              </p>
+              <p className="text-xs text-gray-500 mb-3">
+                创建：{formatDateTime(searchResult.created_at)} · 更新：{formatDateTime(searchResult.updated_at)}
               </p>
               
               <div className="flex gap-4 text-sm mb-4">

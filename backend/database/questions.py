@@ -1,7 +1,7 @@
 """题目表相关的数据库操作"""
 
 import json
-from typing import List, Optional
+from typing import Dict, List, Optional
 from models import Question
 from .config import get_connection
 
@@ -55,6 +55,22 @@ def get_questions_count(keyword: Optional[str] = None, tag: Optional[str] = None
     return count
 
 
+def get_question_tag_counts(author: Optional[str] = None) -> Dict[str, int]:
+    """按标签统计题目数量，题目管理员仅统计自己的题目。"""
+    conn = get_connection()
+    try:
+        query = 'SELECT tag, COUNT(*) FROM questions WHERE 1=1'
+        params = []
+        if author:
+            query += ' AND author LIKE ?'
+            params.append(f'%{author}%')
+        query += ' GROUP BY tag ORDER BY tag ASC'
+        rows = conn.execute(query, params).fetchall()
+        return {row[0]: int(row[1]) for row in rows}
+    finally:
+        conn.close()
+
+
 def get_all_question_ids(author: Optional[str] = None) -> List[dict]:
     """获取所有题目的ID和Tag（轻量级）"""
     conn = get_connection()
@@ -80,7 +96,11 @@ def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str]
     conn = get_connection()
     cursor = conn.cursor()
 
-    query = 'SELECT id, question, answer, resources, tag, random_clicks, hide_clicks, author FROM questions WHERE 1=1'
+    query = '''
+        SELECT id, question, answer, resources, tag, random_clicks,
+               hide_clicks, author, created_at, updated_at
+        FROM questions WHERE 1=1
+    '''
     params = []
 
     if tag and tag != 'all':
@@ -129,7 +149,9 @@ def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str]
             tag=row[4],
             random_clicks=row[5] if len(row) > 5 and row[5] is not None else 0,
             hide_clicks=row[6] if len(row) > 6 and row[6] is not None else 0,
-            author=author
+            author=author,
+            created_at=row[8] if len(row) > 8 else None,
+            updated_at=row[9] if len(row) > 9 else None,
         ))
     return questions
 
@@ -138,8 +160,11 @@ def get_question_by_id(question_id: str) -> Optional[Question]:
     """根据ID获取题目"""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, question, answer, resources, tag, random_clicks, hide_clicks, author FROM questions WHERE id = ?',
-                   (question_id,))
+    cursor.execute('''
+        SELECT id, question, answer, resources, tag, random_clicks,
+               hide_clicks, author, created_at, updated_at
+        FROM questions WHERE id = ?
+    ''', (question_id,))
     row = cursor.fetchone()
     conn.close()
 
@@ -163,7 +188,9 @@ def get_question_by_id(question_id: str) -> Optional[Question]:
             tag=row[4],
             random_clicks=row[5] if len(row) > 5 and row[5] is not None else 0,
             hide_clicks=row[6] if len(row) > 6 and row[6] is not None else 0,
-            author=author
+            author=author,
+            created_at=row[8] if len(row) > 8 else None,
+            updated_at=row[9] if len(row) > 9 else None,
         )
     return None
 
@@ -214,7 +241,7 @@ def create_question(question: Question) -> Question:
           json.dumps(question.resources), question.tag, json.dumps(question.author)))
     conn.commit()
     conn.close()
-    return question
+    return get_question_by_id(question.id) or question
 
 
 def update_question(question_id: str, updates: dict) -> Optional[Question]:
@@ -235,6 +262,7 @@ def update_question(question_id: str, updates: dict) -> Optional[Question]:
                 values.append(value)
 
     if fields:
+        fields.append("updated_at = CURRENT_TIMESTAMP")
         values.append(question_id)
         cursor.execute(
             f"UPDATE questions SET {', '.join(fields)} WHERE id = ?", values)

@@ -391,7 +391,9 @@ def delete_activity(activity_id: int) -> bool:
         conn.close()
 
 
-def get_active_activity_question_ids() -> List[Dict[str, str]]:
+def get_active_activity_question_ids(
+    expected_activity_id: Optional[int] = None,
+) -> List[Dict[str, str]]:
     conn = get_connection()
     try:
         rows = conn.execute(
@@ -400,9 +402,10 @@ def get_active_activity_question_ids() -> List[Dict[str, str]]:
             FROM quiz_activities a
             JOIN quiz_activity_questions aq ON aq.activity_id = a.id
             JOIN questions q ON q.id = aq.question_id
-            WHERE a.status = 'active'
+            WHERE a.status = 'active' AND (? IS NULL OR a.id = ?)
             ORDER BY aq.position ASC, CAST(q.id AS INTEGER) ASC
-            """
+            """,
+            (expected_activity_id, expected_activity_id),
         ).fetchall()
         return [{"id": row[0], "tag": row[1]} for row in rows]
     finally:
@@ -427,7 +430,10 @@ def get_active_activity_questions():
         conn.close()
 
 
-def active_activity_contains_question(question_id: str) -> bool:
+def active_activity_contains_question(
+    question_id: str,
+    expected_activity_id: Optional[int] = None,
+) -> bool:
     conn = get_connection()
     try:
         row = conn.execute(
@@ -436,8 +442,9 @@ def active_activity_contains_question(question_id: str) -> bool:
             FROM quiz_activities a
             JOIN quiz_activity_questions aq ON aq.activity_id = a.id
             WHERE a.status = 'active' AND aq.question_id = ?
+              AND (? IS NULL OR a.id = ?)
             """,
-            (question_id,),
+            (question_id, expected_activity_id, expected_activity_id),
         ).fetchone()
         return row is not None
     finally:

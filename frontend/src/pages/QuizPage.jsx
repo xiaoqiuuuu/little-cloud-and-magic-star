@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { App } from 'antd';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
 import Countdown from '../components/Countdown';
 import api from '../api';
+import { getQuestionTagMeta, mergeQuestionTagOptions } from '../constants/questionTags';
 
-function QuizPage() {
+function QuizPage({ activityMode = false }) {
   const { message, modal } = App.useApp();
   const userRole = localStorage.getItem('userRole') || '';
-  const usesActiveActivity = ['super_admin', 'quiz_operator'].includes(userRole);
+  const usesActiveActivity = activityMode || userRole === 'quiz_operator';
   const activeActivityIdRef = useRef(undefined);
   const activityGenerationRef = useRef(0);
   const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
@@ -39,7 +40,7 @@ function QuizPage() {
   );
   
   // 倒计时功能相关状态
-  const [quizStarted, setQuizStarted] = useState(false); // 是否已开始答题
+  const [quizStarted, setQuizStarted] = useState(() => !usesActiveActivity);
   const [countdownSeconds, setCountdownSeconds] = useState(60);
   const [showCountdown, setShowCountdown] = useState(false); // 是否显示倒计时
   const [isTimeUp, setIsTimeUp] = useState(false); // 是否时间到
@@ -72,7 +73,7 @@ function QuizPage() {
   
   // 处理调试模式 - 自动开始且无倒计时
   useEffect(() => {
-    if (debugMode) {
+    if (debugMode || !usesActiveActivity) {
       setQuizStarted(true);
       setShowCountdown(false);
       setIsTimeUp(false);
@@ -123,6 +124,7 @@ function QuizPage() {
       fetchCurrentQuestion(
         filteredQuestionIds[currentIndex].id,
         activityGenerationRef.current,
+        activeActivityIdRef.current,
       );
     }
   }, [currentIndex]);
@@ -130,16 +132,20 @@ function QuizPage() {
   const fetchQuestionIds = async (
     hiddenIds = hiddenQuestions,
     generation = activityGenerationRef.current,
+    activityId = activeActivityIdRef.current,
   ) => {
     try {
       setLoading(true);
-      const response = await api.get('/questions/ids');
+      const response = await api.get(
+        usesActiveActivity ? '/quiz/questions/ids' : '/questions/ids',
+        usesActiveActivity ? { params: { activity_id: activityId } } : undefined,
+      );
       if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       setQuestionIds(response.data);
       // 加载第一题
       const filtered = response.data.filter(q => !hiddenIds.includes(q.id));
       if (filtered.length > 0) {
-        fetchCurrentQuestion(filtered[0].id, generation);
+        fetchCurrentQuestion(filtered[0].id, generation, activityId);
       } else {
         setCurrentQuestion(null);
       }
@@ -194,7 +200,7 @@ function QuizPage() {
           }
         }
         setHiddenQuestions(hiddenIds);
-        await fetchQuestionIds(hiddenIds, generation);
+        await fetchQuestionIds(hiddenIds, generation, nextActivity.id);
       } else {
         setHiddenQuestions([]);
         setLoading(false);
@@ -208,9 +214,15 @@ function QuizPage() {
   const fetchCurrentQuestion = async (
     questionId,
     generation = activityGenerationRef.current,
+    activityId = activeActivityIdRef.current,
   ) => {
     try {
-      const response = await api.get(`/questions/${questionId}`);
+      const response = await api.get(
+        usesActiveActivity
+          ? `/quiz/questions/${questionId}`
+          : `/questions/${questionId}`,
+        usesActiveActivity ? { params: { activity_id: activityId } } : undefined,
+      );
       if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       setCurrentQuestion(response.data);
     } catch (error) {
@@ -223,6 +235,13 @@ function QuizPage() {
   const filteredQuestionIds = selectedTag === 'all' 
     ? questionIds.filter(q => !hiddenQuestions.includes(q.id))
     : questionIds.filter(q => q.tag === selectedTag && !hiddenQuestions.includes(q.id));
+
+  const questionTagOptions = useMemo(() => {
+    const values = [...new Set(questionIds.map((question) => question.tag).filter(Boolean))];
+    return mergeQuestionTagOptions(values).filter((option) => values.includes(option.value));
+  }, [questionIds]);
+
+  const currentTagMeta = getQuestionTagMeta(currentQuestion?.tag);
 
 
   const handleRandomQuestion = async () => {
@@ -254,8 +273,8 @@ function QuizPage() {
     
     // 重置答题状态
     setIsTimeUp(false);
-    if (debugMode) {
-      // 调试模式下直接显示下一题，不进入准备界面，不倒计时
+    if (debugMode || !usesActiveActivity) {
+      // 调试或题目预览模式直接显示下一题，不进入准备界面，不倒计时。
       setQuizStarted(true);
       setShowCountdown(false);
     } else {
@@ -291,7 +310,7 @@ function QuizPage() {
           setCurrentIndex(0);
           // 也要重置状态
           setIsTimeUp(false);
-          if (debugMode) {
+          if (debugMode || !usesActiveActivity) {
             setQuizStarted(true);
             setShowCountdown(false);
           } else {
@@ -344,7 +363,12 @@ function QuizPage() {
     const generation = activityGenerationRef.current;
     const uncached = hiddenQuestions.filter(id => !hiddenQuestionsCache[id]);
     if (uncached.length > 0) {
-      const promises = uncached.map(id => api.get(`/questions/${id}`).catch(() => null));
+      const promises = uncached.map((id) => api.get(
+        usesActiveActivity ? `/quiz/questions/${id}` : `/questions/${id}`,
+        usesActiveActivity
+          ? { params: { activity_id: activeActivityIdRef.current } }
+          : undefined,
+      ).catch(() => null));
       const results = await Promise.all(promises);
       if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       const newCache = { ...hiddenQuestionsCache };
@@ -382,7 +406,9 @@ function QuizPage() {
   if (questionIds.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-xl text-gray-600">暂无题目</div>
+        <div className="text-xl text-gray-600">
+          {usesActiveActivity ? '当前活动暂无题目' : '暂无可预览题目'}
+        </div>
       </div>
     );
   }
@@ -404,9 +430,13 @@ function QuizPage() {
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">全部题目 ({questionIds.filter(q => !hiddenQuestions.includes(q.id)).length})</option>
-              <option value="concert">演唱会 ({questionIds.filter(q => q.tag === 'concert' && !hiddenQuestions.includes(q.id)).length})</option>
-              <option value="vlog">Vlog ({questionIds.filter(q => q.tag === 'vlog' && !hiddenQuestions.includes(q.id)).length})</option>
-              <option value="common">通用 ({questionIds.filter(q => q.tag === 'common' && !hiddenQuestions.includes(q.id)).length})</option>
+              {questionTagOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.shortLabel} ({questionIds.filter(
+                    (q) => q.tag === option.value && !hiddenQuestions.includes(q.id),
+                  ).length})
+                </option>
+              ))}
             </select>
           </div>
           <button
@@ -437,6 +467,14 @@ function QuizPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
+      {!usesActiveActivity && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-800">
+          <span className="font-semibold">题目预览：</span>
+          {userRole === 'question_admin'
+            ? '这里仅展示你创建的题目，可按标签筛选、随机查看或按题号跳转。'
+            : '这里保留原题库预览，可查看全部题目；现场答题请从“答题活动”进入。'}
+        </div>
+      )}
       {usesActiveActivity && activeActivity && (
         <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800">
           <span className="font-semibold">当前活动：</span>{activeActivity.name}
@@ -488,11 +526,27 @@ function QuizPage() {
             className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
           >
             <option value="all">全部题目 ({questionIds.filter(q => !hiddenQuestions.includes(q.id)).length})</option>
-            <option value="concert">演唱会 ({questionIds.filter(q => q.tag === 'concert' && !hiddenQuestions.includes(q.id)).length})</option>
-            <option value="vlog">Vlog ({questionIds.filter(q => q.tag === 'vlog' && !hiddenQuestions.includes(q.id)).length})</option>
-            <option value="common">通用 ({questionIds.filter(q => q.tag === 'common' && !hiddenQuestions.includes(q.id)).length})</option>
+            {questionTagOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.shortLabel} ({questionIds.filter(
+                  (q) => q.tag === option.value && !hiddenQuestions.includes(q.id),
+                ).length})
+              </option>
+            ))}
           </select>
           <div className="flex gap-2 sm:gap-3">
+            {!usesActiveActivity && (
+              <select
+                value={currentIndex}
+                onChange={(event) => setCurrentIndex(Number(event.target.value))}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                aria-label="快速选择预览题目"
+              >
+                {filteredQuestionIds.map((question, index) => (
+                  <option key={question.id} value={index}>#{question.id}</option>
+                ))}
+              </select>
+            )}
             <button
               onClick={handleRandomQuestion}
               className="flex-1 sm:flex-none px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
@@ -560,13 +614,8 @@ function QuizPage() {
           <span className="text-xs sm:text-sm text-gray-500">
             题目 {currentIndex + 1} / {filteredQuestionIds.length}
           </span>
-          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
-            currentQuestion.tag === 'concert' ? 'bg-purple-100 text-purple-800' :
-            currentQuestion.tag === 'vlog' ? 'bg-blue-100 text-blue-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
-            {currentQuestion.tag === 'concert' ? '演唱会' :
-             currentQuestion.tag === 'vlog' ? 'Vlog' : '通用'}
+          <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-gray-100 text-gray-800">
+            {currentTagMeta.shortLabel}
           </span>
         </div>
 
@@ -700,16 +749,8 @@ function QuizPage() {
                           <div className="flex justify-between items-start gap-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
-                                <span
-                                  className={`px-2 py-1 text-xs rounded-full ${
-                                    question.tag === 'concert'
-                                      ? 'bg-purple-100 text-purple-800'
-                                      : question.tag === 'vlog'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-gray-100 text-gray-800'
-                                  }`}
-                                >
-                                  {question.tag === 'concert' ? '演唱会' : question.tag === 'vlog' ? 'Vlog' : '通用'}
+                                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+                                  {getQuestionTagMeta(question.tag).shortLabel}
                                 </span>
                               </div>
                               <p className="text-gray-800 font-medium mb-1">{question.question}</p>

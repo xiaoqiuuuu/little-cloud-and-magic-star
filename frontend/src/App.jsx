@@ -66,19 +66,41 @@ function App() {
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               
-              {/* 答题页面 */}
+              {/* 原题目预览页面，供出题老师查看自己有权限访问的题目。 */}
               <Route path="/quiz" element={
                 <>
-                  <Navbar isAdminLoggedIn={isAdminLoggedIn} userRole={userRole} />
+                  <Navbar
+                    isAdminLoggedIn={isAdminLoggedIn}
+                    userRole={userRole}
+                    brandText="肥音卤果题目预览"
+                    homePath="/quiz"
+                  />
                   <QuizPage />
                 </>
+              } />
+
+              {/* 活动现场页面，仅通过答题活动入口或答题人员登录进入。 */}
+              <Route path="/quiz/live" element={
+                isAdminLoggedIn && !['super_admin', 'quiz_operator'].includes(userRole) ? (
+                  <Navigate to="/quiz" replace />
+                ) : (
+                  <>
+                    <Navbar
+                      isAdminLoggedIn={isAdminLoggedIn}
+                      userRole={userRole}
+                      brandText="肥音卤果现场答题"
+                      homePath="/quiz/live"
+                    />
+                    <QuizPage activityMode />
+                  </>
+                )
               } />
               
               {/* 管理员登录 */}
               <Route path="/admin/login" element={
                 isAdminLoggedIn ? (
                   <Navigate
-                    to={userRole === 'quiz_operator' ? '/quiz' : '/admin/questions'}
+                    to={userRole === 'quiz_operator' ? '/quiz/live' : '/admin/questions'}
                     replace
                   />
                 ) : (

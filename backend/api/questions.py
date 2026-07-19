@@ -11,6 +11,7 @@ from database import (
     get_all_questions, get_question_by_id, get_all_question_ids,
     create_question, update_question, delete_question,
     get_next_question_id, get_questions_count,
+    get_question_tag_counts,
     increment_random_clicks, increment_hide_clicks,
     reset_question_stats, reset_all_questions_stats,
     check_duplicate_question,
@@ -31,17 +32,31 @@ from .dependencies import (
 router = APIRouter(tags=["题目"])
 
 
-def _uses_active_activity(role: str) -> bool:
-    return role in {"super_admin", "quiz_operator"}
+LIVE_QUIZ_ROLES = {"super_admin", "quiz_operator"}
 
 
-def _ensure_live_quiz_question(question_id: str, role: str) -> None:
-    if not _uses_active_activity(role):
+def _clean_tag(tag: str) -> str:
+    cleaned = tag.strip()
+    if not cleaned:
+        raise HTTPException(status_code=422, detail="题目标签不能为空")
+    return cleaned
+
+
+def _ensure_quiz_operator_question(question_id: str, role: str) -> None:
+    if role != "quiz_operator":
         return
     if not get_active_activity():
         raise HTTPException(status_code=409, detail="当前没有进行中的答题活动")
     if not active_activity_contains_question(question_id):
         raise HTTPException(status_code=403, detail="该题目不属于当前答题活动")
+
+
+def _ensure_expected_live_activity(activity_id: int, role: str) -> None:
+    if role not in LIVE_QUIZ_ROLES:
+        raise HTTPException(status_code=403, detail="当前账号不能进入现场答题")
+    active_activity = get_active_activity()
+    if not active_activity or active_activity["id"] != activity_id:
+        raise HTTPException(status_code=409, detail="当前活动已切换或结束")
 
 
 def _ensure_question_not_in_started_activity(question_id: str) -> None:
@@ -60,7 +75,7 @@ def list_question_ids(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目ID列表（轻量级）"""
     username = user_info["username"]
     role = user_info["role"]
-    if _uses_active_activity(role):
+    if role == "quiz_operator":
         return get_active_activity_question_ids() if get_active_activity() else []
     # 题目管理员只能获取自己出的题目ID
     author_filter = None if role == "super_admin" else username
@@ -72,7 +87,7 @@ def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目（包含答案，需登录）"""
     username = user_info["username"]
     role = user_info["role"]
-    if _uses_active_activity(role):
+    if role == "quiz_operator":
         if not get_active_activity():
             return []
         return [
@@ -86,13 +101,39 @@ def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
     return questions
 
 
+@router.get("/api/quiz/questions/ids")
+def list_live_question_ids(
+    activity_id: int,
+    user_info: dict = Depends(get_current_user_info_dep),
+):
+    """获取指定现场活动的题目范围，活动切换后拒绝旧请求。"""
+    _ensure_expected_live_activity(activity_id, user_info["role"])
+    return get_active_activity_question_ids(activity_id)
+
+
+@router.get("/api/quiz/questions/{question_id}", response_model=Question)
+def get_live_question(
+    question_id: str,
+    activity_id: int,
+    user_info: dict = Depends(get_current_user_info_dep),
+):
+    """获取指定现场活动中的单题，供超级管理员和答题人员使用。"""
+    _ensure_expected_live_activity(activity_id, user_info["role"])
+    if not active_activity_contains_question(question_id, activity_id):
+        raise HTTPException(status_code=403, detail="该题目不属于当前答题活动")
+    question = get_question_by_id(question_id)
+    if not question:
+        raise HTTPException(status_code=404, detail="题目不存在")
+    return question
+
+
 @router.get("/api/questions/{question_id}", response_model=Question)
 def get_question(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
     """获取单个题目（包含答案，需登录）"""
     username = user_info["username"]
     role = user_info["role"]
 
-    _ensure_live_quiz_question(question_id, role)
+    _ensure_quiz_operator_question(question_id, role)
 
     question = get_question_by_id(question_id)
     if not question:
@@ -110,7 +151,7 @@ def get_question(question_id: str, user_info: dict = Depends(get_current_user_in
 @router.post("/api/answer", response_model=AnswerResponse)
 def submit_answer(submit: AnswerSubmit, user_info: dict = Depends(get_current_user_info_dep)):
     """提交答案（需登录）"""
-    _ensure_live_quiz_question(submit.question_id, user_info["role"])
+    _ensure_quiz_operator_question(submit.question_id, user_info["role"])
     question = get_question_by_id(submit.question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -133,9 +174,10 @@ def track_random_click(
     user_info: dict = Depends(get_current_user_info_dep),
 ):
     """记录随机按钮点击（需登录）"""
-    if _uses_active_activity(user_info["role"]):
-        if activity_id is None:
-            raise HTTPException(status_code=400, detail="缺少当前活动 ID")
+    role = user_info["role"]
+    if role == "quiz_operator" and activity_id is None:
+        raise HTTPException(status_code=400, detail="缺少当前活动 ID")
+    if role in LIVE_QUIZ_ROLES and activity_id is not None:
         recorded_activity_id = increment_active_activity_stat(
             question_id,
             "random",
@@ -162,9 +204,10 @@ def track_hide_click(
     user_info: dict = Depends(get_current_user_info_dep),
 ):
     """记录隐藏按钮点击（需登录）"""
-    if _uses_active_activity(user_info["role"]):
-        if activity_id is None:
-            raise HTTPException(status_code=400, detail="缺少当前活动 ID")
+    role = user_info["role"]
+    if role == "quiz_operator" and activity_id is None:
+        raise HTTPException(status_code=400, detail="缺少当前活动 ID")
+    if role in LIVE_QUIZ_ROLES and activity_id is not None:
         recorded_activity_id = increment_active_activity_stat(
             question_id,
             "hide",
@@ -195,11 +238,13 @@ def get_stats(user_info: dict = Depends(require_content_admin)):
     # 题目管理员只能看到自己创建的题目的统计
     author_filter = None if role == "super_admin" else username
 
+    by_tag = get_question_tag_counts(author=author_filter)
     return {
         "total": get_questions_count(author=author_filter),
-        "concert": get_questions_count(tag="concert", author=author_filter),
-        "vlog": get_questions_count(tag="vlog", author=author_filter),
-        "common": get_questions_count(tag="common", author=author_filter)
+        "concert": by_tag.get("concert", 0),
+        "vlog": by_tag.get("vlog", 0),
+        "common": by_tag.get("common", 0),
+        "by_tag": by_tag,
     }
 
 
@@ -299,7 +344,7 @@ def admin_create_question(question_data: QuestionCreate, user_info: dict = Depen
         question=question_data.question,
         answer=question_data.answer,
         resources=question_data.resources,
-        tag=question_data.tag,
+        tag=_clean_tag(question_data.tag),
         author=author
     )
     return create_question(question)
@@ -327,7 +372,9 @@ def admin_update_question(
 
     _ensure_question_not_in_started_activity(question_id)
 
-    updates = question_data.dict(exclude_unset=True)
+    updates = question_data.model_dump(exclude_unset=True)
+    if "tag" in updates and updates["tag"] is not None:
+        updates["tag"] = _clean_tag(updates["tag"])
     if role != "super_admin" and "author" in updates:
         updates["author"] = [username]
     updated = update_question(question_id, updates)
@@ -368,6 +415,7 @@ def admin_batch_import_questions(
 
     for index, item in enumerate(batch_data.questions):
         try:
+            cleaned_tag = _clean_tag(item.tag)
             # 处理制作人：确保所有制作人都存在于数据库中
             if item.author:
                 for author_name in item.author:
@@ -396,9 +444,14 @@ def admin_batch_import_questions(
                     fail_count += 1
                     continue
                 
-                # 检查内容是否有变化（题目和答案都相同则认为无变化）
-                if (existing.question == item.question and 
-                    existing.answer.lower() == item.answer.lower()):
+                # 所有可编辑内容都相同时才跳过，标签变化也应正常更新。
+                if (
+                    existing.question == item.question
+                    and existing.answer.lower() == item.answer.lower()
+                    and existing.resources == item.resources
+                    and existing.tag == cleaned_tag
+                    and existing.author == item.author
+                ):
                     errors.append({
                         "index": index,
                         "id": item.id,
@@ -412,7 +465,7 @@ def admin_batch_import_questions(
                     "question": item.question,
                     "answer": item.answer,
                     "resources": item.resources,
-                    "tag": item.tag,
+                    "tag": cleaned_tag,
                     "author": item.author
                 }
                 update_question(item.id, updates)
@@ -436,7 +489,7 @@ def admin_batch_import_questions(
                     question=item.question,
                     answer=item.answer,
                     resources=item.resources,
-                    tag=item.tag,
+                    tag=cleaned_tag,
                     author=item.author,
                     random_clicks=0,
                     hide_clicks=0

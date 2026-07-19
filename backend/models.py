@@ -9,10 +9,12 @@ class Question(BaseModel):
     question: str
     answer: str
     resources: List[str] = []
-    tag: Literal["concert", "vlog", "common"]
+    tag: str = Field(min_length=1, max_length=50)
     author: List[str] = []  # 改为多选
     random_clicks: int = 0
     hide_clicks: int = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 # 创建题目请求
 
@@ -21,7 +23,7 @@ class QuestionCreate(BaseModel):
     question: str
     answer: str
     resources: List[str] = []
-    tag: Literal["concert", "vlog", "common"]
+    tag: str = Field(default="common", min_length=1, max_length=50)
     author: List[str] = []
 
 # 更新题目请求
@@ -31,7 +33,7 @@ class QuestionUpdate(BaseModel):
     question: Optional[str] = None
     answer: Optional[str] = None
     resources: Optional[List[str]] = None
-    tag: Optional[Literal["concert", "vlog", "common"]] = None
+    tag: Optional[str] = Field(default=None, min_length=1, max_length=50)
     author: Optional[List[str]] = None
 
 # 批量导入题目项
@@ -42,7 +44,7 @@ class QuestionImportItem(BaseModel):
     question: str
     answer: str
     resources: List[str] = []
-    tag: Literal["concert", "vlog", "common"] = "common"
+    tag: str = Field(default="common", min_length=1, max_length=50)
     author: List[str] = []
 
 

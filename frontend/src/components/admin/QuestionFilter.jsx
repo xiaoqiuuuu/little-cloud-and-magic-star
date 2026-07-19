@@ -10,7 +10,8 @@ const QuestionFilter = ({
   total,
   loading,
   producers,
-  isSuperAdmin = true
+  isSuperAdmin = true,
+  tagOptions = [],
 }) => {
   const [inputValue, setInputValue] = useState(searchKeyword);
 
@@ -57,9 +58,9 @@ const QuestionFilter = ({
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">全部类型</option>
-            <option value="concert">演唱会</option>
-            <option value="vlog">Vlog</option>
-            <option value="common">通用</option>
+            {tagOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </div>
 

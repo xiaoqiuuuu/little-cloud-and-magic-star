@@ -28,8 +28,10 @@ const ExcelImportExport = ({ onImportSuccess }) => {
         '题目': q.question,
         '答案': q.answer,
         '资源链接（多个用|分隔）': q.resources?.join('|') || '',
-        '标签（concert/vlog/common）': q.tag,
+        '标签': q.tag,
         '出题人（多个用|分隔）': Array.isArray(q.author) ? q.author.join('|') : (q.author || ''),
+        '创建时间': q.created_at || '',
+        '更新时间': q.updated_at || '',
         '随机点击数': q.random_clicks || 0,
         '隐藏点击数': q.hide_clicks || 0,
       }));
@@ -45,8 +47,10 @@ const ExcelImportExport = ({ onImportSuccess }) => {
         { wch: 40 },  // 题目
         { wch: 30 },  // 答案
         { wch: 50 },  // 资源链接
-        { wch: 20 },  // 标签
-        { wch: 30 },  // 出题人
+      { wch: 20 },  // 标签
+      { wch: 30 },  // 出题人
+      { wch: 22 },  // 创建时间
+      { wch: 22 },  // 更新时间
         { wch: 12 },  // 随机点击数
         { wch: 12 },  // 隐藏点击数
       ];
@@ -71,7 +75,7 @@ const ExcelImportExport = ({ onImportSuccess }) => {
         '题目': '示例题目：霄雲是哪一年出生的？',
         '答案': '1998年',
         '资源链接（多个用|分隔）': 'https://example.com/image1.jpg|https://example.com/video.mp4',
-        '标签（concert/vlog/common）': 'common',
+        '标签': 'common',
         '出题人（多个用|分隔）': '制作人A|制作人B',
         '随机点击数': '（导入时可留空）',
         '隐藏点击数': '（导入时可留空）',
@@ -81,7 +85,7 @@ const ExcelImportExport = ({ onImportSuccess }) => {
         '题目': '这是一道新题目',
         '答案': '示例答案',
         '资源链接（多个用|分隔）': '',
-        '标签（concert/vlog/common）': 'vlog',
+        '标签': 'vlog',
         '出题人（多个用|分隔）': '小云',
         '随机点击数': '',
         '隐藏点击数': '',
@@ -91,7 +95,7 @@ const ExcelImportExport = ({ onImportSuccess }) => {
         '题目': '这是更新ID为1的题目',
         '答案': '新答案',
         '资源链接（多个用|分隔）': '',
-        '标签（concert/vlog/common）': 'concert',
+        '标签': 'concert',
         '出题人（多个用|分隔）': '魔法星',
         '随机点击数': '',
         '隐藏点击数': '',
@@ -153,7 +157,8 @@ const ExcelImportExport = ({ onImportSuccess }) => {
           const resources = resourcesStr 
             ? String(resourcesStr).split('|').map(r => r.trim()).filter(r => r)
             : [];
-          const tag = row['标签（concert/vlog/common）'] ? String(row['标签（concert/vlog/common）']).trim() : 'common';
+          const rawTag = row['标签'] ?? row['标签（concert/vlog/common）'] ?? 'common';
+          const tag = String(rawTag).trim() || 'common';
           const authorStr = row['出题人（多个用|分隔）'] || '';
           const author = authorStr
             ? String(authorStr).split('|').map(a => a.trim()).filter(a => a)
@@ -164,7 +169,7 @@ const ExcelImportExport = ({ onImportSuccess }) => {
             question,
             answer,
             resources,
-            tag: ['concert', 'vlog', 'common'].includes(tag) ? tag : 'common',
+            tag,
             author,
           };
         });

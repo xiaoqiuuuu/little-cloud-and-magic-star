@@ -30,7 +30,9 @@ def init_db():
             tag TEXT NOT NULL,
             random_clicks INTEGER DEFAULT 0,
             hide_clicks INTEGER DEFAULT 0,
-            author TEXT DEFAULT ""
+            author TEXT DEFAULT "",
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -98,6 +100,18 @@ def init_db():
     if 'author' not in columns:
         cursor.execute(
             'ALTER TABLE questions ADD COLUMN author TEXT DEFAULT ""')
+
+    if 'created_at' not in columns:
+        cursor.execute('ALTER TABLE questions ADD COLUMN created_at TEXT')
+
+    if 'updated_at' not in columns:
+        cursor.execute('ALTER TABLE questions ADD COLUMN updated_at TEXT')
+
+    cursor.execute('''
+        UPDATE questions
+        SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+            updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+    ''')
 
     # 检查并添加管理员新列（如果表已存在但没有这些列）
     cursor.execute("PRAGMA table_info(admins)")
