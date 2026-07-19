@@ -11,6 +11,7 @@ import ProducerManager from './pages/ProducerManager';
 import RoleManager from './pages/RoleManager';
 import AdminUserManager from './pages/AdminUserManager';
 import QuizActivityManager from './pages/QuizActivityManager';
+import SiteEventManager from './pages/SiteEventManager';
 import AdminLayout from './components/AdminLayout';
 import RequireSuperAdmin from './components/RequireSuperAdmin';
 import Navbar from './components/Navbar';
@@ -67,6 +68,7 @@ function App() {
             <Routes>
               {/* 首页 - 产品介绍 */}
               <Route path="/" element={<HomePage />} />
+              <Route path="/events/:slug" element={<HomePage />} />
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               
@@ -113,6 +115,11 @@ function App() {
                 <Route path="activities" element={
                   <RequireSuperAdmin>
                     <QuizActivityManager />
+                  </RequireSuperAdmin>
+                } />
+                <Route path="site-events" element={
+                  <RequireSuperAdmin>
+                    <SiteEventManager />
                   </RequireSuperAdmin>
                 } />
                 {/* 兼容旧路由 */}

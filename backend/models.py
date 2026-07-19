@@ -171,6 +171,97 @@ class QuizActivityUpdate(BaseModel):
     question_ids: Optional[List[str]] = None
 
 
+# 官网活动
+
+
+class SiteEventMaterial(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=1000)
+    image: str = Field(default="", max_length=1000)
+    icon: str = Field(default="✨", max_length=20)
+    color: Literal["rose", "pink", "yellow", "blue", "indigo", "purple"] = "blue"
+
+
+class SiteEventRules(BaseModel):
+    enabled: bool = True
+    title: str = Field(default="游戏玩法与规则", max_length=100)
+    description: str = Field(default="", max_length=1000)
+    link: str = Field(default="/rules", max_length=1000)
+    link_label: str = Field(default="点击查看", max_length=50)
+    icons: List[str] = Field(default_factory=lambda: ["🌙", "☀️", "🎭"], max_length=6)
+
+
+class SiteEventCallToAction(BaseModel):
+    title: str = Field(default="获取方式", max_length=100)
+    description: str = Field(default="", max_length=2000)
+
+
+class SiteEventFooter(BaseModel):
+    title: str = Field(default="", max_length=100)
+    copyright: str = Field(default="", max_length=200)
+    note: str = Field(default="", max_length=500)
+
+
+class SiteEventContent(BaseModel):
+    eyebrow: str = Field(default="", max_length=100)
+    title: str = Field(min_length=1, max_length=300)
+    intro_title: str = Field(default="", max_length=200)
+    intro: str = Field(default="", max_length=3000)
+    rules: SiteEventRules = Field(default_factory=SiteEventRules)
+    materials_title: str = Field(default="精彩物料一览", max_length=100)
+    materials: List[SiteEventMaterial] = Field(default_factory=list, max_length=30)
+    cta: SiteEventCallToAction = Field(default_factory=SiteEventCallToAction)
+    footer: SiteEventFooter = Field(default_factory=SiteEventFooter)
+    theme: Literal["aurora", "sunset", "ocean", "mint"] = "aurora"
+
+
+class SiteEventBase(BaseModel):
+    slug: str = Field(
+        min_length=2,
+        max_length=80,
+        pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    )
+    name: str = Field(min_length=1, max_length=100)
+    date_label: str = Field(default="", max_length=100)
+    location: str = Field(default="", max_length=100)
+    content: SiteEventContent
+
+
+class SiteEventCreate(SiteEventBase):
+    pass
+
+
+class SiteEventUpdate(BaseModel):
+    slug: Optional[str] = Field(
+        default=None,
+        min_length=2,
+        max_length=80,
+        pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    )
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    date_label: Optional[str] = Field(default=None, max_length=100)
+    location: Optional[str] = Field(default=None, max_length=100)
+    content: Optional[SiteEventContent] = None
+
+
+class SiteEventSummary(BaseModel):
+    id: int
+    slug: str
+    name: str
+    date_label: str = ""
+    location: str = ""
+    status: Literal["draft", "published", "archived"]
+    is_current: bool = False
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class SiteEvent(SiteEventSummary):
+    content: SiteEventContent
+    created_by: str
+    published_at: Optional[str] = None
+
+
 # 物料模型
 
 
