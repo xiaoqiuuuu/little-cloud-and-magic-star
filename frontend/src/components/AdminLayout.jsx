@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Layout, Menu, Button, Drawer, Typography, Spin } from 'antd';
 import {
@@ -13,7 +13,8 @@ import {
   CalendarOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
-import api, { clearAuthSession } from '../api';
+import api, { clearAuthSession, getDeduplicated } from '../api';
+import { hasContentAdminAccess } from '../utils/adminAccess';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -35,20 +36,17 @@ function AdminLayout() {
     }
 
     let cancelled = false;
-    api.get('/admin/me', { hideLoading: true, hideErrorMessage: true })
+    getDeduplicated('/admin/me', { hideLoading: true, hideErrorMessage: true })
       .then((response) => {
         if (cancelled) return;
         setCurrentUser(response.data);
         localStorage.setItem('username', response.data.username);
         localStorage.setItem('userRole', response.data.role);
         localStorage.setItem('currentUserId', String(response.data.id));
-        if (response.data.role === 'quiz_operator') {
-          navigate('/quiz/live', { replace: true });
-        }
       })
       .catch(() => {
         if (!cancelled) {
-          navigate('/admin/login');
+          setCurrentUser(null);
         }
       })
       .finally(() => {
@@ -82,6 +80,14 @@ function AdminLayout() {
   const username = currentUser?.username || '';
   const userRole = currentUser?.role || '';
   const isSuperAdmin = userRole === 'super_admin';
+
+  if (!authLoading && !currentUser) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  if (!authLoading && !hasContentAdminAccess(currentUser)) {
+    return <Navigate to="/quiz/live" replace />;
+  }
 
   const menuItems = [
     {

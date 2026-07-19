@@ -1,6 +1,7 @@
 """数据库初始化"""
 
 from .config import get_connection
+from .stats import backfill_page_visit_dimensions
 from passwords import hash_password, is_password_hash
 
 
@@ -16,9 +17,45 @@ def init_db():
             visit_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             ip_address TEXT,
             referrer TEXT,
-            user_agent TEXT
+            user_agent TEXT,
+            path TEXT NOT NULL DEFAULT '/',
+            visitor_key TEXT,
+            session_key TEXT,
+            source TEXT,
+            device_type TEXT,
+            browser TEXT,
+            operating_system TEXT
         )
     ''')
+    cursor.execute("PRAGMA table_info(page_visits)")
+    visit_columns = {column[1] for column in cursor.fetchall()}
+    visit_migrations = {
+        "path": "TEXT NOT NULL DEFAULT '/'",
+        "visitor_key": "TEXT",
+        "session_key": "TEXT",
+        "source": "TEXT",
+        "device_type": "TEXT",
+        "browser": "TEXT",
+        "operating_system": "TEXT",
+    }
+    for column_name, definition in visit_migrations.items():
+        if column_name not in visit_columns:
+            cursor.execute(
+                f"ALTER TABLE page_visits ADD COLUMN {column_name} {definition}"
+            )
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_page_visits_time
+        ON page_visits(visit_time)
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_page_visits_session_path_time
+        ON page_visits(session_key, path, visit_time)
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_page_visits_visitor
+        ON page_visits(visitor_key)
+    ''')
+    backfill_page_visit_dimensions(cursor)
 
     # 创建题目表
     cursor.execute('''
