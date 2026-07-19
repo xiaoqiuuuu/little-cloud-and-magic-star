@@ -1,5 +1,9 @@
 import axios from 'axios';
 import { showError, showLoading } from './utils/message';
+import {
+  createLatestRequestCoordinator,
+  createRequestDeduper,
+} from './utils/requestControl';
 
 
 const api = axios.create({
@@ -14,6 +18,42 @@ let requestCount = 0;
 let loadingInstance = null;
 let refreshPromise = null;
 let sessionExpirationHandled = false;
+const deduplicateRequest = createRequestDeduper();
+const coordinateLatestRequest = createLatestRequestCoordinator();
+
+
+const getSessionRequestScope = () => (
+  localStorage.getItem('token')
+  || localStorage.getItem('refreshToken')
+  || 'anonymous'
+);
+
+
+const getRequestKey = (url, config) => api.getUri({
+  ...config,
+  method: 'get',
+  url,
+});
+
+
+export const getDeduplicated = (url, config = {}) => {
+  const requestKey = `${getSessionRequestScope()}:${getRequestKey(url, config)}`;
+  return deduplicateRequest(requestKey, () => api.get(url, config));
+};
+
+
+export const getLatest = (scope, url, config = {}, requestVariant = '') => {
+  const sessionScope = getSessionRequestScope();
+  const requestKey = `${sessionScope}:${getRequestKey(url, config)}:${requestVariant}`;
+  return coordinateLatestRequest(
+    scope,
+    requestKey,
+    (signal) => api.get(url, { ...config, signal }),
+  );
+};
+
+
+export const isRequestCanceled = (error) => axios.isCancel(error);
 
 
 export const saveTokenPair = (tokenData) => {
@@ -119,6 +159,10 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     finishLoading(originalRequest);
+
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
 
     if (
       error.response?.status === 401
