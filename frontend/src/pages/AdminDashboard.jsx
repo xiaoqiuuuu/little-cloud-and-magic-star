@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Alert, App } from 'antd';
-import api from '../api';
+import api, {
+  getDeduplicated,
+  getLatest,
+  isRequestCanceled,
+} from '../api';
+import { hasContentAdminAccess } from '../utils/adminAccess';
 
 // Components
 import StatsOverview from '../components/admin/StatsOverview';
@@ -13,10 +18,7 @@ import ExcelImportExport from '../components/admin/ExcelImportExport';
 
 function AdminDashboard() {
   const { message, modal } = App.useApp();
-
-  // 用户角色信息
-  const [userRole, setUserRole] = useState(() => localStorage.getItem('userRole') || 'question_admin');
-  const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
+  const { currentUser } = useOutletContext();
 
   // 答题/调试模式
   const [debugMode, setDebugMode] = useState(() => localStorage.getItem('debugMode') === 'true');
@@ -46,9 +48,12 @@ function AdminDashboard() {
   const [editingQuestion, setEditingQuestion] = useState(null);
 
   const navigate = useNavigate();
+  const latestQuestionsRequest = useRef(0);
+  const questionsRefreshVersion = useRef(0);
 
   // 判断是否是超级管理员
-  const isSuperAdmin = userRole === 'super_admin';
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+  const canManageQuestions = hasContentAdminAccess(currentUser);
 
   // Debug Mode Sync
   useEffect(() => {
@@ -89,57 +94,29 @@ function AdminDashboard() {
     }
   };
 
-  // Initial Data Fetch
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/admin/login');
-      return;
-    }
-    fetchQuestions();
-    fetchStats();
-    fetchConfig();
-  }, [navigate, currentPage, pageSize, searchKeyword, filterTag, filterAuthor, sortDesc]);
+  const fetchStats = useCallback(async () => {
+    if (!canManageQuestions) return;
 
-  const fetchConfig = async () => {
-    try {
-      const res = await api.get('/configs/COUNTDOWN_SECONDS');
-      const seconds = parseInt(res.data.value, 10);
-      setCountdownSeconds(seconds);
-      setTempCountdown(seconds);
-    } catch (error) {
-      console.error('获取配置失败:', error);
-    }
-  };
-
-  // Fetch Producers
-  useEffect(() => {
-    const fetchProducers = async () => {
-      try {
-        const res = await api.get('/admin/producers', { params: { page_size: 1000 } });
-        setProducers(res.data.items);
-      } catch (error) {
-        console.error('获取制作人失败:', error);
-      }
-    };
-    fetchProducers();
-  }, []);
-
-  // Reset page when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchKeyword, filterTag, filterAuthor]);
-
-  const fetchStats = async () => {
     try {
       const response = await api.get('/admin/stats');
       setStats(response.data);
     } catch (error) {
       console.error('获取统计失败:', error);
     }
-  };
+  }, [canManageQuestions]);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async ({ force = true } = {}) => {
+    if (!canManageQuestions) return;
+
+    const requestId = latestQuestionsRequest.current + 1;
+    latestQuestionsRequest.current = requestId;
+    const requestVariant = force
+      ? `refresh-${questionsRefreshVersion.current + 1}`
+      : 'query';
+    if (force) {
+      questionsRefreshVersion.current += 1;
+    }
+
     try {
       setLoading(true);
       const params = {
@@ -151,18 +128,95 @@ function AdminDashboard() {
       if (filterTag !== 'all') params.tag = filterTag;
       if (filterAuthor) params.author = filterAuthor;
 
-      const response = await api.get('/admin/questions', { params });
+      const response = await getLatest(
+        'admin-questions-list',
+        '/admin/questions',
+        { params },
+        requestVariant,
+      );
+
+      if (latestQuestionsRequest.current !== requestId) return;
       setQuestions(response.data.items);
       setTotal(response.data.total);
     } catch (error) {
-      console.error('获取题目失败:', error);
-      if (error.response?.status === 401) {
-        navigate('/admin/login');
+      if (!isRequestCanceled(error)) {
+        console.error('获取题目失败:', error);
       }
     } finally {
-      setLoading(false);
+      if (latestQuestionsRequest.current === requestId) {
+        setLoading(false);
+      }
     }
-  };
+  }, [
+    canManageQuestions,
+    currentPage,
+    filterAuthor,
+    filterTag,
+    pageSize,
+    searchKeyword,
+    sortDesc,
+  ]);
+
+  useEffect(() => {
+    fetchQuestions({ force: false });
+  }, [fetchQuestions]);
+
+  useEffect(() => {
+    if (!canManageQuestions) return undefined;
+
+    let active = true;
+    const supportingRequests = [
+      getDeduplicated('/admin/stats'),
+      getDeduplicated('/admin/producers', { params: { page_size: 1000 } }),
+      isSuperAdmin
+        ? getDeduplicated('/configs/COUNTDOWN_SECONDS')
+        : Promise.resolve(null),
+    ];
+
+    Promise.allSettled(supportingRequests).then((results) => {
+      if (!active) return;
+
+      const [statsResult, producersResult, configResult] = results;
+      if (statsResult.status === 'fulfilled') {
+        setStats(statsResult.value.data);
+      } else {
+        console.error('获取统计失败:', statsResult.reason);
+      }
+
+      if (producersResult.status === 'fulfilled') {
+        setProducers(producersResult.value.data.items);
+      } else {
+        console.error('获取制作人失败:', producersResult.reason);
+      }
+
+      if (configResult.status === 'fulfilled' && configResult.value) {
+        const seconds = parseInt(configResult.value.data.value, 10);
+        setCountdownSeconds(seconds);
+        setTempCountdown(seconds);
+      } else if (configResult.status === 'rejected') {
+        console.error('获取配置失败:', configResult.reason);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [canManageQuestions, isSuperAdmin]);
+
+  const handleSearchKeywordChange = useCallback((keyword) => {
+    setSearchKeyword(keyword);
+    setCurrentPage(1);
+  }, []);
+
+  const handleFilterTagChange = useCallback((tag) => {
+    setFilterTag(tag);
+    setCurrentPage(1);
+  }, []);
+
+  const handleFilterAuthorChange = useCallback((author) => {
+    setFilterAuthor(author);
+    setCurrentPage(1);
+  }, []);
 
   const handleOpenModal = (question = null) => {
     setEditingQuestion(question);
@@ -366,11 +420,11 @@ function AdminDashboard() {
         {/* Filter */}
         <QuestionFilter
           searchKeyword={searchKeyword}
-          setSearchKeyword={setSearchKeyword}
+          setSearchKeyword={handleSearchKeywordChange}
           filterTag={filterTag}
-          setFilterTag={setFilterTag}
+          setFilterTag={handleFilterTagChange}
           filterAuthor={filterAuthor}
-          setFilterAuthor={setFilterAuthor}
+          setFilterAuthor={handleFilterAuthorChange}
           total={total}
           loading={loading}
           producers={producers}
