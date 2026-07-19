@@ -1,18 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
 import { Button } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
-import api from '../api';
 
 function HomePage() {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // 记录页面访问
-    api.post('/stats/visit', {
-      referrer: document.referrer
-    }, { hideErrorMessage: true }).catch(console.error);
-  }, []);
 
   const gameComponents = [
     {
