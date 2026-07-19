@@ -1,7 +1,10 @@
 """数据库初始化"""
 
+import json
+
 from .config import get_connection
 from .stats import backfill_page_visit_dimensions
+from .site_events import DEFAULT_SITE_EVENT
 from passwords import hash_password, is_password_hash
 
 
@@ -268,6 +271,42 @@ def init_db():
     # 初始化配置项（如果不存在）
     cursor.execute('INSERT OR IGNORE INTO configs (key, value) VALUES (?, ?)', 
                   ('COUNTDOWN_SECONDS', '60'))
+
+    # 官网活动：首页只指向一个当前活动，旧活动保留固定 URL。
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS site_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            date_label TEXT NOT NULL DEFAULT '',
+            location TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'draft'
+                CHECK(status IN ('draft', 'published', 'archived')),
+            is_current INTEGER NOT NULL DEFAULT 0 CHECK(is_current IN (0, 1)),
+            content TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            published_at TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_site_events_single_current
+        ON site_events(is_current)
+        WHERE is_current = 1
+    ''')
+    cursor.execute('''
+        INSERT OR IGNORE INTO site_events (
+            slug, name, date_label, location, status, is_current,
+            content, created_by, published_at
+        ) VALUES (?, ?, ?, ?, 'published', 1, ?, 'system', CURRENT_TIMESTAMP)
+    ''', (
+        DEFAULT_SITE_EVENT['slug'],
+        DEFAULT_SITE_EVENT['name'],
+        DEFAULT_SITE_EVENT['date_label'],
+        DEFAULT_SITE_EVENT['location'],
+        json.dumps(DEFAULT_SITE_EVENT['content'], ensure_ascii=False),
+    ))
 
     conn.commit()
     conn.close()

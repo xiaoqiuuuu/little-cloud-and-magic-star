@@ -62,6 +62,18 @@ from .producers import (
     delete_producer
 )
 from .init_db import init_db
+from .site_events import (
+    activate_site_event,
+    archive_site_event,
+    create_site_event,
+    delete_site_event,
+    duplicate_site_event,
+    get_current_site_event,
+    get_public_site_event,
+    get_site_event,
+    list_site_events,
+    update_site_event,
+)
 
 __all__ = [
     # 配置
@@ -123,5 +135,16 @@ __all__ = [
     'create_producer',
     'update_producer',
     'delete_producer',
+    # 官网活动相关
+    'list_site_events',
+    'get_site_event',
+    'get_public_site_event',
+    'get_current_site_event',
+    'create_site_event',
+    'update_site_event',
+    'duplicate_site_event',
+    'activate_site_event',
+    'archive_site_event',
+    'delete_site_event',
 ]
 from .configs import get_config, set_config

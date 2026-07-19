@@ -12,6 +12,7 @@ import {
   UsergroupAddOutlined,
   CalendarOutlined,
   PlayCircleOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession, getDeduplicated } from '../api';
@@ -120,6 +121,10 @@ function AdminLayout() {
       key: '/quiz',
       icon: <PlayCircleOutlined />,
       label: <Link to="/quiz">现场答题</Link>,
+    }, {
+      key: '/admin/site-events',
+      icon: <GlobalOutlined />,
+      label: <Link to="/admin/site-events">官网活动</Link>,
     }, {
       key: '/admin/activities',
       icon: <CalendarOutlined />,
