@@ -9,15 +9,18 @@ import AdminDashboard from './pages/AdminDashboard';
 import MaterialManager from './pages/MaterialManager';
 import ProducerManager from './pages/ProducerManager';
 import RoleManager from './pages/RoleManager';
-import VisitStatsPage from './pages/VisitStatsPage';
 import AdminUserManager from './pages/AdminUserManager';
 import QuizActivityManager from './pages/QuizActivityManager';
 import AdminLayout from './components/AdminLayout';
 import RequireSuperAdmin from './components/RequireSuperAdmin';
 import Navbar from './components/Navbar';
 import RouterProgressBar from './components/RouterProgressBar';
-import { useEffect, useState } from 'react';
+import AnalyticsTracker from './components/AnalyticsTracker';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import 'antd/dist/reset.css'; // Ant Design 样式
+
+
+const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
 
 function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -59,6 +62,7 @@ function App() {
       <AntApp>
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <RouterProgressBar />
+          <AnalyticsTracker />
           <div className="min-h-screen bg-gray-50">
             <Routes>
               {/* 首页 - 产品介绍 */}
@@ -93,7 +97,11 @@ function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="questions" replace />} />
                 <Route path="questions" element={<AdminDashboard />} />
-                <Route path="stats" element={<VisitStatsPage />} />
+                <Route path="stats" element={
+                  <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载统计图表...</div>}>
+                    <VisitStatsPage />
+                  </Suspense>
+                } />
                 <Route path="materials" element={<MaterialManager />} />
                 <Route path="producers" element={<ProducerManager />} />
                 <Route path="roles" element={<RoleManager />} />
