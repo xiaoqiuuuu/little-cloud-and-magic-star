@@ -11,6 +11,7 @@ import {
   BarChartOutlined,
   UsergroupAddOutlined,
   CalendarOutlined,
+  BugOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession, getDeduplicated } from '../api';
@@ -86,7 +87,7 @@ function AdminLayout() {
   }
 
   if (!authLoading && !hasContentAdminAccess(currentUser)) {
-    return <Navigate to="/quiz/live" replace />;
+    return <Navigate to="/quiz" replace />;
   }
 
   const menuItems = [
@@ -94,6 +95,11 @@ function AdminLayout() {
       key: '/admin/questions',
       icon: <QuestionCircleOutlined />,
       label: <Link to="/admin/questions">题目管理</Link>,
+    },
+    {
+      key: '/admin/quiz',
+      icon: <BugOutlined />,
+      label: <Link to="/admin/quiz">题目调试</Link>,
     },
     {
       key: '/admin/stats',
@@ -127,6 +133,9 @@ function AdminLayout() {
   ];
 
   const currentPath = location.pathname;
+  const selectedMenuKey = currentPath.startsWith('/admin/quiz')
+    ? '/admin/quiz'
+    : currentPath;
 
   return (
     <Layout className="min-h-screen">
@@ -139,7 +148,7 @@ function AdminLayout() {
           {/* 桌面端菜单 */}
           <Menu
             mode="horizontal"
-            selectedKeys={[currentPath]}
+            selectedKeys={[selectedMenuKey]}
             items={menuItems}
             className="flex-1 border-0 hidden md:flex"
             style={{ minWidth: 0 }}
@@ -209,7 +218,7 @@ function AdminLayout() {
         </div>
         <Menu
           mode="vertical"
-          selectedKeys={[currentPath]}
+          selectedKeys={[selectedMenuKey]}
           items={menuItems}
           className="border-0"
           onClick={() => setDrawerVisible(false)}

@@ -40,7 +40,7 @@ function AdminLogin() {
 
       showSuccess('登录成功！');
       navigate(
-        userRes.data.role === 'quiz_operator' ? '/quiz/live' : '/admin/questions',
+        userRes.data.role === 'quiz_operator' ? '/quiz' : '/admin/questions',
         { replace: true },
       );
     } catch (error) {

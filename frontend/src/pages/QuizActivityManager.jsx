@@ -477,7 +477,7 @@ function QuizActivityManager() {
           </Text>
         </div>
         <Space wrap>
-          <Link to="/quiz/live">
+          <Link to="/quiz">
             <Button icon={<PlayCircleOutlined />}>进入现场答题</Button>
           </Link>
           <Button

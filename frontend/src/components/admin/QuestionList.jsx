@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Tag, Button, Space, App } from 'antd';
-import { EditOutlined, DeleteOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined, DownloadOutlined } from '@ant-design/icons';
+import { BugOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { getQuestionTagMeta } from '../../constants/questionTags';
 
@@ -18,6 +18,7 @@ const QuestionList = ({
   filterTag, 
   sortDesc, 
   setSortDesc, 
+  onDebug,
   onEdit, 
   onDelete,
   onResetStats,
@@ -238,10 +239,18 @@ const QuestionList = ({
     {
       title: '操作',
       key: 'actions',
-      width: 180,
+      width: 240,
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<BugOutlined />}
+            onClick={() => onDebug(record.id)}
+          >
+            调试
+          </Button>
           <Button
             type="link"
             size="small"

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { App } from 'antd';
+import { Link } from 'react-router-dom';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
@@ -7,7 +8,7 @@ import Countdown from '../components/Countdown';
 import api from '../api';
 import { getQuestionTagMeta, mergeQuestionTagOptions } from '../constants/questionTags';
 
-function QuizPage({ activityMode = false }) {
+function QuizPage({ activityMode = false, initialQuestionId = null }) {
   const { message, modal } = App.useApp();
   const userRole = localStorage.getItem('userRole') || '';
   const usesActiveActivity = activityMode || userRole === 'quiz_operator';
@@ -19,6 +20,7 @@ function QuizPage({ activityMode = false }) {
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState('all');
   const [activeActivity, setActiveActivity] = useState(null);
+  const [requestedQuestionMissing, setRequestedQuestionMissing] = useState(false);
   const [hiddenQuestions, setHiddenQuestions] = useState(() => {
     if (usesActiveActivity) return [];
     // 从 localStorage 读取隐藏的题目
@@ -26,7 +28,9 @@ function QuizPage({ activityMode = false }) {
     if (!saved) return [];
     try {
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((id) => String(id) !== String(initialQuestionId))
+        : [];
     } catch {
       localStorage.removeItem('hiddenQuestions');
       return [];
@@ -142,10 +146,25 @@ function QuizPage({ activityMode = false }) {
       );
       if (usesActiveActivity && generation !== activityGenerationRef.current) return;
       setQuestionIds(response.data);
-      // 加载第一题
       const filtered = response.data.filter(q => !hiddenIds.includes(q.id));
+      const requestedIndex = initialQuestionId === null || initialQuestionId === undefined
+        ? -1
+        : filtered.findIndex((question) => String(question.id) === String(initialQuestionId));
+
+      if (initialQuestionId !== null && initialQuestionId !== undefined && requestedIndex === -1) {
+        setRequestedQuestionMissing(true);
+        setCurrentQuestion(null);
+        return;
+      }
+
+      setRequestedQuestionMissing(false);
       if (filtered.length > 0) {
-        fetchCurrentQuestion(filtered[0].id, generation, activityId);
+        const nextIndex = requestedIndex >= 0 ? requestedIndex : 0;
+        if (nextIndex !== currentIndex) {
+          setCurrentIndex(nextIndex);
+        } else {
+          fetchCurrentQuestion(filtered[nextIndex].id, generation, activityId);
+        }
       } else {
         setCurrentQuestion(null);
       }
@@ -407,7 +426,27 @@ function QuizPage({ activityMode = false }) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-xl text-gray-600">
-          {usesActiveActivity ? '当前活动暂无题目' : '暂无可预览题目'}
+          {usesActiveActivity ? '当前活动暂无题目' : '暂无可调试题目'}
+        </div>
+      </div>
+    );
+  }
+
+  if (requestedQuestionMissing) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="max-w-lg rounded-xl border border-amber-200 bg-white p-8 text-center shadow-lg">
+          <div className="mb-4 text-4xl">🔎</div>
+          <h1 className="mb-2 text-2xl font-bold text-gray-800">无法调试该题目</h1>
+          <p className="mb-6 text-gray-500">
+            题目 #{initialQuestionId} 不存在，或当前账号没有查看权限。
+          </p>
+          <Link
+            to="/admin/quiz"
+            className="inline-flex rounded-md bg-indigo-600 px-5 py-2 text-white hover:bg-indigo-700"
+          >
+            返回全部题目调试
+          </Link>
         </div>
       </div>
     );
@@ -469,10 +508,10 @@ function QuizPage({ activityMode = false }) {
     <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
       {!usesActiveActivity && (
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-800">
-          <span className="font-semibold">题目预览：</span>
+          <span className="font-semibold">题目调试：</span>
           {userRole === 'question_admin'
             ? '这里仅展示你创建的题目，可按标签筛选、随机查看或按题号跳转。'
-            : '这里保留原题库预览，可查看全部题目；现场答题请从“答题活动”进入。'}
+            : '这里可调试全部题目；现场答题请从“答题活动”进入。'}
         </div>
       )}
       {usesActiveActivity && activeActivity && (

@@ -9,7 +9,7 @@ const formatDateTime = (value) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN');
 };
 
-const SearchById = ({ onEdit, onDelete }) => {
+const SearchById = ({ onDebug, onEdit, onDelete }) => {
   const [searchId, setSearchId] = useState('');
   const [searchResult, setSearchResult] = useState(null);
 
@@ -93,7 +93,13 @@ const SearchById = ({ onEdit, onDelete }) => {
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => onDebug(searchResult.id)}
+                  className="flex-1 px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
+                >
+                  调试
+                </button>
                 <button
                   onClick={() => onEdit(searchResult)}
                   className="flex-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"

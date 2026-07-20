@@ -328,10 +328,10 @@ function AdminDashboard() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => navigate('/quiz')}
+              onClick={() => navigate('/admin/quiz')}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
             >
-              {isSuperAdmin ? '预览全部题目' : '预览我的题目'}
+              {isSuperAdmin ? '调试全部题目' : '调试我的题目'}
             </button>
             {/* 全部归零仅超级管理员可用 */}
             {isSuperAdmin && (
@@ -368,7 +368,11 @@ function AdminDashboard() {
         <StatsOverview stats={stats} />
 
         {/* Search By ID */}
-        <SearchById onEdit={handleOpenModal} onDelete={handleDelete} />
+        <SearchById
+          onDebug={(questionId) => navigate(`/admin/quiz/${questionId}`)}
+          onEdit={handleOpenModal}
+          onDelete={handleDelete}
+        />
 
         {/* Filter */}
         <QuestionFilter
@@ -393,6 +397,7 @@ function AdminDashboard() {
           filterTag={filterTag}
           sortDesc={sortDesc}
           setSortDesc={setSortDesc}
+          onDebug={(questionId) => navigate(`/admin/quiz/${questionId}`)}
           onEdit={handleOpenModal}
           onDelete={handleDelete}
           onResetStats={handleResetStats}
