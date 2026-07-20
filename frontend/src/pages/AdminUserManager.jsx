@@ -45,7 +45,6 @@ function AdminUserManager() {
   const { currentUser } = useOutletContext();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
-  const [legacyProducers, setLegacyProducers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -59,12 +58,8 @@ function AdminUserManager() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const [usersResponse, producersResponse] = await Promise.all([
-        api.get('/admin/users'),
-        api.get('/admin/producers', { params: { page_size: 1000 } }),
-      ]);
+      const usersResponse = await api.get('/admin/users');
       setUsers(usersResponse.data);
-      setLegacyProducers(producersResponse.data.items);
     } catch (error) {
       console.error('获取人员列表失败:', error);
     } finally {
@@ -84,7 +79,6 @@ function AdminUserManager() {
       is_active: true,
       display_name: '',
       profile_url: '',
-      legacy_producer_id: null,
     });
     setAccountModalOpen(true);
   };
@@ -97,7 +91,6 @@ function AdminUserManager() {
       is_active: user.is_active,
       display_name: user.display_name,
       profile_url: user.profile_url || '',
-      legacy_producer_id: user.legacy_producer_id || null,
     });
     setAccountModalOpen(true);
   };
@@ -113,9 +106,6 @@ function AdminUserManager() {
           is_active: values.is_active,
           display_name: values.display_name,
           profile_url: values.profile_url || null,
-          ...(!editingUser.legacy_producer_id && values.legacy_producer_id
-            ? { legacy_producer_id: values.legacy_producer_id }
-            : {}),
         });
         message.success('账号信息已更新');
       } else {
@@ -125,7 +115,6 @@ function AdminUserManager() {
           role: values.role,
           display_name: values.display_name,
           profile_url: values.profile_url || null,
-          legacy_producer_id: values.legacy_producer_id || null,
         });
         message.success('账号创建成功');
       }
@@ -224,7 +213,6 @@ function AdminUserManager() {
               查看主页
             </a>
           )}
-          {record.legacy_producer_id && <Tag className="ml-1">历史制作人已认领</Tag>}
         </div>
       ),
     },
@@ -287,7 +275,7 @@ function AdminUserManager() {
         <div>
           <Title level={2} className="!mb-1">账号与权限</Title>
           <Text type="secondary">
-            管理登录账号及其署名名片。题目和物料直接绑定账号，制作人只用于历史认领。
+            管理登录账号及其署名资料。题目和物料直接绑定账号。
           </Text>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
@@ -345,38 +333,6 @@ function AdminUserManager() {
 
           {selectedRole !== 'quiz_operator' && (
             <>
-              <Form.Item
-                name="legacy_producer_id"
-                label="认领历史制作人"
-                extra={editingUser?.legacy_producer_id
-                  ? '历史制作人已认领；为保护现有题目和物料归属，不能在此直接更换。'
-                  : '认领后，该制作人名下的历史题目和物料会新增账号关系，原署名不会被改写。'}
-              >
-                <Select
-                  allowClear
-                  placeholder="可选：从现有制作人创建账号名片"
-                  disabled={Boolean(editingUser?.legacy_producer_id)}
-                  onChange={(producerId) => {
-                    const producer = legacyProducers.find((item) => item.id === producerId);
-                    if (!producer) return;
-                    accountForm.setFieldsValue({
-                      display_name: producer.name,
-                      profile_url: producer.profile_url || '',
-                    });
-                  }}
-                  options={legacyProducers.map((producer) => ({
-                    value: producer.id,
-                    label: producer.bound_admin_id
-                      ? `${producer.name}（已绑定 ${producer.bound_username}）`
-                      : producer.name,
-                    disabled: Boolean(
-                      producer.bound_admin_id
-                      && producer.bound_admin_id !== editingUser?.id
-                    ),
-                  }))}
-                />
-              </Form.Item>
-
               <Form.Item
                 name="display_name"
                 label="署名名称"

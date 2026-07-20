@@ -31,7 +31,6 @@ from .admins import (
 )
 from .contributors import (
     add_question_contributor,
-    claim_legacy_producer_content,
     count_content_for_admin,
     delete_material_contributors,
     delete_question_contributors,
@@ -142,7 +141,6 @@ __all__ = [
     'question_has_contributor',
     'delete_question_contributors',
     'delete_material_contributors',
-    'claim_legacy_producer_content',
     'count_content_for_admin',
     # 答题活动相关
     'list_activities',

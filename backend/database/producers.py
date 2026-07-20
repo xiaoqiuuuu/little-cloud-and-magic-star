@@ -23,34 +23,15 @@ def get_all_producers(page: int = 1, page_size: int = 20) -> List[Producer]:
     if page_size > 0:
         offset = (page - 1) * page_size
         cursor.execute(
-            '''
-            SELECT p.id, p.name, p.profile_url, a.id, a.username
-            FROM producers p
-            LEFT JOIN admins a ON a.legacy_producer_id = p.id
-            ORDER BY p.id DESC LIMIT ? OFFSET ?
-            ''',
+            'SELECT id, name, profile_url FROM producers ORDER BY id DESC LIMIT ? OFFSET ?',
             (page_size, offset))
     else:
         cursor.execute(
-            '''
-            SELECT p.id, p.name, p.profile_url, a.id, a.username
-            FROM producers p
-            LEFT JOIN admins a ON a.legacy_producer_id = p.id
-            ORDER BY p.id DESC
-            ''')
+            'SELECT id, name, profile_url FROM producers ORDER BY id DESC')
 
     rows = cursor.fetchall()
     conn.close()
-    return [
-        Producer(
-            id=row[0],
-            name=row[1],
-            profile_url=row[2],
-            bound_admin_id=row[3],
-            bound_username=row[4],
-        )
-        for row in rows
-    ]
+    return [Producer(id=row[0], name=row[1], profile_url=row[2]) for row in rows]
 
 
 def get_producer_by_id(producer_id: int) -> Optional[Producer]:
@@ -58,22 +39,11 @@ def get_producer_by_id(producer_id: int) -> Optional[Producer]:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        '''
-        SELECT p.id, p.name, p.profile_url, a.id, a.username
-        FROM producers p
-        LEFT JOIN admins a ON a.legacy_producer_id = p.id
-        WHERE p.id = ?
-        ''', (producer_id,))
+        'SELECT id, name, profile_url FROM producers WHERE id = ?', (producer_id,))
     row = cursor.fetchone()
     conn.close()
     if row:
-        return Producer(
-            id=row[0],
-            name=row[1],
-            profile_url=row[2],
-            bound_admin_id=row[3],
-            bound_username=row[4],
-        )
+        return Producer(id=row[0], name=row[1], profile_url=row[2])
     return None
 
 
@@ -82,22 +52,11 @@ def get_producer_by_name(name: str) -> Optional[Producer]:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        '''
-        SELECT p.id, p.name, p.profile_url, a.id, a.username
-        FROM producers p
-        LEFT JOIN admins a ON a.legacy_producer_id = p.id
-        WHERE p.name = ?
-        ''', (name,))
+        'SELECT id, name, profile_url FROM producers WHERE name = ?', (name,))
     row = cursor.fetchone()
     conn.close()
     if row:
-        return Producer(
-            id=row[0],
-            name=row[1],
-            profile_url=row[2],
-            bound_admin_id=row[3],
-            bound_username=row[4],
-        )
+        return Producer(id=row[0], name=row[1], profile_url=row[2])
     return None
 
 

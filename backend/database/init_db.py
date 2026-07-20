@@ -182,7 +182,6 @@ def init_db():
             token_version INTEGER NOT NULL DEFAULT 0,
             display_name TEXT,
             profile_url TEXT,
-            legacy_producer_id INTEGER,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
@@ -273,9 +272,6 @@ def init_db():
     if 'profile_url' not in admin_columns:
         cursor.execute('ALTER TABLE admins ADD COLUMN profile_url TEXT')
 
-    if 'legacy_producer_id' not in admin_columns:
-        cursor.execute('ALTER TABLE admins ADD COLUMN legacy_producer_id INTEGER')
-
     if 'created_at' not in admin_columns:
         cursor.execute('ALTER TABLE admins ADD COLUMN created_at TEXT')
 
@@ -316,7 +312,6 @@ def init_db():
                 token_version INTEGER NOT NULL DEFAULT 0,
                 display_name TEXT,
                 profile_url TEXT,
-                legacy_producer_id INTEGER,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
@@ -324,22 +319,16 @@ def init_db():
         cursor.execute('''
             INSERT INTO admins (
                 id, username, password, role, is_active,
-                token_version, display_name, profile_url, legacy_producer_id,
+                token_version, display_name, profile_url,
                 created_at, updated_at
             )
             SELECT
                 id, username, password, role, is_active,
-                token_version, display_name, profile_url, legacy_producer_id,
+                token_version, display_name, profile_url,
                 created_at, updated_at
             FROM admins_legacy_roles
         ''')
         cursor.execute('DROP TABLE admins_legacy_roles')
-
-    cursor.execute('''
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_admins_legacy_producer
-        ON admins(legacy_producer_id)
-        WHERE legacy_producer_id IS NOT NULL
-    ''')
 
     # 题目和物料直接绑定账号。旧的 author/creator 字段保留作为回滚兼容数据。
     cursor.execute('''

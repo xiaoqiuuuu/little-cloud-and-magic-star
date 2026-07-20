@@ -10,7 +10,7 @@ from .config import get_connection
 
 ADMIN_COLUMNS = """
     id, username, password, role, is_active, token_version,
-    display_name, profile_url, legacy_producer_id, created_at, updated_at
+    display_name, profile_url, created_at, updated_at
 """
 
 _UNSET = object()
@@ -25,7 +25,6 @@ def _row_to_admin(row: sqlite3.Row) -> Dict[str, Any]:
         "token_version": int(row["token_version"]),
         "display_name": row["display_name"] or row["username"],
         "profile_url": row["profile_url"],
-        "legacy_producer_id": row["legacy_producer_id"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -116,17 +115,15 @@ def create_admin(
     *,
     display_name: Optional[str] = None,
     profile_url: Optional[str] = None,
-    legacy_producer_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     conn = get_connection()
     try:
         cursor = conn.execute(
             """
             INSERT INTO admins (
-                username, password, role, display_name, profile_url,
-                legacy_producer_id
+                username, password, role, display_name, profile_url
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
                 username,
@@ -134,7 +131,6 @@ def create_admin(
                 role,
                 display_name or username,
                 profile_url,
-                legacy_producer_id,
             ),
         )
         conn.commit()
@@ -155,7 +151,6 @@ def update_admin(
     is_active: Optional[bool] = None,
     display_name: Any = _UNSET,
     profile_url: Any = _UNSET,
-    legacy_producer_id: Any = _UNSET,
 ) -> Optional[Dict[str, Any]]:
     current = get_admin_by_id(admin_id)
     if not current:
@@ -172,11 +167,6 @@ def update_admin(
         updates["display_name"] = display_name
     if profile_url is not _UNSET and profile_url != current["profile_url"]:
         updates["profile_url"] = profile_url
-    if (
-        legacy_producer_id is not _UNSET
-        and legacy_producer_id != current["legacy_producer_id"]
-    ):
-        updates["legacy_producer_id"] = legacy_producer_id
     if not updates:
         return current
 

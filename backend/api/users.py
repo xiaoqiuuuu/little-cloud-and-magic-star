@@ -7,14 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from .dependencies import require_content_admin, require_super_admin
 from database import (
-    claim_legacy_producer_content,
     count_active_super_admins,
     count_content_for_admin,
     create_admin,
     delete_admin,
     get_admin_by_id,
     get_admin_by_username,
-    get_producer_by_id,
     list_content_contributors,
     list_admins,
     reset_admin_password,
@@ -54,24 +52,6 @@ def _normalize_optional_text(value: Optional[str]) -> Optional[str]:
     return normalized or None
 
 
-def _validate_legacy_producer(
-    producer_id: Optional[int],
-    *,
-    admin_id: Optional[int] = None,
-):
-    if producer_id is None:
-        return None
-    producer = get_producer_by_id(producer_id)
-    if not producer:
-        raise HTTPException(status_code=404, detail="历史制作人不存在")
-    if producer.bound_admin_id and producer.bound_admin_id != admin_id:
-        raise HTTPException(
-            status_code=409,
-            detail=f"历史制作人已绑定账号“{producer.bound_username}”",
-        )
-    return producer
-
-
 def _ensure_not_last_active_super_admin(target: dict) -> None:
     if (
         target["role"] == "super_admin"
@@ -103,14 +83,8 @@ def create_admin_user(
     username = _validate_username(request.username)
     if get_admin_by_username(username):
         raise HTTPException(status_code=409, detail="用户名已存在")
-    if request.role == "quiz_operator" and request.legacy_producer_id is not None:
-        raise HTTPException(status_code=422, detail="答题人员不能认领历史制作人")
-    producer = _validate_legacy_producer(request.legacy_producer_id)
     display_name = _normalize_optional_text(request.display_name)
     profile_url = _normalize_optional_text(request.profile_url)
-    if producer:
-        display_name = display_name or producer.name
-        profile_url = profile_url or producer.profile_url
     try:
         created = create_admin(
             username,
@@ -118,12 +92,9 @@ def create_admin_user(
             request.role,
             display_name=display_name,
             profile_url=profile_url,
-            legacy_producer_id=request.legacy_producer_id,
         )
     except sqlite3.IntegrityError as exc:
-        raise HTTPException(status_code=409, detail="用户名或历史制作人已被占用") from exc
-    if producer:
-        claim_legacy_producer_content(created["id"], producer.id)
+        raise HTTPException(status_code=409, detail="用户名已存在") from exc
     return created
 
 
@@ -147,24 +118,6 @@ def update_admin_user(
         )
     if "profile_url" in updates:
         updates["profile_url"] = _normalize_optional_text(updates["profile_url"])
-
-    claimed_producer = None
-    if "legacy_producer_id" in updates:
-        requested_producer_id = updates["legacy_producer_id"]
-        if target["legacy_producer_id"] is not None and (
-            requested_producer_id != target["legacy_producer_id"]
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail="历史制作人已认领，为避免改写归属不允许直接更换",
-            )
-        claimed_producer = _validate_legacy_producer(
-            requested_producer_id,
-            admin_id=admin_id,
-        )
-        if claimed_producer:
-            updates.setdefault("display_name", claimed_producer.name)
-            updates.setdefault("profile_url", claimed_producer.profile_url)
 
     changed = {
         key: value
@@ -210,9 +163,6 @@ def update_admin_user(
         raise HTTPException(status_code=409, detail="用户名已存在") from exc
     if not updated:
         raise HTTPException(status_code=404, detail="管理员账号不存在")
-
-    if claimed_producer and target["legacy_producer_id"] is None:
-        claim_legacy_producer_content(admin_id, claimed_producer.id)
 
     revoke_all_refresh_tokens(admin_id)
     return updated
