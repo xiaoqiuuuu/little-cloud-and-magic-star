@@ -1,0 +1,258 @@
+.cl-catalog-status {
+  display: inline-flex;
+  padding: 3px 5px;
+  border-radius: 5px;
+  color: #949eae;
+  background: #f0f2f5;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cl-catalog-status.is-ready {
+  color: #318165;
+  background: #e9f8f2;
+}
+
+.cl-catalog-arrow {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  color: #9aa6b6;
+}
+
+.cl-step-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.cl-step-card {
+  min-height: 145px;
+  padding: 21px;
+  border: 1px solid var(--cl-line);
+  border-radius: 15px;
+  background: white;
+}
+
+.cl-step-card > span {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 9px;
+  color: #3f7c9f;
+  background: #eaf5fa;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.cl-step-card strong {
+  display: block;
+  margin-top: 13px;
+  font-size: 12px;
+}
+
+.cl-step-card p {
+  margin: 7px 0 0;
+  color: #8390a3;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.cl-not-found {
+  display: flex;
+  min-height: 65vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.cl-not-found > span {
+  color: #9cbfd3;
+  font-size: 55px;
+}
+
+.cl-not-found h1 {
+  margin: 12px 0 0;
+  font-size: 26px;
+}
+
+.cl-not-found p {
+  color: #8591a3;
+  font-size: 12px;
+}
+
+.cl-not-found a {
+  margin-top: 10px;
+  color: #337a9f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cl-navigation-overlay {
+  display: none;
+}
+
+@media (max-width: 1050px) {
+  .cl-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .cl-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    border-top: 1px solid var(--cl-line);
+    border-left: 0;
+  }
+
+  .cl-control-group + .cl-control-group,
+  .cl-control-group + .cl-toggle-row,
+  .cl-toggle-row + .cl-toggle-row {
+    margin-top: 0;
+  }
+
+  .cl-overview-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .cl-overview-orbit {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .cl-sidebar {
+    width: min(86vw, 300px);
+    transform: translateX(-105%);
+    transition: transform 190ms ease;
+  }
+
+  .cl-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .cl-sidebar-close,
+  .cl-menu-button {
+    display: block;
+  }
+
+  .cl-navigation-overlay {
+    position: fixed;
+    z-index: 45;
+    inset: 0;
+    display: block;
+    visibility: hidden;
+    border: 0;
+    background: rgba(25, 34, 49, 0.35);
+    opacity: 0;
+    transition: opacity 190ms ease, visibility 190ms ease;
+  }
+
+  .cl-navigation-overlay.is-visible {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .cl-main {
+    margin-left: 0;
+  }
+
+  .cl-topbar {
+    padding: 0 18px;
+  }
+
+  .cl-content {
+    padding: 30px 22px 60px;
+  }
+
+  .cl-docs-header {
+    flex-direction: column;
+  }
+
+  .cl-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .cl-stat-grid,
+  .cl-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cl-step-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .cl-site-link {
+    font-size: 0;
+  }
+
+  .cl-site-link span {
+    font-size: 14px;
+  }
+
+  .cl-content {
+    padding-inline: 15px;
+  }
+
+  .cl-docs-header h1 {
+    font-size: 34px;
+  }
+
+  .cl-docs-meta {
+    flex-wrap: wrap;
+  }
+
+  .cl-preview-canvas {
+    min-height: 260px;
+  }
+
+  .cl-preview-result {
+    width: 86%;
+  }
+
+  .cl-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cl-example-grid,
+  .cl-stat-grid,
+  .cl-catalog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cl-overview-hero {
+    min-height: 0;
+    padding: 31px 24px;
+  }
+
+  .cl-overview-copy h1 {
+    font-size: 35px;
+  }
+
+  .cl-overview-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cl-primary-link,
+  .cl-secondary-link {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-sidebar,
+  .cl-navigation-overlay,
+  .cl-catalog-card,
+  .cl-toggle,
+  .cl-toggle::after {
+    transition: none;
+  }
+}
