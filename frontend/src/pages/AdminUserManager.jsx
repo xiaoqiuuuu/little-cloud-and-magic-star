@@ -45,6 +45,7 @@ function AdminUserManager() {
   const { currentUser } = useOutletContext();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
+  const [legacyProducers, setLegacyProducers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -53,12 +54,17 @@ function AdminUserManager() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [accountForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
+  const selectedRole = Form.useWatch('role', accountForm);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/users');
-      setUsers(response.data);
+      const [usersResponse, producersResponse] = await Promise.all([
+        api.get('/admin/users'),
+        api.get('/admin/producers', { params: { page_size: 1000 } }),
+      ]);
+      setUsers(usersResponse.data);
+      setLegacyProducers(producersResponse.data.items);
     } catch (error) {
       console.error('获取人员列表失败:', error);
     } finally {
@@ -73,7 +79,13 @@ function AdminUserManager() {
   const openCreateModal = () => {
     setEditingUser(null);
     accountForm.resetFields();
-    accountForm.setFieldsValue({ role: 'question_admin', is_active: true });
+    accountForm.setFieldsValue({
+      role: 'question_admin',
+      is_active: true,
+      display_name: '',
+      profile_url: '',
+      legacy_producer_id: null,
+    });
     setAccountModalOpen(true);
   };
 
@@ -83,6 +95,9 @@ function AdminUserManager() {
       username: user.username,
       role: user.role,
       is_active: user.is_active,
+      display_name: user.display_name,
+      profile_url: user.profile_url || '',
+      legacy_producer_id: user.legacy_producer_id || null,
     });
     setAccountModalOpen(true);
   };
@@ -96,6 +111,11 @@ function AdminUserManager() {
           username: values.username,
           role: values.role,
           is_active: values.is_active,
+          display_name: values.display_name,
+          profile_url: values.profile_url || null,
+          ...(!editingUser.legacy_producer_id && values.legacy_producer_id
+            ? { legacy_producer_id: values.legacy_producer_id }
+            : {}),
         });
         message.success('账号信息已更新');
       } else {
@@ -103,6 +123,9 @@ function AdminUserManager() {
           username: values.username,
           password: values.password,
           role: values.role,
+          display_name: values.display_name,
+          profile_url: values.profile_url || null,
+          legacy_producer_id: values.legacy_producer_id || null,
         });
         message.success('账号创建成功');
       }
@@ -147,7 +170,7 @@ function AdminUserManager() {
   const deleteUser = (user) => {
     modal.confirm({
       title: `确定删除账号“${user.username}”吗？`,
-      content: '删除后，该账号将无法登录，已有 Token 也会失效。',
+      content: '如果账号已绑定题目或物料，系统会阻止删除并提示改为停用。',
       okText: '删除',
       okButtonProps: { danger: true },
       cancelText: '取消',
@@ -184,6 +207,26 @@ function AdminUserManager() {
         if (role === 'quiz_operator') return <Tag color="green">答题人员</Tag>;
         return <Tag color="cyan">题目管理员</Tag>;
       },
+    },
+    {
+      title: '账号名片',
+      key: 'profile',
+      render: (_, record) => record.role === 'quiz_operator' ? '-' : (
+        <div>
+          <div className="font-medium text-gray-800">{record.display_name}</div>
+          {record.profile_url && (
+            <a
+              href={record.profile_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-blue-600"
+            >
+              查看主页
+            </a>
+          )}
+          {record.legacy_producer_id && <Tag className="ml-1">历史制作人已认领</Tag>}
+        </div>
+      ),
     },
     {
       title: '状态',
@@ -242,9 +285,9 @@ function AdminUserManager() {
     <Card bordered={false}>
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <Title level={2} className="!mb-1">人员管理</Title>
+          <Title level={2} className="!mb-1">账号与权限</Title>
           <Text type="secondary">
-            创建和管理登录账号。答题人员只能进入现场答题页，不能访问后台管理。
+            管理登录账号及其署名名片。题目和物料直接绑定账号，制作人只用于历史认领。
           </Text>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
@@ -258,7 +301,7 @@ function AdminUserManager() {
         dataSource={users}
         loading={loading}
         pagination={{ pageSize: 10, showSizeChanger: false }}
-        scroll={{ x: 760 }}
+        scroll={{ x: 980 }}
       />
 
       <Modal
@@ -299,6 +342,54 @@ function AdminUserManager() {
           <Form.Item name="role" label="角色" rules={[{ required: true }]}>
             <Select options={roleOptions} />
           </Form.Item>
+
+          {selectedRole !== 'quiz_operator' && (
+            <>
+              <Form.Item
+                name="legacy_producer_id"
+                label="认领历史制作人"
+                extra={editingUser?.legacy_producer_id
+                  ? '历史制作人已认领；为保护现有题目和物料归属，不能在此直接更换。'
+                  : '认领后，该制作人名下的历史题目和物料会新增账号关系，原署名不会被改写。'}
+              >
+                <Select
+                  allowClear
+                  placeholder="可选：从现有制作人创建账号名片"
+                  disabled={Boolean(editingUser?.legacy_producer_id)}
+                  onChange={(producerId) => {
+                    const producer = legacyProducers.find((item) => item.id === producerId);
+                    if (!producer) return;
+                    accountForm.setFieldsValue({
+                      display_name: producer.name,
+                      profile_url: producer.profile_url || '',
+                    });
+                  }}
+                  options={legacyProducers.map((producer) => ({
+                    value: producer.id,
+                    label: producer.bound_admin_id
+                      ? `${producer.name}（已绑定 ${producer.bound_username}）`
+                      : producer.name,
+                    disabled: Boolean(
+                      producer.bound_admin_id
+                      && producer.bound_admin_id !== editingUser?.id
+                    ),
+                  }))}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="display_name"
+                label="署名名称"
+                rules={[{ required: true, message: '请输入署名名称' }]}
+              >
+                <Input placeholder="题目和物料中对外显示的名称" />
+              </Form.Item>
+
+              <Form.Item name="profile_url" label="个人主页">
+                <Input placeholder="https://..." />
+              </Form.Item>
+            </>
+          )}
 
           {editingUser && (
             <Form.Item name="is_active" label="账号状态" valuePropName="checked">

@@ -1,4 +1,5 @@
 import os
+import json
 import sys
 import tempfile
 import unittest
@@ -35,9 +36,13 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             conn.execute("DELETE FROM site_events")
             conn.execute("DELETE FROM quiz_activity_questions")
             conn.execute("DELETE FROM quiz_activities")
+            conn.execute("DELETE FROM question_contributors")
+            conn.execute("DELETE FROM material_contributors")
             conn.execute("DELETE FROM questions")
+            conn.execute("DELETE FROM materials")
             conn.execute("DELETE FROM admin_refresh_tokens")
             conn.execute("DELETE FROM admins")
+            conn.execute("DELETE FROM producers")
             conn.commit()
         finally:
             conn.close()
@@ -631,6 +636,191 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(old_access.status_code, 401)
         self.assertEqual(old_refresh.status_code, 401)
+
+    async def test_questions_and_materials_bind_accounts_and_default_to_self(self):
+        editor_tokens = await self.login("editor", "EditorPass123")
+        editor_headers = self.auth_headers(editor_tokens["access_token"])
+
+        question = await self.client.post(
+            "/api/admin/questions",
+            headers=editor_headers,
+            json={
+                "question": "账号绑定题目",
+                "answer": "answer",
+                "tag": "common",
+                "contributor_ids": [self.super_admin["id"]],
+            },
+        )
+        self.assertEqual(question.status_code, 200, question.text)
+        self.assertEqual(
+            [item["id"] for item in question.json()["contributors"]],
+            [self.question_admin["id"]],
+        )
+        self.assertEqual(question.json()["author"], ["editor"])
+
+        material = await self.client.post(
+            "/api/admin/materials",
+            headers=editor_headers,
+            json={
+                "name": "账号绑定物料",
+                "description": "",
+                "resources": [],
+                "contributor_ids": [self.super_admin["id"]],
+            },
+        )
+        self.assertEqual(material.status_code, 200, material.text)
+        self.assertEqual(
+            [item["id"] for item in material.json()["contributors"]],
+            [self.question_admin["id"]],
+        )
+
+        super_tokens = await self.login("rootadmin", "StrongPass123")
+        super_headers = self.auth_headers(super_tokens["access_token"])
+        updated_card = await self.client.patch(
+            f"/api/admin/users/{self.question_admin['id']}",
+            headers=super_headers,
+            json={"display_name": "编辑名片"},
+        )
+        self.assertEqual(updated_card.status_code, 200, updated_card.text)
+        refreshed_question = await self.client.get(
+            f"/api/admin/questions/{question.json()['id']}",
+            headers=super_headers,
+        )
+        self.assertEqual(refreshed_question.json()["author"], ["编辑名片"])
+
+        editor_questions = await self.client.get(
+            "/api/admin/questions",
+            headers=super_headers,
+            params={"contributor_id": self.question_admin["id"]},
+        )
+        root_questions = await self.client.get(
+            "/api/admin/questions",
+            headers=super_headers,
+            params={"contributor_id": self.super_admin["id"]},
+        )
+        editor_materials = await self.client.get(
+            "/api/admin/materials",
+            headers=super_headers,
+            params={"contributor_id": self.question_admin["id"]},
+        )
+        self.assertEqual(editor_questions.json()["total"], 1)
+        self.assertEqual(root_questions.json()["total"], 0)
+        self.assertEqual(editor_materials.json()["total"], 1)
+
+        delete_bound_account = await self.client.delete(
+            f"/api/admin/users/{self.question_admin['id']}",
+            headers=super_headers,
+        )
+        self.assertEqual(delete_bound_account.status_code, 409)
+
+    async def test_legacy_producer_claim_creates_account_relations_without_rewriting_history(self):
+        conn = get_connection()
+        try:
+            producer_id = conn.execute(
+                "INSERT INTO producers (name, profile_url) VALUES (?, ?)",
+                ("历史小秋", "https://example.com/legacy"),
+            ).lastrowid
+            conn.execute(
+                """
+                INSERT INTO questions (id, question, answer, resources, tag, author)
+                VALUES ('80', '历史题目', 'a', '[]', 'common', ?)
+                """,
+                (json.dumps(["历史小秋"], ensure_ascii=False),),
+            )
+            conn.execute(
+                """
+                INSERT INTO materials (id, name, description, creator, resources)
+                VALUES ('80', '历史物料', '', ?, '[]')
+                """,
+                (json.dumps(["历史小秋"], ensure_ascii=False),),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        tokens = await self.login("rootadmin", "StrongPass123")
+        headers = self.auth_headers(tokens["access_token"])
+        created = await self.client.post(
+            "/api/admin/users",
+            headers=headers,
+            json={
+                "username": "legacyxiaoqiu",
+                "password": "LegacyPass123",
+                "role": "question_admin",
+                "legacy_producer_id": producer_id,
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        created_user = created.json()
+        self.assertEqual(created_user["display_name"], "历史小秋")
+        self.assertEqual(created_user["profile_url"], "https://example.com/legacy")
+
+        question = await self.client.get("/api/admin/questions/80", headers=headers)
+        material = await self.client.get("/api/admin/materials/80", headers=headers)
+        self.assertEqual(question.json()["contributors"][0]["id"], created_user["id"])
+        self.assertEqual(material.json()["contributors"][0]["id"], created_user["id"])
+
+        conn = get_connection()
+        try:
+            raw_author = conn.execute(
+                "SELECT author FROM questions WHERE id = '80'"
+            ).fetchone()[0]
+            raw_creator = conn.execute(
+                "SELECT creator FROM materials WHERE id = '80'"
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        self.assertEqual(json.loads(raw_author), ["历史小秋"])
+        self.assertEqual(json.loads(raw_creator), ["历史小秋"])
+
+    async def test_database_initialization_binds_username_authors_and_empty_questions(self):
+        fallback = create_admin(
+            "fylgcyzlm",
+            "FallbackPass123",
+            "question_admin",
+        )
+        conn = get_connection()
+        try:
+            conn.execute(
+                """
+                INSERT INTO questions (id, question, answer, resources, tag, author)
+                VALUES ('90', '用户名旧题', 'a', '[]', 'common', ?)
+                """,
+                (json.dumps(["editor"]),),
+            )
+            conn.execute(
+                """
+                INSERT INTO questions (id, question, answer, resources, tag, author)
+                VALUES ('91', '空出题人旧题', 'a', '[]', 'common', '')
+                """
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        init_db()
+        init_db()
+        conn = get_connection()
+        try:
+            bound_rows = conn.execute(
+                """
+                SELECT question_id, admin_id
+                FROM question_contributors
+                WHERE question_id IN ('90', '91')
+                ORDER BY question_id
+                """
+            ).fetchall()
+            empty_author = conn.execute(
+                "SELECT author FROM questions WHERE id = '91'"
+            ).fetchone()[0]
+        finally:
+            conn.close()
+
+        self.assertEqual(
+            bound_rows,
+            [("90", self.question_admin["id"]), ("91", fallback["id"])],
+        )
+        self.assertEqual(json.loads(empty_author), ["fylgcyzlm"])
 
     async def test_database_initialization_migrates_legacy_plaintext_passwords(self):
         conn = get_connection()

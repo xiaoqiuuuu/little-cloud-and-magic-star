@@ -1,0 +1,428 @@
+"""账号名片与题目/物料贡献者关系。
+
+新关系始终使用 admins.id。旧的 questions.author 和 materials.creator
+字符串数组仅用于兼容读取和历史制作人认领，不会在认领过程中被覆盖。
+"""
+
+import json
+from typing import Dict, Iterable, List, Optional, Sequence
+
+from models import ContentContributor
+
+from .config import get_connection
+
+
+CONTENT_ADMIN_ROLES = ("super_admin", "question_admin")
+CONTRIBUTOR_COLUMNS = """
+    a.id, a.username, COALESCE(NULLIF(a.display_name, ''), a.username),
+    a.profile_url, a.role, a.is_active
+"""
+
+
+def _row_to_contributor(row) -> ContentContributor:
+    return ContentContributor(
+        id=int(row[0]),
+        username=row[1],
+        display_name=row[2],
+        profile_url=row[3],
+        role=row[4],
+        is_active=bool(row[5]),
+    )
+
+
+def _parse_legacy_names(raw_value: Optional[str]) -> List[str]:
+    if not raw_value:
+        return []
+    try:
+        parsed = json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError):
+        parsed = raw_value
+    values = parsed if isinstance(parsed, list) else [parsed]
+    return [str(value).strip() for value in values if str(value).strip()]
+
+
+def list_content_contributors(include_inactive: bool = True) -> List[ContentContributor]:
+    conn = get_connection()
+    try:
+        query = f"""
+            SELECT {CONTRIBUTOR_COLUMNS}
+            FROM admins a
+            WHERE a.role IN (?, ?)
+        """
+        params: List[object] = list(CONTENT_ADMIN_ROLES)
+        if not include_inactive:
+            query += " AND a.is_active = 1"
+        query += " ORDER BY a.is_active DESC, a.username COLLATE NOCASE"
+        rows = conn.execute(query, params).fetchall()
+        return [_row_to_contributor(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def get_content_contributor(admin_id: int) -> Optional[ContentContributor]:
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            f"""
+            SELECT {CONTRIBUTOR_COLUMNS}
+            FROM admins a
+            WHERE a.id = ? AND a.role IN (?, ?)
+            """,
+            (admin_id, *CONTENT_ADMIN_ROLES),
+        ).fetchone()
+        return _row_to_contributor(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_content_contributors(admin_ids: Sequence[int]) -> List[ContentContributor]:
+    ordered_ids = list(dict.fromkeys(int(admin_id) for admin_id in admin_ids))
+    if not ordered_ids:
+        return []
+    placeholders = ",".join("?" for _ in ordered_ids)
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT {CONTRIBUTOR_COLUMNS}
+            FROM admins a
+            WHERE a.id IN ({placeholders}) AND a.role IN (?, ?)
+            """,
+            [*ordered_ids, *CONTENT_ADMIN_ROLES],
+        ).fetchall()
+    finally:
+        conn.close()
+    contributors = {}
+    for row in rows:
+        contributor = _row_to_contributor(row)
+        contributors[contributor.id] = contributor
+    return [contributors[admin_id] for admin_id in ordered_ids if admin_id in contributors]
+
+
+def get_admin_legacy_names(admin_id: int) -> List[str]:
+    """获取旧字符串字段中可能代表该账号的精确名称。"""
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            """
+            SELECT a.username, COALESCE(NULLIF(a.display_name, ''), a.username), p.name
+            FROM admins a
+            LEFT JOIN producers p ON p.id = a.legacy_producer_id
+            WHERE a.id = ?
+            """,
+            (admin_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return []
+    return list(dict.fromkeys(value.strip() for value in row if value and value.strip()))
+
+
+def resolve_contributors_by_names(names: Iterable[str]) -> List[ContentContributor]:
+    """仅对唯一精确匹配的历史署名返回账号，避免同名误绑。"""
+    normalized_names = [name.strip().casefold() for name in names if name and name.strip()]
+    if not normalized_names:
+        return []
+
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT {CONTRIBUTOR_COLUMNS}, p.name
+            FROM admins a
+            LEFT JOIN producers p ON p.id = a.legacy_producer_id
+            WHERE a.role IN (?, ?)
+            """,
+            CONTENT_ADMIN_ROLES,
+        ).fetchall()
+    finally:
+        conn.close()
+
+    matches: Dict[str, List[ContentContributor]] = {}
+    for row in rows:
+        contributor = _row_to_contributor(row)
+        aliases = {contributor.username, contributor.display_name, row[6]}
+        for alias in aliases:
+            if alias and alias.strip():
+                matches.setdefault(alias.strip().casefold(), []).append(contributor)
+
+    resolved: List[ContentContributor] = []
+    seen_ids = set()
+    for name in normalized_names:
+        candidates = {candidate.id: candidate for candidate in matches.get(name, [])}
+        if len(candidates) == 1:
+            contributor = next(iter(candidates.values()))
+            if contributor.id not in seen_ids:
+                resolved.append(contributor)
+                seen_ids.add(contributor.id)
+    return resolved
+
+
+def _get_relation_contributors(table: str, content_column: str, content_id: str) -> List[ContentContributor]:
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT {CONTRIBUTOR_COLUMNS}
+            FROM {table} c
+            JOIN admins a ON a.id = c.admin_id
+            WHERE c.{content_column} = ? AND a.role IN (?, ?)
+            ORDER BY c.position ASC, a.id ASC
+            """,
+            (content_id, *CONTENT_ADMIN_ROLES),
+        ).fetchall()
+        return [_row_to_contributor(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def get_question_contributors(question_id: str) -> List[ContentContributor]:
+    return _get_relation_contributors(
+        "question_contributors", "question_id", question_id
+    )
+
+
+def get_material_contributors(material_id: str) -> List[ContentContributor]:
+    return _get_relation_contributors(
+        "material_contributors", "material_id", material_id
+    )
+
+
+def _set_relations(
+    table: str,
+    content_column: str,
+    content_id: str,
+    admin_ids: Sequence[int],
+) -> List[ContentContributor]:
+    contributors = get_content_contributors(admin_ids)
+    requested_ids = list(dict.fromkeys(int(admin_id) for admin_id in admin_ids))
+    if len(contributors) != len(requested_ids):
+        raise ValueError("只能绑定超级管理员或题目管理员账号")
+
+    conn = get_connection()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute(
+            f"DELETE FROM {table} WHERE {content_column} = ?", (content_id,)
+        )
+        conn.executemany(
+            f"""
+            INSERT INTO {table} ({content_column}, admin_id, position)
+            VALUES (?, ?, ?)
+            """,
+            [
+                (content_id, contributor.id, position)
+                for position, contributor in enumerate(contributors)
+            ],
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    return contributors
+
+
+def set_question_contributors(
+    question_id: str, admin_ids: Sequence[int]
+) -> List[ContentContributor]:
+    return _set_relations(
+        "question_contributors", "question_id", question_id, admin_ids
+    )
+
+
+def set_material_contributors(
+    material_id: str, admin_ids: Sequence[int]
+) -> List[ContentContributor]:
+    return _set_relations(
+        "material_contributors", "material_id", material_id, admin_ids
+    )
+
+
+def add_question_contributor(question_id: str, admin_id: int) -> None:
+    if not get_content_contributor(admin_id):
+        raise ValueError("账号不能作为内容贡献者")
+    conn = get_connection()
+    try:
+        next_position = conn.execute(
+            """
+            SELECT COALESCE(MAX(position), -1) + 1
+            FROM question_contributors WHERE question_id = ?
+            """,
+            (question_id,),
+        ).fetchone()[0]
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO question_contributors (question_id, admin_id, position)
+            VALUES (?, ?, ?)
+            """,
+            (question_id, admin_id, next_position),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def question_has_contributors(question_id: str) -> bool:
+    return _relation_exists("question_contributors", "question_id", question_id)
+
+
+def material_has_contributors(material_id: str) -> bool:
+    return _relation_exists("material_contributors", "material_id", material_id)
+
+
+def _relation_exists(table: str, content_column: str, content_id: str) -> bool:
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            f"SELECT 1 FROM {table} WHERE {content_column} = ? LIMIT 1",
+            (content_id,),
+        ).fetchone()
+        return row is not None
+    finally:
+        conn.close()
+
+
+def question_has_contributor(question_id: str, admin_id: int) -> bool:
+    return _has_contributor(
+        "question_contributors", "question_id", question_id, admin_id
+    )
+
+
+def _has_contributor(
+    table: str, content_column: str, content_id: str, admin_id: int
+) -> bool:
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            f"""
+            SELECT 1 FROM {table}
+            WHERE {content_column} = ? AND admin_id = ? LIMIT 1
+            """,
+            (content_id, admin_id),
+        ).fetchone()
+        return row is not None
+    finally:
+        conn.close()
+
+
+def delete_question_contributors(question_id: str) -> None:
+    _delete_relations("question_contributors", "question_id", question_id)
+
+
+def delete_material_contributors(material_id: str) -> None:
+    _delete_relations("material_contributors", "material_id", material_id)
+
+
+def _delete_relations(table: str, content_column: str, content_id: str) -> None:
+    conn = get_connection()
+    try:
+        conn.execute(
+            f"DELETE FROM {table} WHERE {content_column} = ?", (content_id,)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def claim_legacy_producer_content(admin_id: int, producer_id: int) -> Dict[str, int]:
+    """认领历史制作人名下内容：只新增账号关系，不改写旧署名。"""
+    conn = get_connection()
+    try:
+        producer = conn.execute(
+            "SELECT name FROM producers WHERE id = ?", (producer_id,)
+        ).fetchone()
+        if not producer:
+            raise ValueError("历史制作人不存在")
+        target_name = producer[0].strip().casefold()
+        question_rows = conn.execute("SELECT id, author FROM questions").fetchall()
+        material_rows = conn.execute("SELECT id, creator FROM materials").fetchall()
+
+        question_ids = [
+            row[0]
+            for row in question_rows
+            if target_name in {name.casefold() for name in _parse_legacy_names(row[1])}
+        ]
+        material_ids = [
+            row[0]
+            for row in material_rows
+            if target_name in {name.casefold() for name in _parse_legacy_names(row[1])}
+        ]
+
+        conn.execute("BEGIN IMMEDIATE")
+        for question_id in question_ids:
+            position = conn.execute(
+                """
+                SELECT COALESCE(MAX(position), -1) + 1
+                FROM question_contributors WHERE question_id = ?
+                """,
+                (question_id,),
+            ).fetchone()[0]
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO question_contributors
+                    (question_id, admin_id, position)
+                VALUES (?, ?, ?)
+                """,
+                (question_id, admin_id, position),
+            )
+        for material_id in material_ids:
+            position = conn.execute(
+                """
+                SELECT COALESCE(MAX(position), -1) + 1
+                FROM material_contributors WHERE material_id = ?
+                """,
+                (material_id,),
+            ).fetchone()[0]
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO material_contributors
+                    (material_id, admin_id, position)
+                VALUES (?, ?, ?)
+                """,
+                (material_id, admin_id, position),
+            )
+        conn.commit()
+        return {"questions": len(question_ids), "materials": len(material_ids)}
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def count_content_for_admin(admin_id: int) -> Dict[str, int]:
+    """用于防止物理删除仍被内容引用的账号。"""
+    legacy_names = {name.casefold() for name in get_admin_legacy_names(admin_id)}
+    conn = get_connection()
+    try:
+        question_ids = {
+            row[0]
+            for row in conn.execute(
+                "SELECT question_id FROM question_contributors WHERE admin_id = ?",
+                (admin_id,),
+            ).fetchall()
+        }
+        material_ids = {
+            row[0]
+            for row in conn.execute(
+                "SELECT material_id FROM material_contributors WHERE admin_id = ?",
+                (admin_id,),
+            ).fetchall()
+        }
+        if legacy_names:
+            for row in conn.execute("SELECT id, author FROM questions").fetchall():
+                if legacy_names.intersection(
+                    name.casefold() for name in _parse_legacy_names(row[1])
+                ):
+                    question_ids.add(row[0])
+            for row in conn.execute("SELECT id, creator FROM materials").fetchall():
+                if legacy_names.intersection(
+                    name.casefold() for name in _parse_legacy_names(row[1])
+                ):
+                    material_ids.add(row[0])
+        return {"questions": len(question_ids), "materials": len(material_ids)}
+    finally:
+        conn.close()

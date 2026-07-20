@@ -4,7 +4,6 @@ import { Layout, Menu, Button, Drawer, Typography, Spin } from 'antd';
 import {
   QuestionCircleOutlined,
   PictureOutlined,
-  UserOutlined,
   TeamOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -27,7 +26,6 @@ const PAGE_TITLES = {
   '/admin/questions': '题目管理',
   '/admin/quiz': '题目调试',
   '/admin/materials': '物料管理',
-  '/admin/producers': '制作人管理',
   '/admin/roles': '内容角色',
   '/admin/site-events': '官网活动',
   '/admin/activities': '答题活动',
@@ -125,11 +123,6 @@ function AdminLayout() {
           key: '/admin/materials',
           icon: <PictureOutlined />,
           label: <Link to="/admin/materials">物料</Link>,
-        },
-        {
-          key: '/admin/producers',
-          icon: <UserOutlined />,
-          label: <Link to="/admin/producers">制作人</Link>,
         },
         {
           key: '/admin/roles',

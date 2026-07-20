@@ -11,7 +11,9 @@ const QuestionModal = ({
   onClose, 
   onSuccess, 
   editingQuestion, 
-  producers,
+  contributors,
+  currentUser,
+  isSuperAdmin,
   tagOptions = [],
 }) => {
   const { message } = App.useApp();
@@ -21,51 +23,30 @@ const QuestionModal = ({
     answer: '',
     resources: '',
     tag: DEFAULT_QUESTION_TAG,
-    author: [],
+    contributor_ids: [],
   });
 
   useEffect(() => {
     if (isOpen) {
-      const currentUsername = localStorage.getItem('username');
-      const userRole = localStorage.getItem('userRole');
-
       if (editingQuestion) {
         setFormData({
           question: editingQuestion.question,
           answer: editingQuestion.answer,
           resources: editingQuestion.resources.join('\n'),
           tag: editingQuestion.tag,
-          author: Array.isArray(editingQuestion.author) ? editingQuestion.author : (editingQuestion.author ? [editingQuestion.author] : []),
+          contributor_ids: editingQuestion.contributors?.map((item) => item.id) || [],
         });
       } else {
-        // 添加题目时
-        let authorArray = [];
-
-        // 如果是题目管理员，默认使用自己的用户名
-        if (userRole === 'question_admin' && currentUsername) {
-          authorArray = [currentUsername];
-        } else {
-          // 从 localStorage 读取上次的出题人（仅适用于超级管理员）
-          const savedAuthor = localStorage.getItem('lastAuthor');
-          if (savedAuthor) {
-            try {
-              authorArray = JSON.parse(savedAuthor);
-            } catch {
-              authorArray = savedAuthor ? [savedAuthor] : [];
-            }
-          }
-        }
-
         setFormData({
           question: '',
           answer: '',
           resources: '',
           tag: DEFAULT_QUESTION_TAG,
-          author: authorArray,
+          contributor_ids: currentUser?.id ? [currentUser.id] : [],
         });
       }
     }
-  }, [isOpen, editingQuestion]);
+  }, [isOpen, editingQuestion, currentUser]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,7 +59,7 @@ const QuestionModal = ({
         .map((url) => url.trim())
         .filter((url) => url),
       tag: formData.tag,
-      author: formData.author || [],
+      contributor_ids: formData.contributor_ids || [],
     };
 
     try {
@@ -86,8 +67,6 @@ const QuestionModal = ({
         await api.put(`/admin/questions/${editingQuestion.id}`, data);
         message.success('更新成功!');
       } else {
-        // 仅在添加题目时保存出题人到 localStorage
-        localStorage.setItem('lastAuthor', JSON.stringify(formData.author || []));
         await api.post('/admin/questions', data);
         message.success('创建成功!');
       }
@@ -159,43 +138,64 @@ const QuestionModal = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                出题人（可多选）
+                贡献账号（可多选）
               </label>
               <div className="space-y-2">
                 <select
                   multiple
-                  value={formData.author}
+                  value={formData.contributor_ids.map(String)}
                   onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setFormData({ ...formData, author: selected });
+                    const selected = Array.from(
+                      e.target.selectedOptions,
+                      (option) => Number(option.value),
+                    );
+                    setFormData({ ...formData, contributor_ids: selected });
                   }}
+                  disabled={!isSuperAdmin}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                   size="5"
                 >
-                  {producers.map((producer) => (
-                    <option key={producer.id} value={producer.name}>
-                      {producer.name}
+                  {contributors.map((contributor) => (
+                    <option
+                      key={contributor.id}
+                      value={contributor.id}
+                      disabled={!contributor.is_active}
+                    >
+                      {contributor.display_name}（{contributor.username}）
+                      {!contributor.is_active ? '（已停用）' : ''}
                     </option>
                   ))}
                 </select>
-                {formData.author.length > 0 && (
+                {formData.contributor_ids.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {formData.author.map((name, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                        {name}
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, author: formData.author.filter((_, i) => i !== idx) })}
-                          className="text-blue-600 hover:text-blue-800 font-bold"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
+                    {formData.contributor_ids.map((contributorId) => {
+                      const contributor = contributors.find((item) => item.id === contributorId);
+                      return contributor ? (
+                        <span key={contributorId} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                          {contributor.display_name}（{contributor.username}）
+                          {isSuperAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData({
+                                ...formData,
+                                contributor_ids: formData.contributor_ids.filter((id) => id !== contributorId),
+                              })}
+                              className="text-blue-600 hover:text-blue-800 font-bold"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      ) : null;
+                    })}
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">按住Ctrl/Cmd键点击可多选，如需新增请前往“制作人管理”页面</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {isSuperAdmin
+                  ? '按住 Ctrl/Cmd 可选择多个账号；新题默认绑定当前账号。'
+                  : '题目管理员创建的题目默认并固定绑定自己。'}
+              </p>
             </div>
 
             <div>

@@ -1,9 +1,87 @@
 """题目表相关的数据库操作"""
 
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 from models import Question
 from .config import get_connection
+from .contributors import (
+    get_question_contributors,
+    resolve_contributors_by_names,
+    set_question_contributors,
+)
+
+
+def _parse_author(raw_value: Optional[str]) -> List[str]:
+    if not raw_value:
+        return []
+    try:
+        parsed = json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError):
+        parsed = raw_value
+    values = parsed if isinstance(parsed, list) else [parsed]
+    return [str(value) for value in values if str(value).strip()]
+
+
+def _row_to_question(row) -> Question:
+    legacy_author = _parse_author(row[7] if len(row) > 7 else None)
+    contributors = get_question_contributors(row[0])
+    if contributors:
+        author = [contributor.display_name for contributor in contributors]
+    else:
+        author = legacy_author
+        contributors = resolve_contributors_by_names(legacy_author)
+    return Question(
+        id=row[0],
+        question=row[1],
+        answer=row[2],
+        resources=json.loads(row[3]) if row[3] else [],
+        tag=row[4],
+        random_clicks=row[5] if len(row) > 5 and row[5] is not None else 0,
+        hide_clicks=row[6] if len(row) > 6 and row[6] is not None else 0,
+        author=author,
+        contributors=contributors,
+        created_at=row[8] if len(row) > 8 else None,
+        updated_at=row[9] if len(row) > 9 else None,
+    )
+
+
+def _contributor_filter(
+    contributor_id: Optional[int],
+    legacy_names: Optional[Sequence[str]],
+) -> tuple[str, List[object]]:
+    if contributor_id is None and not legacy_names:
+        return "", []
+
+    legacy_conditions: List[str] = []
+    legacy_params: List[object] = []
+    for name in dict.fromkeys(name.strip() for name in legacy_names or [] if name.strip()):
+        legacy_conditions.extend([
+            "LOWER(TRIM(q.author)) = LOWER(?)",
+            "q.author LIKE ? COLLATE NOCASE",
+        ])
+        legacy_params.extend([name, f"%{json.dumps(name, ensure_ascii=False)}%"])
+    legacy_sql = " OR ".join(legacy_conditions) if legacy_conditions else "0"
+    if contributor_id is None:
+        return f" AND ({legacy_sql}) ", legacy_params
+
+    return (
+        f"""
+        AND (
+            EXISTS (
+                SELECT 1 FROM question_contributors qc
+                WHERE qc.question_id = q.id AND qc.admin_id = ?
+            )
+            OR (
+                NOT EXISTS (
+                    SELECT 1 FROM question_contributors qc_any
+                    WHERE qc_any.question_id = q.id
+                )
+                AND ({legacy_sql})
+            )
+        )
+        """,
+        [contributor_id, *legacy_params],
+    )
 
 
 def reset_question_stats(question_id: str) -> bool:
@@ -30,11 +108,16 @@ def reset_all_questions_stats() -> int:
     return count
 
 
-def get_questions_count(keyword: Optional[str] = None, tag: Optional[str] = None, author: Optional[str] = None) -> int:
+def get_questions_count(
+    keyword: Optional[str] = None,
+    tag: Optional[str] = None,
+    contributor_id: Optional[int] = None,
+    legacy_names: Optional[Sequence[str]] = None,
+) -> int:
     """获取题目总数（支持筛选）"""
     conn = get_connection()
     cursor = conn.cursor()
-    query = 'SELECT COUNT(*) FROM questions WHERE 1=1'
+    query = 'SELECT COUNT(*) FROM questions q WHERE 1=1'
     params = []
 
     if tag and tag != 'all':
@@ -44,10 +127,11 @@ def get_questions_count(keyword: Optional[str] = None, tag: Optional[str] = None
         query += ' AND (id LIKE ? OR question LIKE ? OR answer LIKE ?)'
         wildcard = f'%{keyword}%'
         params.extend([wildcard, wildcard, wildcard])
-    if author:
-        # 题目管理员只能看到自己创建的题目
-        query += ' AND author LIKE ?'
-        params.append(f'%{author}%')
+    contributor_sql, contributor_params = _contributor_filter(
+        contributor_id, legacy_names
+    )
+    query += contributor_sql
+    params.extend(contributor_params)
 
     cursor.execute(query, params)
     count = cursor.fetchone()[0]
@@ -55,34 +139,43 @@ def get_questions_count(keyword: Optional[str] = None, tag: Optional[str] = None
     return count
 
 
-def get_question_tag_counts(author: Optional[str] = None) -> Dict[str, int]:
+def get_question_tag_counts(
+    contributor_id: Optional[int] = None,
+    legacy_names: Optional[Sequence[str]] = None,
+) -> Dict[str, int]:
     """按标签统计题目数量，题目管理员仅统计自己的题目。"""
     conn = get_connection()
     try:
-        query = 'SELECT tag, COUNT(*) FROM questions WHERE 1=1'
-        params = []
-        if author:
-            query += ' AND author LIKE ?'
-            params.append(f'%{author}%')
-        query += ' GROUP BY tag ORDER BY tag ASC'
+        query = 'SELECT q.tag, COUNT(*) FROM questions q WHERE 1=1'
+        params: List[object] = []
+        contributor_sql, contributor_params = _contributor_filter(
+            contributor_id, legacy_names
+        )
+        query += contributor_sql
+        params.extend(contributor_params)
+        query += ' GROUP BY q.tag ORDER BY q.tag ASC'
         rows = conn.execute(query, params).fetchall()
         return {row[0]: int(row[1]) for row in rows}
     finally:
         conn.close()
 
 
-def get_all_question_ids(author: Optional[str] = None) -> List[dict]:
+def get_all_question_ids(
+    contributor_id: Optional[int] = None,
+    legacy_names: Optional[Sequence[str]] = None,
+) -> List[dict]:
     """获取所有题目的ID和Tag（轻量级）"""
     conn = get_connection()
     cursor = conn.cursor()
 
-    query = 'SELECT id, tag FROM questions WHERE 1=1'
-    params = []
+    query = 'SELECT q.id, q.tag FROM questions q WHERE 1=1'
+    params: List[object] = []
 
-    if author:
-        # 作者筛选：使用 JSON 数组包含该作者
-        query += ' AND author LIKE ?'
-        params.append(f'%{author}%')
+    contributor_sql, contributor_params = _contributor_filter(
+        contributor_id, legacy_names
+    )
+    query += contributor_sql
+    params.extend(contributor_params)
 
     query += ' ORDER BY CAST(id AS INTEGER) ASC'
     cursor.execute(query, params)
@@ -91,7 +184,15 @@ def get_all_question_ids(author: Optional[str] = None) -> List[dict]:
     return [{"id": row[0], "tag": row[1]} for row in rows]
 
 
-def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str] = None, tag: Optional[str] = None, sort_order: str = 'asc', author: Optional[str] = None) -> List[Question]:
+def get_all_questions(
+    page: int = 1,
+    page_size: int = 10,
+    keyword: Optional[str] = None,
+    tag: Optional[str] = None,
+    sort_order: str = 'asc',
+    contributor_id: Optional[int] = None,
+    legacy_names: Optional[Sequence[str]] = None,
+) -> List[Question]:
     """获取所有题目（分页，支持筛选，page_size=0表示获取所有）"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -99,7 +200,7 @@ def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str]
     query = '''
         SELECT id, question, answer, resources, tag, random_clicks,
                hide_clicks, author, created_at, updated_at
-        FROM questions WHERE 1=1
+        FROM questions q WHERE 1=1
     '''
     params = []
 
@@ -110,10 +211,11 @@ def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str]
         query += ' AND (id LIKE ? OR question LIKE ? OR answer LIKE ?)'
         wildcard = f'%{keyword}%'
         params.extend([wildcard, wildcard, wildcard])
-    if author:
-        # 题目管理员只能看到自己创建的题目
-        query += ' AND author LIKE ?'
-        params.append(f'%{author}%')
+    contributor_sql, contributor_params = _contributor_filter(
+        contributor_id, legacy_names
+    )
+    query += contributor_sql
+    params.extend(contributor_params)
 
     # 确保分页顺序一致
     order = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
@@ -128,32 +230,7 @@ def get_all_questions(page: int = 1, page_size: int = 10, keyword: Optional[str]
     rows = cursor.fetchall()
     conn.close()
 
-    questions = []
-    for row in rows:
-        # 处理author字段：如果是旧数据（字符串），转换为列表
-        author_data = row[7] if len(row) > 7 and row[7] else None
-        if author_data:
-            try:
-                author = json.loads(author_data) if isinstance(author_data, str) and author_data.startswith(
-                    '[') else [author_data] if author_data else []
-            except:
-                author = [author_data] if author_data else []
-        else:
-            author = []
-
-        questions.append(Question(
-            id=row[0],
-            question=row[1],
-            answer=row[2],
-            resources=json.loads(row[3]) if row[3] else [],
-            tag=row[4],
-            random_clicks=row[5] if len(row) > 5 and row[5] is not None else 0,
-            hide_clicks=row[6] if len(row) > 6 and row[6] is not None else 0,
-            author=author,
-            created_at=row[8] if len(row) > 8 else None,
-            updated_at=row[9] if len(row) > 9 else None,
-        ))
-    return questions
+    return [_row_to_question(row) for row in rows]
 
 
 def get_question_by_id(question_id: str) -> Optional[Question]:
@@ -169,29 +246,7 @@ def get_question_by_id(question_id: str) -> Optional[Question]:
     conn.close()
 
     if row:
-        # 处理author字段：如果是旧数据（字符串），转换为列表
-        author_data = row[7] if len(row) > 7 and row[7] else None
-        if author_data:
-            try:
-                author = json.loads(author_data) if isinstance(author_data, str) and author_data.startswith(
-                    '[') else [author_data] if author_data else []
-            except:
-                author = [author_data] if author_data else []
-        else:
-            author = []
-
-        return Question(
-            id=row[0],
-            question=row[1],
-            answer=row[2],
-            resources=json.loads(row[3]) if row[3] else [],
-            tag=row[4],
-            random_clicks=row[5] if len(row) > 5 and row[5] is not None else 0,
-            hide_clicks=row[6] if len(row) > 6 and row[6] is not None else 0,
-            author=author,
-            created_at=row[8] if len(row) > 8 else None,
-            updated_at=row[9] if len(row) > 9 else None,
-        )
+        return _row_to_question(row)
     return None
 
 
@@ -230,7 +285,10 @@ def get_next_question_id() -> str:
     return str(int(result[0]) + 1)
 
 
-def create_question(question: Question) -> Question:
+def create_question(
+    question: Question,
+    contributor_ids: Optional[Sequence[int]] = None,
+) -> Question:
     """创建题目"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -241,6 +299,8 @@ def create_question(question: Question) -> Question:
           json.dumps(question.resources), question.tag, json.dumps(question.author)))
     conn.commit()
     conn.close()
+    if contributor_ids is not None:
+        set_question_contributors(question.id, contributor_ids)
     return get_question_by_id(question.id) or question
 
 
@@ -294,6 +354,10 @@ def delete_question(question_id: str) -> bool:
                 SELECT id FROM quiz_activities WHERE status = 'draft'
             )
             """,
+            (question_id,),
+        )
+        conn.execute(
+            'DELETE FROM question_contributors WHERE question_id = ?',
             (question_id,),
         )
         if draft_activity_ids:

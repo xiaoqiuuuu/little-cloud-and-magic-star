@@ -47,6 +47,11 @@ def admin_update_producer(
     existing = get_producer_by_id(producer_id)
     if not existing:
         raise HTTPException(status_code=404, detail="制作人不存在")
+    if existing.bound_admin_id:
+        raise HTTPException(
+            status_code=409,
+            detail="该制作人已成为账号名片，请在账号与权限中编辑",
+        )
 
     updates = producer_data.dict(exclude_unset=True)
     updated = update_producer(producer_id, updates)
@@ -56,6 +61,14 @@ def admin_update_producer(
 @router.delete("/producers/{producer_id}")
 def admin_delete_producer(producer_id: int, _: dict = Depends(require_content_admin)):
     """管理员删除制作人"""
+    existing = get_producer_by_id(producer_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="制作人不存在")
+    if existing.bound_admin_id:
+        raise HTTPException(
+            status_code=409,
+            detail="该制作人已成为账号名片，不能删除",
+        )
     if not delete_producer(producer_id):
         raise HTTPException(status_code=404, detail="制作人不存在")
     return {"message": "删除成功"}
