@@ -22,6 +22,7 @@ function XiaoyunButton({
   loading = false,
   disabled = false,
   showArrow = true,
+  fullWidth = false,
   className = '',
   ...buttonProps
 }) {
@@ -39,6 +40,7 @@ function XiaoyunButton({
         `xiaoyun-button--${buttonSize}`,
         selected && 'is-selected',
         loading && 'is-loading',
+        fullWidth && 'xiaoyun-button--full-width',
         className,
       )}
       aria-pressed={hasPressedState ? selected : undefined}
