@@ -198,14 +198,8 @@ def init_db():
         )
     ''')
 
-    # 创建制作人表
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS producers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            profile_url TEXT
-        )
-    ''')
+    # 制作人已由账号贡献关系取代，部署迁移时永久删除历史表。
+    cursor.execute('DROP TABLE IF EXISTS producers')
 
     # 创建角色表
     cursor.execute('''

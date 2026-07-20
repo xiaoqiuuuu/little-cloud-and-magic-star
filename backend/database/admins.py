@@ -171,10 +171,9 @@ def update_admin(
         return current
 
     assignments = [f"{column} = ?" for column in updates]
-    assignments.extend([
-        "token_version = token_version + 1",
-        "updated_at = CURRENT_TIMESTAMP",
-    ])
+    if {"username", "role", "is_active"}.intersection(updates):
+        assignments.append("token_version = token_version + 1")
+    assignments.append("updated_at = CURRENT_TIMESTAMP")
     values = list(updates.values()) + [admin_id]
 
     conn = get_connection()

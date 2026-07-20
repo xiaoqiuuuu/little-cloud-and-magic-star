@@ -14,6 +14,7 @@ import {
   CalendarOutlined,
   PlayCircleOutlined,
   GlobalOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession, getDeduplicated } from '../api';
@@ -31,6 +32,7 @@ const PAGE_TITLES = {
   '/admin/activities': '答题活动',
   '/admin/stats': '访问分析',
   '/admin/users': '账号与权限',
+  '/admin/profile': '个人资料',
 };
 
 function AdminLayout() {
@@ -93,6 +95,7 @@ function AdminLayout() {
   };
 
   const username = currentUser?.username || '';
+  const displayName = currentUser?.display_name || username;
   const userRole = currentUser?.role || '';
   const isSuperAdmin = userRole === 'super_admin';
   const roleLabel = isSuperAdmin ? '超级管理员' : '题目管理员';
@@ -255,7 +258,13 @@ function AdminLayout() {
             )}
             {!authLoading && currentUser && (
               <div className="hidden md:flex items-center ml-1 mr-1">
-                <span className="text-sm font-medium text-gray-700">{username}</span>
+                <Button
+                  type="text"
+                  icon={<UserOutlined />}
+                  onClick={() => navigate('/admin/profile')}
+                >
+                  {displayName}
+                </Button>
                 <span className={`ml-2 px-2 py-0.5 rounded text-xs ${roleBadgeClassName}`}>
                   {roleLabel}
                 </span>
@@ -281,7 +290,13 @@ function AdminLayout() {
                 <Spin size="large" tip="正在验证登录状态..." />
               </div>
             ) : (
-              <Outlet context={{ currentUser, authLoading }} />
+              <Outlet
+                context={{
+                  currentUser,
+                  authLoading,
+                  onCurrentUserChange: setCurrentUser,
+                }}
+              />
             )}
           </div>
         </Content>
@@ -296,7 +311,8 @@ function AdminLayout() {
         className="md:hidden"
       >
         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <div className="font-medium text-gray-800">{username}</div>
+          <div className="font-medium text-gray-800">{displayName}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{username}</div>
           {!authLoading && currentUser && (
             <div className="mt-1">
               <span className={`px-2 py-0.5 rounded text-xs ${roleBadgeClassName}`}>
@@ -304,6 +320,17 @@ function AdminLayout() {
               </span>
             </div>
           )}
+          <Button
+            className="mt-4"
+            icon={<UserOutlined />}
+            onClick={() => {
+              setDrawerVisible(false);
+              navigate('/admin/profile');
+            }}
+            block
+          >
+            编辑个人资料
+          </Button>
           <div className={`grid gap-2 mt-4 ${isSuperAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <Button icon={<GlobalOutlined />} href="/" target="_blank" rel="noreferrer">预览官网</Button>
             {isSuperAdmin && (
