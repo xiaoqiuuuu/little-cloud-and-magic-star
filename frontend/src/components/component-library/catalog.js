@@ -27,6 +27,23 @@ export const componentGroups = [
     ],
   },
   {
+    id: 'layout',
+    label: '布局组件',
+    description: '内容容器与页面结构',
+    items: [
+      {
+        id: 'character-card',
+        name: '人物留白卡片',
+        shortName: 'CharacterCard',
+        icon: '▱',
+        status: 'ready',
+        version: '0.1.0',
+        description: '使用小云或生日人物作为边角、侧边和水印装饰的内容容器。',
+        keywords: ['card', '卡片', '留白', 'layout', '小云', '生日'],
+      },
+    ],
+  },
+  {
     id: 'forms',
     label: '表单组件',
     description: '数据输入与选择',
