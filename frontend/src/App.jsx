@@ -23,6 +23,7 @@ import 'antd/dist/reset.css'; // Ant Design 样式
 
 
 const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
+const XiaoyunButtonPreview = lazy(() => import('./pages/XiaoyunButtonPreview'));
 
 function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -70,6 +71,11 @@ function App() {
               {/* 首页 - 产品介绍 */}
               <Route path="/" element={<HomePage />} />
               <Route path="/events/:slug" element={<HomePage />} />
+              <Route path="/xiaoyun-buttons" element={(
+                <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载按钮预览...</div>}>
+                  <XiaoyunButtonPreview />
+                </Suspense>
+              )} />
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               

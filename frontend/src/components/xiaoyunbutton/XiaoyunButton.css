@@ -1,0 +1,448 @@
+.xiaoyun-button {
+  --xy-accent: #71bfe3;
+  --xy-accent-deep: #447ea8;
+  --xy-surface-start: #f8fdff;
+  --xy-surface-end: #dceffc;
+  --xy-border: rgba(120, 184, 219, 0.58);
+  --xy-shadow: rgba(79, 139, 177, 0.24);
+
+  appearance: none;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  max-width: 340px;
+  min-height: 132px;
+  margin: 0;
+  padding: 34px 54px 0 112px;
+  border: 0;
+  color: #31536b;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.xiaoyun-button--rose {
+  --xy-accent: #eda6be;
+  --xy-accent-deep: #a65b7a;
+  --xy-surface-start: #fffafd;
+  --xy-surface-end: #f9deea;
+  --xy-border: rgba(226, 143, 174, 0.58);
+  --xy-shadow: rgba(179, 94, 129, 0.22);
+  color: #704156;
+}
+
+.xiaoyun-button--violet {
+  --xy-accent: #aa9be3;
+  --xy-accent-deep: #6859a7;
+  --xy-surface-start: #fcfbff;
+  --xy-surface-end: #e7e1fa;
+  --xy-border: rgba(153, 137, 210, 0.58);
+  --xy-shadow: rgba(104, 85, 168, 0.22);
+  color: #524878;
+}
+
+.xiaoyun-button__surface {
+  position: absolute;
+  z-index: -2;
+  inset: 34px 0 0;
+  overflow: hidden;
+  border: 2px solid var(--xy-border);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 84% 18%, rgba(255, 255, 255, 0.96) 0 5px, transparent 6px),
+    radial-gradient(circle at 91% 34%, rgba(255, 255, 255, 0.72) 0 2px, transparent 3px),
+    linear-gradient(135deg, var(--xy-surface-start), var(--xy-surface-end));
+  box-shadow:
+    0 13px 25px var(--xy-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -3px 8px rgba(82, 137, 174, 0.08);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.xiaoyun-button__surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.62), transparent 42%),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.2) 0 8px,
+      transparent 8px 18px
+    );
+  opacity: 0.65;
+}
+
+.xiaoyun-button__surface::after {
+  content: '';
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  right: -55px;
+  bottom: -66px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  box-shadow: 0 0 0 12px rgba(255, 255, 255, 0.1);
+}
+
+.xiaoyun-button__artwork {
+  position: absolute;
+  z-index: 1;
+  left: 2px;
+  bottom: 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 116px;
+  height: 132px;
+  pointer-events: none;
+}
+
+.xiaoyun-button__artwork img {
+  position: relative;
+  z-index: 2;
+  width: 102px;
+  height: 130px;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 6px 5px rgba(73, 103, 134, 0.2));
+  transform-origin: 50% 92%;
+  user-select: none;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.xiaoyun-button__halo {
+  position: absolute;
+  z-index: 0;
+  left: 6px;
+  bottom: 5px;
+  width: 104px;
+  height: 104px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--xy-accent) 28%, white);
+  box-shadow:
+    0 0 0 7px color-mix(in srgb, var(--xy-accent) 10%, transparent),
+    inset 0 0 18px rgba(255, 255, 255, 0.74);
+}
+
+.xiaoyun-button__bubble {
+  position: absolute;
+  z-index: 3;
+  display: block;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--xy-accent) 45%, white);
+  box-shadow: inset 2px 2px 3px rgba(255, 255, 255, 0.8);
+  transition: transform 220ms ease;
+}
+
+.xiaoyun-button__bubble--one {
+  top: 14px;
+  left: 6px;
+  width: 15px;
+  height: 15px;
+}
+
+.xiaoyun-button__bubble--two {
+  top: 42px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+}
+
+.xiaoyun-button__copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.xiaoyun-button__eyebrow {
+  margin-bottom: 1px;
+  color: var(--xy-accent-deep);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.xiaoyun-button__label {
+  overflow: hidden;
+  color: inherit;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xiaoyun-button__description {
+  overflow: hidden;
+  color: color-mix(in srgb, currentColor 70%, white);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xiaoyun-button__action {
+  position: absolute;
+  z-index: 3;
+  right: 17px;
+  bottom: 29px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  color: white;
+  background: var(--xy-accent);
+  box-shadow: 0 5px 10px color-mix(in srgb, var(--xy-accent) 36%, transparent);
+  font-family: Arial, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.xiaoyun-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  filter: saturate(1.04);
+}
+
+.xiaoyun-button:hover:not(:disabled) .xiaoyun-button__surface {
+  border-color: var(--xy-accent);
+  box-shadow:
+    0 17px 30px var(--xy-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -3px 8px rgba(82, 137, 174, 0.07);
+}
+
+.xiaoyun-button:hover:not(:disabled) .xiaoyun-button__artwork img {
+  transform: translateY(-4px) rotate(-1.5deg) scale(1.025);
+}
+
+.xiaoyun-button:hover:not(:disabled) .xiaoyun-button__bubble--one {
+  transform: translate(-2px, -4px);
+}
+
+.xiaoyun-button:hover:not(:disabled) .xiaoyun-button__bubble--two {
+  transform: translate(2px, -3px);
+}
+
+.xiaoyun-button:hover:not(:disabled) .xiaoyun-button__action {
+  transform: translateX(2px);
+}
+
+.xiaoyun-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+
+.xiaoyun-button:focus-visible {
+  outline: none;
+}
+
+.xiaoyun-button:focus-visible .xiaoyun-button__surface {
+  border-color: var(--xy-accent-deep);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--xy-accent) 30%, transparent),
+    0 15px 28px var(--xy-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+}
+
+.xiaoyun-button.is-selected .xiaoyun-button__surface {
+  border-color: var(--xy-accent-deep);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--xy-accent) 18%, transparent),
+    0 15px 28px var(--xy-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+}
+
+.xiaoyun-button.is-selected .xiaoyun-button__action {
+  background: var(--xy-accent-deep);
+  font-size: 15px;
+}
+
+.xiaoyun-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+  opacity: 0.58;
+}
+
+.xiaoyun-button.is-loading .xiaoyun-button__artwork img {
+  animation: xiaoyun-button-float 900ms ease-in-out infinite alternate;
+}
+
+.xiaoyun-button--small {
+  max-width: 292px;
+  min-height: 116px;
+  padding: 29px 48px 0 94px;
+}
+
+.xiaoyun-button--small .xiaoyun-button__surface {
+  inset-block-start: 29px;
+  border-radius: 26px;
+}
+
+.xiaoyun-button--small .xiaoyun-button__artwork {
+  width: 99px;
+  height: 116px;
+}
+
+.xiaoyun-button--small .xiaoyun-button__artwork img {
+  width: 86px;
+  height: 112px;
+}
+
+.xiaoyun-button--small .xiaoyun-button__halo {
+  width: 88px;
+  height: 88px;
+}
+
+.xiaoyun-button--small .xiaoyun-button__label {
+  font-size: 17px;
+}
+
+.xiaoyun-button--small .xiaoyun-button__description {
+  font-size: 11px;
+}
+
+.xiaoyun-button--small .xiaoyun-button__action {
+  right: 14px;
+  bottom: 23px;
+  width: 25px;
+  height: 25px;
+  font-size: 21px;
+}
+
+.xiaoyun-button--large {
+  max-width: 390px;
+  min-height: 148px;
+  padding: 39px 62px 0 130px;
+}
+
+.xiaoyun-button--large .xiaoyun-button__surface {
+  inset-block-start: 39px;
+  border-radius: 34px;
+}
+
+.xiaoyun-button--large .xiaoyun-button__artwork {
+  width: 134px;
+  height: 148px;
+}
+
+.xiaoyun-button--large .xiaoyun-button__artwork img {
+  width: 118px;
+  height: 146px;
+}
+
+.xiaoyun-button--large .xiaoyun-button__halo {
+  width: 118px;
+  height: 118px;
+}
+
+.xiaoyun-button--large .xiaoyun-button__label {
+  font-size: 23px;
+}
+
+.xiaoyun-button--large .xiaoyun-button__description {
+  font-size: 13px;
+}
+
+.xiaoyun-button--large .xiaoyun-button__action {
+  right: 20px;
+  bottom: 32px;
+  width: 31px;
+  height: 31px;
+}
+
+.xiaoyun-button-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 22px;
+}
+
+@keyframes xiaoyun-button-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-5px); }
+}
+
+@media (max-width: 420px) {
+  .xiaoyun-button,
+  .xiaoyun-button--large {
+    max-width: 100%;
+    min-height: 124px;
+    padding: 31px 50px 0 101px;
+  }
+
+  .xiaoyun-button .xiaoyun-button__surface,
+  .xiaoyun-button--large .xiaoyun-button__surface {
+    inset-block-start: 31px;
+    border-radius: 27px;
+  }
+
+  .xiaoyun-button .xiaoyun-button__artwork,
+  .xiaoyun-button--large .xiaoyun-button__artwork {
+    width: 106px;
+    height: 124px;
+  }
+
+  .xiaoyun-button .xiaoyun-button__artwork img,
+  .xiaoyun-button--large .xiaoyun-button__artwork img {
+    width: 93px;
+    height: 121px;
+  }
+
+  .xiaoyun-button .xiaoyun-button__halo,
+  .xiaoyun-button--large .xiaoyun-button__halo {
+    width: 94px;
+    height: 94px;
+  }
+
+  .xiaoyun-button .xiaoyun-button__label,
+  .xiaoyun-button--large .xiaoyun-button__label {
+    font-size: 18px;
+  }
+
+  .xiaoyun-button .xiaoyun-button__description,
+  .xiaoyun-button--large .xiaoyun-button__description {
+    font-size: 11px;
+  }
+
+  .xiaoyun-button .xiaoyun-button__action,
+  .xiaoyun-button--large .xiaoyun-button__action {
+    right: 14px;
+    bottom: 25px;
+    width: 26px;
+    height: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xiaoyun-button,
+  .xiaoyun-button__surface,
+  .xiaoyun-button__artwork img,
+  .xiaoyun-button__bubble,
+  .xiaoyun-button__action {
+    transition: none;
+  }
+
+  .xiaoyun-button.is-loading .xiaoyun-button__artwork img {
+    animation: none;
+  }
+}
