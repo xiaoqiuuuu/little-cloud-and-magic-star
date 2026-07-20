@@ -136,44 +136,43 @@ const QuestionModal = ({
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                贡献账号（可多选）
-              </label>
-              <div className="space-y-2">
-                <select
-                  multiple
-                  value={formData.contributor_ids.map(String)}
-                  onChange={(e) => {
-                    const selected = Array.from(
-                      e.target.selectedOptions,
-                      (option) => Number(option.value),
-                    );
-                    setFormData({ ...formData, contributor_ids: selected });
-                  }}
-                  disabled={!isSuperAdmin}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                  size="5"
-                >
-                  {contributors.map((contributor) => (
-                    <option
-                      key={contributor.id}
-                      value={contributor.id}
-                      disabled={!contributor.is_active}
-                    >
-                      {contributor.display_name}（{contributor.username}）
-                      {!contributor.is_active ? '（已停用）' : ''}
-                    </option>
-                  ))}
-                </select>
-                {formData.contributor_ids.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.contributor_ids.map((contributorId) => {
-                      const contributor = contributors.find((item) => item.id === contributorId);
-                      return contributor ? (
-                        <span key={contributorId} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                          {contributor.display_name}（{contributor.username}）
-                          {isSuperAdmin && (
+            {isSuperAdmin && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  贡献账号（可多选）
+                </label>
+                <div className="space-y-2">
+                  <select
+                    multiple
+                    value={formData.contributor_ids.map(String)}
+                    onChange={(e) => {
+                      const selected = Array.from(
+                        e.target.selectedOptions,
+                        (option) => Number(option.value),
+                      );
+                      setFormData({ ...formData, contributor_ids: selected });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                    size="5"
+                  >
+                    {contributors.map((contributor) => (
+                      <option
+                        key={contributor.id}
+                        value={contributor.id}
+                        disabled={!contributor.is_active}
+                      >
+                        {contributor.display_name}（{contributor.username}）
+                        {!contributor.is_active ? '（已停用）' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {formData.contributor_ids.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.contributor_ids.map((contributorId) => {
+                        const contributor = contributors.find((item) => item.id === contributorId);
+                        return contributor ? (
+                          <span key={contributorId} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                            {contributor.display_name}（{contributor.username}）
                             <button
                               type="button"
                               onClick={() => setFormData({
@@ -184,19 +183,17 @@ const QuestionModal = ({
                             >
                               ×
                             </button>
-                          )}
-                        </span>
-                      ) : null;
-                    })}
-                  </div>
-                )}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  按住 Ctrl/Cmd 可选择多个账号；新题默认绑定当前账号。
+                </p>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {isSuperAdmin
-                  ? '按住 Ctrl/Cmd 可选择多个账号；新题默认绑定当前账号。'
-                  : '题目管理员创建的题目默认并固定绑定自己。'}
-              </p>
-            </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
