@@ -23,7 +23,6 @@ import 'antd/dist/reset.css'; // Ant Design 样式
 
 
 const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
-const XiaoyunButtonPreview = lazy(() => import('./pages/XiaoyunButtonPreview'));
 const ComponentLibraryPage = lazy(() => import('./pages/ComponentLibraryPage'));
 
 function App() {
@@ -82,11 +81,10 @@ function App() {
                   <ComponentLibraryPage />
                 </Suspense>
               )} />
-              <Route path="/xiaoyun-buttons" element={(
-                <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载按钮预览...</div>}>
-                  <XiaoyunButtonPreview />
-                </Suspense>
-              )} />
+              <Route
+                path="/xiaoyun-buttons"
+                element={<Navigate to="/components/xiaoyun-button" replace />}
+              />
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               
