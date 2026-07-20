@@ -24,6 +24,7 @@ import 'antd/dist/reset.css'; // Ant Design 样式
 
 const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
 const XiaoyunButtonPreview = lazy(() => import('./pages/XiaoyunButtonPreview'));
+const ComponentLibraryPage = lazy(() => import('./pages/ComponentLibraryPage'));
 
 function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -71,6 +72,16 @@ function App() {
               {/* 首页 - 产品介绍 */}
               <Route path="/" element={<HomePage />} />
               <Route path="/events/:slug" element={<HomePage />} />
+              <Route path="/components" element={(
+                <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载组件库...</div>}>
+                  <ComponentLibraryPage />
+                </Suspense>
+              )} />
+              <Route path="/components/:componentId" element={(
+                <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载组件文档...</div>}>
+                  <ComponentLibraryPage />
+                </Suspense>
+              )} />
               <Route path="/xiaoyun-buttons" element={(
                 <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载按钮预览...</div>}>
                   <XiaoyunButtonPreview />
