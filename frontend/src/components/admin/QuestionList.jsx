@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { Table, Tag, Button, Space, App } from 'antd';
-import { EditOutlined, DeleteOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined, DownloadOutlined } from '@ant-design/icons';
+import { BugOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
+import { getQuestionTagMeta } from '../../constants/questionTags';
+
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN');
+};
 
 const QuestionList = ({ 
   questions, 
@@ -10,6 +18,7 @@ const QuestionList = ({
   filterTag, 
   sortDesc, 
   setSortDesc, 
+  onDebug,
   onEdit, 
   onDelete,
   onResetStats,
@@ -81,8 +90,10 @@ const QuestionList = ({
         '题目': q.question,
         '答案': q.answer,
         '资源链接（多个用|分隔）': q.resources?.join('|') || '',
-        '标签（concert/vlog/common）': q.tag,
+        '标签': q.tag,
         '出题人（多个用|分隔）': Array.isArray(q.author) ? q.author.join('|') : (q.author || ''),
+        '创建时间': q.created_at || '',
+        '更新时间': q.updated_at || '',
         '随机点击数': q.random_clicks || 0,
         '隐藏点击数': q.hide_clicks || 0,
       }));
@@ -100,6 +111,8 @@ const QuestionList = ({
         { wch: 50 },  // 资源链接
         { wch: 20 },  // 标签
         { wch: 30 },  // 出题人
+        { wch: 22 },  // 创建时间
+        { wch: 22 },  // 更新时间
         { wch: 12 },  // 随机点击数
         { wch: 12 },  // 隐藏点击数
       ];
@@ -171,13 +184,8 @@ const QuestionList = ({
       key: 'tag',
       width: 100,
       render: (tag) => {
-        const tagConfig = {
-          concert: { color: 'purple', text: '演唱会' },
-          vlog: { color: 'blue', text: 'Vlog' },
-          general: { color: 'default', text: '通用' },
-        };
-        const config = tagConfig[tag] || tagConfig.general;
-        return <Tag color={config.color}>{config.text}</Tag>;
+        const tagMeta = getQuestionTagMeta(tag);
+        return <Tag color={tagMeta.color}>{tagMeta.shortLabel}</Tag>;
       },
     },
     {
@@ -202,6 +210,22 @@ const QuestionList = ({
       ),
     },
     {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 170,
+      responsive: ['xl'],
+      render: formatDateTime,
+    },
+    {
+      title: '更新时间',
+      dataIndex: 'updated_at',
+      key: 'updated_at',
+      width: 170,
+      responsive: ['lg'],
+      render: formatDateTime,
+    },
+    {
       title: '历史/调试统计',
       key: 'stats',
       width: 120,
@@ -215,10 +239,18 @@ const QuestionList = ({
     {
       title: '操作',
       key: 'actions',
-      width: 180,
+      width: 240,
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<BugOutlined />}
+            onClick={() => onDebug(record.id)}
+          >
+            调试
+          </Button>
           <Button
             type="link"
             size="small"
@@ -317,7 +349,7 @@ const QuestionList = ({
             onPageChange(page, size);
           },
         }}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 1500 }}
         locale={{
           emptyText: searchKeyword || filterTag !== 'all' ? '没有找到匹配的题目' : '暂无题目，请添加题目',
         }}

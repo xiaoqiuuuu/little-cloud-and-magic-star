@@ -290,7 +290,10 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(before_start.status_code, 200)
         self.assertEqual(before_start.json(), [])
         self.assertEqual(super_before_start.status_code, 200)
-        self.assertEqual(super_before_start.json(), [])
+        self.assertEqual(
+            [item["id"] for item in super_before_start.json()],
+            ["1", "2", "3"],
+        )
 
         first = await self.client.post(
             "/api/admin/activities",
@@ -316,10 +319,25 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             "/api/questions/ids",
             headers=super_headers,
         )
+        super_live_ids = await self.client.get(
+            "/api/quiz/questions/ids",
+            headers=super_headers,
+            params={"activity_id": first.json()["id"]},
+        )
+        operator_live_ids = await self.client.get(
+            "/api/quiz/questions/ids",
+            headers=operator_headers,
+            params={"activity_id": first.json()["id"]},
+        )
         forbidden_question = await self.client.get("/api/questions/3", headers=operator_headers)
-        super_forbidden_question = await self.client.get(
+        super_preview_question = await self.client.get(
             "/api/questions/3",
             headers=super_headers,
+        )
+        super_live_forbidden_question = await self.client.get(
+            "/api/quiz/questions/3",
+            headers=super_headers,
+            params={"activity_id": first.json()["id"]},
         )
         answer = await self.client.post(
             "/api/answer",
@@ -341,19 +359,30 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             headers=super_headers,
             params={"activity_id": first.json()["id"]},
         )
+        super_preview_click = await self.client.post(
+            "/api/track/random/3",
+            headers=super_headers,
+        )
         update_live_question = await self.client.put(
             "/api/admin/questions/1",
             headers=super_headers,
             json={"question": "活动中不应被修改"},
         )
         self.assertEqual([item["id"] for item in first_ids.json()], ["1", "2"])
-        self.assertEqual([item["id"] for item in super_first_ids.json()], ["1", "2"])
+        self.assertEqual(
+            [item["id"] for item in super_first_ids.json()],
+            ["1", "2", "3"],
+        )
+        self.assertEqual([item["id"] for item in super_live_ids.json()], ["1", "2"])
+        self.assertEqual([item["id"] for item in operator_live_ids.json()], ["1", "2"])
         self.assertEqual(forbidden_question.status_code, 403)
-        self.assertEqual(super_forbidden_question.status_code, 403)
+        self.assertEqual(super_preview_question.status_code, 200)
+        self.assertEqual(super_live_forbidden_question.status_code, 403)
         self.assertTrue(answer.json()["correct"])
         self.assertEqual(random_click.status_code, 200)
         self.assertEqual(hide_click.status_code, 200)
         self.assertEqual(super_random_click.status_code, 200)
+        self.assertEqual(super_preview_click.status_code, 200)
         self.assertEqual(update_live_question.status_code, 409)
 
         started_second = await self.client.post(
@@ -367,6 +396,12 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             params={"activity_id": first.json()["id"]},
         )
         self.assertEqual(stale_click.status_code, 409)
+        stale_live_questions = await self.client.get(
+            "/api/quiz/questions/ids",
+            headers=super_headers,
+            params={"activity_id": first.json()["id"]},
+        )
+        self.assertEqual(stale_live_questions.status_code, 409)
         second_ids = await self.client.get("/api/questions/ids", headers=operator_headers)
         self.assertEqual([item["id"] for item in second_ids.json()], ["2", "3"])
         second_detail = await self.client.get(
@@ -415,8 +450,17 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             "/api/questions/ids",
             headers=super_headers,
         )
+        ended_live_questions = await self.client.get(
+            "/api/quiz/questions/ids",
+            headers=super_headers,
+            params={"activity_id": first.json()["id"]},
+        )
         self.assertEqual(after_end.json(), [])
-        self.assertEqual(super_after_end.json(), [])
+        self.assertEqual(
+            [item["id"] for item in super_after_end.json()],
+            ["1", "2", "3"],
+        )
+        self.assertEqual(ended_live_questions.status_code, 409)
 
         conn = get_connection()
         try:
@@ -426,6 +470,69 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         finally:
             conn.close()
         self.assertEqual(tuple(legacy_stats), (0, 0))
+        conn = get_connection()
+        try:
+            preview_stats = conn.execute(
+                "SELECT random_clicks, hide_clicks FROM questions WHERE id = '3'"
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(tuple(preview_stats), (1, 0))
+
+    async def test_question_tags_and_timestamps_support_activity_filtering(self):
+        tokens = await self.login("rootadmin", "StrongPass123")
+        headers = self.auth_headers(tokens["access_token"])
+
+        created = await self.client.post(
+            "/api/admin/questions",
+            headers=headers,
+            json={
+                "question": "音乐题目",
+                "answer": "A",
+                "resources": [],
+                "tag": "music",
+                "author": ["rootadmin"],
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        question = created.json()
+        self.assertEqual(question["tag"], "music")
+        self.assertTrue(question["created_at"])
+        self.assertTrue(question["updated_at"])
+
+        conn = get_connection()
+        try:
+            columns = {
+                row[1] for row in conn.execute("PRAGMA table_info(questions)").fetchall()
+            }
+            conn.execute(
+                "UPDATE questions SET updated_at = '2000-01-01 00:00:00' WHERE id = ?",
+                (question["id"],),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        self.assertTrue({"created_at", "updated_at"} <= columns)
+
+        updated = await self.client.put(
+            f"/api/admin/questions/{question['id']}",
+            headers=headers,
+            json={"tag": "粉丝互动"},
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["tag"], "粉丝互动")
+        self.assertEqual(updated.json()["created_at"], question["created_at"])
+        self.assertNotEqual(updated.json()["updated_at"], "2000-01-01 00:00:00")
+
+        filtered = await self.client.get(
+            "/api/admin/questions",
+            headers=headers,
+            params={"tag": "粉丝互动"},
+        )
+        stats = await self.client.get("/api/admin/stats", headers=headers)
+        self.assertEqual(filtered.status_code, 200, filtered.text)
+        self.assertEqual(filtered.json()["total"], 1)
+        self.assertEqual(stats.json()["by_tag"]["粉丝互动"], 1)
 
     async def test_deleting_questions_does_not_rebind_activity_references(self):
         create_question(Question(

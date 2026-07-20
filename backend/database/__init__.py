@@ -3,6 +3,7 @@
 from .config import DATABASE_FILE, get_connection
 from .questions import (
     get_questions_count,
+    get_question_tag_counts,
     get_all_question_ids,
     get_all_questions,
     get_question_by_id,
@@ -83,6 +84,7 @@ __all__ = [
     'init_db',
     # 题目相关
     'get_questions_count',
+    'get_question_tag_counts',
     'get_all_question_ids',
     'get_all_questions',
     'get_question_by_id',

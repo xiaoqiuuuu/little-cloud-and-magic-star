@@ -4,13 +4,15 @@ import ImagePreview from '../ImagePreview';
 import VideoPreview from '../VideoPreview';
 import AudioPreview from '../AudioPreview';
 import api from '../../api';
+import { DEFAULT_QUESTION_TAG } from '../../constants/questionTags';
 
 const QuestionModal = ({ 
   isOpen, 
   onClose, 
   onSuccess, 
   editingQuestion, 
-  producers 
+  producers,
+  tagOptions = [],
 }) => {
   const { message } = App.useApp();
   
@@ -18,7 +20,7 @@ const QuestionModal = ({
     question: '',
     answer: '',
     resources: '',
-    tag: 'common',
+    tag: DEFAULT_QUESTION_TAG,
     author: [],
   });
 
@@ -58,7 +60,7 @@ const QuestionModal = ({
           question: '',
           answer: '',
           resources: '',
-          tag: 'common',
+          tag: DEFAULT_QUESTION_TAG,
           author: authorArray,
         });
       }
@@ -137,15 +139,22 @@ const QuestionModal = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 题目类型
               </label>
-              <select
+              <input
+                required
+                list="question-tag-options"
                 value={formData.tag}
                 onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+                placeholder="选择或输入自定义标签"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-              >
-                <option value="common">通用</option>
-                <option value="concert">演唱会</option>
-                <option value="vlog">Vlog</option>
-              </select>
+              />
+              <datalist id="question-tag-options">
+                {tagOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </datalist>
+              <p className="text-xs text-gray-500 mt-1">
+                可使用内置标签，也可以直接输入新的标签名称，最多 50 个字符。
+              </p>
             </div>
 
             <div>

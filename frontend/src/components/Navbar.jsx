@@ -11,7 +11,12 @@ import api, { clearAuthSession } from '../api';
 import { showSuccess } from '../utils/message';
 
 
-function Navbar({ isAdminLoggedIn, userRole = '' }) {
+function Navbar({
+  isAdminLoggedIn,
+  userRole = '',
+  brandText = '肥音卤果答题活动',
+  homePath = '/quiz',
+}) {
   const navigate = useNavigate();
   const [logoutLoading, setLogoutLoading] = useState(false);
   const isQuizOperator = isAdminLoggedIn && userRole === 'quiz_operator';
@@ -38,8 +43,8 @@ function Navbar({ isAdminLoggedIn, userRole = '' }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/quiz" className="text-xl font-bold text-gray-800 hover:text-blue-600 transition-colors">
-              🎵 肥音卤果答题活动
+            <Link to={homePath} className="text-xl font-bold text-gray-800 hover:text-blue-600 transition-colors">
+              🎵 {brandText}
             </Link>
           </div>
           <div className="flex items-center space-x-3">

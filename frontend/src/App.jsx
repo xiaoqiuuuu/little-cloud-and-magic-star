@@ -11,6 +11,7 @@ import ProducerManager from './pages/ProducerManager';
 import RoleManager from './pages/RoleManager';
 import AdminUserManager from './pages/AdminUserManager';
 import QuizActivityManager from './pages/QuizActivityManager';
+import AdminQuizPage from './pages/AdminQuizPage';
 import SiteEventManager from './pages/SiteEventManager';
 import AdminLayout from './components/AdminLayout';
 import RequireSuperAdmin from './components/RequireSuperAdmin';
@@ -72,13 +73,25 @@ function App() {
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               
-              {/* 答题页面 */}
+              {/* 活动现场答题页面，仅允许超级管理员和答题人员进入。 */}
               <Route path="/quiz" element={
-                <>
-                  <Navbar isAdminLoggedIn={isAdminLoggedIn} userRole={userRole} />
-                  <QuizPage />
-                </>
+                isAdminLoggedIn && !['super_admin', 'quiz_operator'].includes(userRole) ? (
+                  <Navigate to="/admin/quiz" replace />
+                ) : (
+                  <>
+                    <Navbar
+                      isAdminLoggedIn={isAdminLoggedIn}
+                      userRole={userRole}
+                      brandText="肥音卤果现场答题"
+                      homePath="/quiz"
+                    />
+                    <QuizPage activityMode />
+                  </>
+                )
               } />
+
+              {/* 兼容旧的现场答题地址。 */}
+              <Route path="/quiz/live" element={<Navigate to="/quiz" replace />} />
               
               {/* 管理员登录 */}
               <Route path="/admin/login" element={
@@ -99,6 +112,8 @@ function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="questions" replace />} />
                 <Route path="questions" element={<AdminDashboard />} />
+                <Route path="quiz" element={<AdminQuizPage />} />
+                <Route path="quiz/:questionId" element={<AdminQuizPage />} />
                 <Route path="stats" element={
                   <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载统计图表...</div>}>
                     <VisitStatsPage />

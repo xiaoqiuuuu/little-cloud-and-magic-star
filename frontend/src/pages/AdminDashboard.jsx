@@ -15,6 +15,7 @@ import SearchById from '../components/admin/SearchById';
 import QuestionList from '../components/admin/QuestionList';
 import QuestionModal from '../components/admin/QuestionModal';
 import ExcelImportExport from '../components/admin/ExcelImportExport';
+import { mergeQuestionTagOptions } from '../constants/questionTags';
 
 function AdminDashboard() {
   const { message, modal } = App.useApp();
@@ -22,11 +23,6 @@ function AdminDashboard() {
 
   // 答题/调试模式
   const [debugMode, setDebugMode] = useState(() => localStorage.getItem('debugMode') === 'true');
-
-  // 倒计时设置
-  const [countdownSeconds, setCountdownSeconds] = useState(60);
-  const [showCountdownModal, setShowCountdownModal] = useState(false);
-  const [tempCountdown, setTempCountdown] = useState(countdownSeconds);
 
   // Data State
   const [questions, setQuestions] = useState([]);
@@ -54,6 +50,7 @@ function AdminDashboard() {
   // 判断是否是超级管理员
   const isSuperAdmin = currentUser?.role === 'super_admin';
   const canManageQuestions = hasContentAdminAccess(currentUser);
+  const questionTagOptions = mergeQuestionTagOptions(Object.keys(stats.by_tag || {}));
 
   // Debug Mode Sync
   useEffect(() => {
@@ -73,30 +70,8 @@ function AdminDashboard() {
     window.dispatchEvent(new CustomEvent('debugModeChange', { detail: { debugMode: next } }));
   };
 
-  const handleSaveCountdown = async () => {
-    if (tempCountdown < 10 || tempCountdown > 3600) {
-      message.error('倒计时时间必须在10秒到3600秒之间');
-      return;
-    }
-    
-    try {
-      await api.put('/configs', {
-        key: 'COUNTDOWN_SECONDS',
-        value: tempCountdown.toString()
-      });
-      setCountdownSeconds(tempCountdown);
-      // 同时触发本地事件，以便立即更新（如果是同一浏览器）
-      window.dispatchEvent(new CustomEvent('countdownChange', { detail: { countdownSeconds: tempCountdown } }));
-      message.success('倒计时设置已保存');
-      setShowCountdownModal(false);
-    } catch (error) {
-      console.error('保存配置失败:', error);
-    }
-  };
-
   const fetchStats = useCallback(async () => {
     if (!canManageQuestions) return;
-
     try {
       const response = await api.get('/admin/stats');
       setStats(response.data);
@@ -168,15 +143,12 @@ function AdminDashboard() {
     const supportingRequests = [
       getDeduplicated('/admin/stats'),
       getDeduplicated('/admin/producers', { params: { page_size: 1000 } }),
-      isSuperAdmin
-        ? getDeduplicated('/configs/COUNTDOWN_SECONDS')
-        : Promise.resolve(null),
     ];
 
     Promise.allSettled(supportingRequests).then((results) => {
       if (!active) return;
 
-      const [statsResult, producersResult, configResult] = results;
+      const [statsResult, producersResult] = results;
       if (statsResult.status === 'fulfilled') {
         setStats(statsResult.value.data);
       } else {
@@ -189,19 +161,12 @@ function AdminDashboard() {
         console.error('获取制作人失败:', producersResult.reason);
       }
 
-      if (configResult.status === 'fulfilled' && configResult.value) {
-        const seconds = parseInt(configResult.value.data.value, 10);
-        setCountdownSeconds(seconds);
-        setTempCountdown(seconds);
-      } else if (configResult.status === 'rejected') {
-        console.error('获取配置失败:', configResult.reason);
-      }
     });
 
     return () => {
       active = false;
     };
-  }, [canManageQuestions, isSuperAdmin]);
+  }, [canManageQuestions]);
 
   const handleSearchKeywordChange = useCallback((keyword) => {
     setSearchKeyword(keyword);
@@ -362,23 +327,11 @@ function AdminDashboard() {
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {/* 倒计时设置仅超级管理员可用 */}
-            {isSuperAdmin && (
-              <button
-                onClick={() => {
-                  setTempCountdown(countdownSeconds);
-                  setShowCountdownModal(true);
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
-              >
-                ⏱️ 倒计时设置
-              </button>
-            )}
             <button
-              onClick={() => navigate('/quiz')}
+              onClick={() => navigate('/admin/quiz')}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
             >
-              进入现场答题
+              {isSuperAdmin ? '调试全部题目' : '调试我的题目'}
             </button>
             {/* 全部归零仅超级管理员可用 */}
             {isSuperAdmin && (
@@ -415,7 +368,11 @@ function AdminDashboard() {
         <StatsOverview stats={stats} />
 
         {/* Search By ID */}
-        <SearchById onEdit={handleOpenModal} onDelete={handleDelete} />
+        <SearchById
+          onDebug={(questionId) => navigate(`/admin/quiz/${questionId}`)}
+          onEdit={handleOpenModal}
+          onDelete={handleDelete}
+        />
 
         {/* Filter */}
         <QuestionFilter
@@ -429,6 +386,7 @@ function AdminDashboard() {
           loading={loading}
           producers={producers}
           isSuperAdmin={isSuperAdmin}
+          tagOptions={questionTagOptions}
         />
 
         {/* Question List */}
@@ -439,6 +397,7 @@ function AdminDashboard() {
           filterTag={filterTag}
           sortDesc={sortDesc}
           setSortDesc={setSortDesc}
+          onDebug={(questionId) => navigate(`/admin/quiz/${questionId}`)}
           onEdit={handleOpenModal}
           onDelete={handleDelete}
           onResetStats={handleResetStats}
@@ -461,53 +420,8 @@ function AdminDashboard() {
         }}
         editingQuestion={editingQuestion}
         producers={producers}
+        tagOptions={questionTagOptions}
       />
-
-      {/* 倒计时设置模态框 */}
-      {showCountdownModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-          <div className="relative bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              ⏱️ 答题倒计时设置
-            </h3>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                倒计时时长（秒）
-              </label>
-              <input
-                type="number"
-                value={tempCountdown}
-                onChange={(e) => setTempCountdown(parseInt(e.target.value, 10) || 0)}
-                min="10"
-                max="3600"
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                建议：60秒（1分钟）~ 300秒（5分钟）
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                当前设置：<span className="font-bold text-blue-600">{Math.floor(tempCountdown / 60)}分{tempCountdown % 60}秒</span>
-              </p>
-            </div>
-
-            <div className="flex justify-between gap-3">
-              <button
-                onClick={() => setShowCountdownModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleSaveCountdown}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                保存设置
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
