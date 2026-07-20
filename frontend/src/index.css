@@ -47,3 +47,24 @@ body {
 #nprogress .bar {
   animation: nprogress-fade 0.3s ease;
 }
+
+@keyframes shooting-star {
+  0% {
+    transform: translateX(-100px) translateY(-100px) rotate(45deg);
+    opacity: 0;
+  }
+  50% { opacity: 1; }
+  100% {
+    transform: translateX(1000px) translateY(1000px) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.animate-shooting-star {
+  animation: shooting-star 3s ease-in-out infinite;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-500 { animation-delay: 0.5s; }

@@ -18,6 +18,8 @@
 ## 功能特性
 
 ### 普通用户功能（无需登录）
+- ✅ 首页按后台选定的“当前官网活动”动态展示
+- ✅ 每场官网活动拥有固定链接，主页切换后旧链接继续有效
 - ✅ 浏览所有题目
 - ✅ 按类型筛选题目（演唱会/Vlog/通用）
 - ✅ 在线答题并即时查看结果
@@ -30,6 +32,7 @@
 - ✅ 超级管理员专属人员管理（创建、编辑、停用、删除、重置密码）
 - ✅ 独立“答题人员”账号，只能进入现场答题页面
 - ✅ 答题活动管理（草稿、开始、暂停切换、结束）
+- ✅ 官网活动管理（复制、编辑、预览、设为主页、归档）
 - ✅ 每场活动独立选择题目，并保存每道题的独立随机/隐藏统计
 - ✅ 查看题目统计信息
 - ✅ 创建新题目
@@ -188,6 +191,30 @@ POST   /api/admin/activities/{activity_id}/end
 ```
 
 同一时间只能有一个进行中的活动。开始另一个活动会自动暂停当前活动，切回时会继续使用原活动统计；活动结束后只读。现场答题页面通过 `GET /api/quiz/active-activity` 自动跟随当前活动，原有随机、隐藏、倒计时和答案判断逻辑保持不变。
+
+#### 官网活动（公开读取、仅超级管理员管理）
+
+公开接口：
+
+```
+GET /api/site-events
+GET /api/site-events/current
+GET /api/site-events/{slug}
+```
+
+管理接口：
+
+```
+GET    /api/admin/site-events
+POST   /api/admin/site-events
+PUT    /api/admin/site-events/{id}
+POST   /api/admin/site-events/{id}/duplicate
+POST   /api/admin/site-events/{id}/activate
+POST   /api/admin/site-events/{id}/archive
+DELETE /api/admin/site-events/{id}
+```
+
+根路径 `/` 始终展示后台选定的官网活动，首页不会向访客显示活动切换控件；每场已发布或归档活动仍可通过 `/events/{slug}` 独立访问。推荐在后台复制上一场活动，修改文案和物料后预览，再一键设为主页。详见 [官网活动管理说明](docs/HOMEPAGE_EVENTS.md)。
 
 #### 获取所有题目（含答案）
 ```

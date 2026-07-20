@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Tag, Card, Timeline, Typography, Divider, Tabs, Spin, Image } from 'antd';
 import { ArrowLeftOutlined, UserOutlined, ClockCircleOutlined, InfoCircleOutlined, PlayCircleOutlined, TrophyOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api';
 
 const { Title, Paragraph, Text } = Typography;
 
 function GameRules() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +39,7 @@ function GameRules() {
       <div className="max-w-4xl mx-auto">
         <Button 
           icon={<ArrowLeftOutlined />} 
-          onClick={() => navigate('/')}
+          onClick={() => navigate(location.state?.returnTo || '/')}
           className="mb-6"
         >
           返回首页

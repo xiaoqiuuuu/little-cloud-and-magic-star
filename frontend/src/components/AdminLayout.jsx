@@ -12,6 +12,8 @@ import {
   UsergroupAddOutlined,
   CalendarOutlined,
   BugOutlined,
+  PlayCircleOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession, getDeduplicated } from '../api';
@@ -122,6 +124,14 @@ function AdminLayout() {
       label: <Link to="/admin/roles">角色管理</Link>,
     },
     ...(isSuperAdmin ? [{
+      key: '/quiz',
+      icon: <PlayCircleOutlined />,
+      label: <Link to="/quiz">现场答题</Link>,
+    }, {
+      key: '/admin/site-events',
+      icon: <GlobalOutlined />,
+      label: <Link to="/admin/site-events">官网活动</Link>,
+    }, {
       key: '/admin/activities',
       icon: <CalendarOutlined />,
       label: <Link to="/admin/activities">答题活动</Link>,

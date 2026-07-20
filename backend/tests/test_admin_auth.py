@@ -32,6 +32,7 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         init_db()
         conn = get_connection()
         try:
+            conn.execute("DELETE FROM site_events")
             conn.execute("DELETE FROM quiz_activity_questions")
             conn.execute("DELETE FROM quiz_activities")
             conn.execute("DELETE FROM questions")
@@ -40,6 +41,9 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             conn.commit()
         finally:
             conn.close()
+
+        # 重新插入由数据库迁移提供的默认官网活动。
+        init_db()
 
         self.super_admin = create_admin(
             "rootadmin",
@@ -150,6 +154,7 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         admin_questions = await self.client.get("/api/admin/questions", headers=headers)
         materials = await self.client.get("/api/admin/materials", headers=headers)
         activities = await self.client.get("/api/admin/activities", headers=headers)
+        site_events = await self.client.get("/api/admin/site-events", headers=headers)
         countdown = await self.client.get(
             "/api/configs/COUNTDOWN_SECONDS",
             headers=headers,
@@ -158,7 +163,99 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(admin_questions.status_code, 403)
         self.assertEqual(materials.status_code, 403)
         self.assertEqual(activities.status_code, 403)
+        self.assertEqual(site_events.status_code, 403)
         self.assertEqual(countdown.status_code, 200)
+
+    async def test_super_admin_can_switch_homepage_events_and_keep_old_urls(self):
+        current = await self.client.get("/api/site-events/current")
+        self.assertEqual(current.status_code, 200, current.text)
+        original = current.json()
+
+        editor_tokens = await self.login("editor", "EditorPass123")
+        editor_response = await self.client.get(
+            "/api/admin/site-events",
+            headers=self.auth_headers(editor_tokens["access_token"]),
+        )
+        self.assertEqual(editor_response.status_code, 403)
+
+        super_tokens = await self.login("rootadmin", "StrongPass123")
+        headers = self.auth_headers(super_tokens["access_token"])
+        duplicated = await self.client.post(
+            f"/api/admin/site-events/{original['id']}/duplicate",
+            headers=headers,
+        )
+        self.assertEqual(duplicated.status_code, 201, duplicated.text)
+        draft = duplicated.json()
+        self.assertEqual(draft["status"], "draft")
+        self.assertFalse(draft["is_current"])
+
+        content = draft["content"]
+        content["title"] = "下一场官网活动"
+        updated = await self.client.put(
+            f"/api/admin/site-events/{draft['id']}",
+            headers=headers,
+            json={
+                "slug": "next-shenzhen-event-2026",
+                "name": "下一场深圳活动",
+                "date_label": "2026 年 8 月",
+                "location": "深圳",
+                "content": content,
+            },
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+
+        hidden_draft = await self.client.get(
+            "/api/site-events/next-shenzhen-event-2026"
+        )
+        self.assertEqual(hidden_draft.status_code, 404)
+
+        activated = await self.client.post(
+            f"/api/admin/site-events/{draft['id']}/activate",
+            headers=headers,
+        )
+        self.assertEqual(activated.status_code, 200, activated.text)
+        self.assertTrue(activated.json()["is_current"])
+
+        switched_current = await self.client.get("/api/site-events/current")
+        old_url = await self.client.get(f"/api/site-events/{original['slug']}")
+        public_list = await self.client.get("/api/site-events")
+        self.assertEqual(switched_current.json()["slug"], "next-shenzhen-event-2026")
+        self.assertEqual(old_url.status_code, 200)
+        self.assertEqual(len(public_list.json()), 2)
+
+        changed_published_slug = await self.client.put(
+            f"/api/admin/site-events/{original['id']}",
+            headers=headers,
+            json={"slug": "changed-old-url"},
+        )
+        self.assertEqual(changed_published_slug.status_code, 409)
+
+        archived = await self.client.post(
+            f"/api/admin/site-events/{original['id']}/archive",
+            headers=headers,
+        )
+        self.assertEqual(archived.status_code, 200, archived.text)
+        self.assertEqual(archived.json()["status"], "archived")
+        self.assertEqual(
+            (await self.client.get(f"/api/site-events/{original['slug']}")).status_code,
+            200,
+        )
+
+        archive_current = await self.client.post(
+            f"/api/admin/site-events/{draft['id']}/archive",
+            headers=headers,
+        )
+        self.assertEqual(archive_current.status_code, 409)
+
+        extra_draft = await self.client.post(
+            f"/api/admin/site-events/{draft['id']}/duplicate",
+            headers=headers,
+        )
+        deleted = await self.client.delete(
+            f"/api/admin/site-events/{extra_draft.json()['id']}",
+            headers=headers,
+        )
+        self.assertEqual(deleted.status_code, 204)
 
     async def test_activity_switching_scopes_questions_and_keeps_independent_stats(self):
         create_question(Question(
