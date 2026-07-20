@@ -9,8 +9,11 @@ from .config import get_connection
 
 
 ADMIN_COLUMNS = """
-    id, username, password, role, is_active, token_version, created_at, updated_at
+    id, username, password, role, is_active, token_version,
+    display_name, profile_url, legacy_producer_id, created_at, updated_at
 """
+
+_UNSET = object()
 
 
 def _row_to_admin(row: sqlite3.Row) -> Dict[str, Any]:
@@ -20,6 +23,9 @@ def _row_to_admin(row: sqlite3.Row) -> Dict[str, Any]:
         "role": row["role"],
         "is_active": bool(row["is_active"]),
         "token_version": int(row["token_version"]),
+        "display_name": row["display_name"] or row["username"],
+        "profile_url": row["profile_url"],
+        "legacy_producer_id": row["legacy_producer_id"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -103,15 +109,33 @@ def list_admins() -> List[Dict[str, Any]]:
         conn.close()
 
 
-def create_admin(username: str, password: str, role: str) -> Dict[str, Any]:
+def create_admin(
+    username: str,
+    password: str,
+    role: str,
+    *,
+    display_name: Optional[str] = None,
+    profile_url: Optional[str] = None,
+    legacy_producer_id: Optional[int] = None,
+) -> Dict[str, Any]:
     conn = get_connection()
     try:
         cursor = conn.execute(
             """
-            INSERT INTO admins (username, password, role)
-            VALUES (?, ?, ?)
+            INSERT INTO admins (
+                username, password, role, display_name, profile_url,
+                legacy_producer_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (username, hash_password(password), role),
+            (
+                username,
+                hash_password(password),
+                role,
+                display_name or username,
+                profile_url,
+                legacy_producer_id,
+            ),
         )
         conn.commit()
         admin_id = int(cursor.lastrowid)
@@ -129,6 +153,9 @@ def update_admin(
     username: Optional[str] = None,
     role: Optional[str] = None,
     is_active: Optional[bool] = None,
+    display_name: Any = _UNSET,
+    profile_url: Any = _UNSET,
+    legacy_producer_id: Any = _UNSET,
 ) -> Optional[Dict[str, Any]]:
     current = get_admin_by_id(admin_id)
     if not current:
@@ -141,6 +168,15 @@ def update_admin(
         updates["role"] = role
     if is_active is not None and is_active != current["is_active"]:
         updates["is_active"] = int(is_active)
+    if display_name is not _UNSET and display_name != current["display_name"]:
+        updates["display_name"] = display_name
+    if profile_url is not _UNSET and profile_url != current["profile_url"]:
+        updates["profile_url"] = profile_url
+    if (
+        legacy_producer_id is not _UNSET
+        and legacy_producer_id != current["legacy_producer_id"]
+    ):
+        updates["legacy_producer_id"] = legacy_producer_id
     if not updates:
         return current
 

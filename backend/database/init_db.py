@@ -1,11 +1,106 @@
 """数据库初始化"""
 
 import json
+import os
 
 from .config import get_connection
 from .stats import backfill_page_visit_dimensions
 from .site_events import DEFAULT_SITE_EVENT
 from passwords import hash_password, is_password_hash
+
+
+DEFAULT_EMPTY_QUESTION_OWNER = "fylgcyzlm"
+
+
+def _parse_legacy_names(raw_value):
+    if not raw_value:
+        return []
+    try:
+        parsed = json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError):
+        parsed = raw_value
+    values = parsed if isinstance(parsed, list) else [parsed]
+    return [str(value).strip() for value in values if str(value).strip()]
+
+
+def _backfill_account_contributors(cursor):
+    """
+    生产旧数据中题目出题人使用账号 username，因此可以精确回填账号关系。
+    物料只回填能精确匹配 username 的历史值，不猜测其他署名。
+    """
+    admin_rows = cursor.execute(
+        """
+        SELECT id, username
+        FROM admins
+        WHERE role IN ('super_admin', 'question_admin')
+        """
+    ).fetchall()
+    admin_matches = {}
+    for admin_id, username in admin_rows:
+        admin_matches.setdefault(username.strip().casefold(), []).append(int(admin_id))
+
+    fallback_matches = admin_matches.get(DEFAULT_EMPTY_QUESTION_OWNER.casefold(), [])
+    fallback_admin_id = fallback_matches[0] if len(fallback_matches) == 1 else None
+    missing_fallback_count = 0
+
+    for question_id, raw_author in cursor.execute(
+        """
+        SELECT q.id, q.author
+        FROM questions q
+        WHERE NOT EXISTS (
+            SELECT 1 FROM question_contributors qc WHERE qc.question_id = q.id
+        )
+        """
+    ).fetchall():
+        names = _parse_legacy_names(raw_author)
+        if not names:
+            if fallback_admin_id is None:
+                missing_fallback_count += 1
+                continue
+            names = [DEFAULT_EMPTY_QUESTION_OWNER]
+            cursor.execute(
+                "UPDATE questions SET author = ? WHERE id = ?",
+                (json.dumps(names, ensure_ascii=False), question_id),
+            )
+        for position, name in enumerate(names):
+            matches = admin_matches.get(name.casefold(), [])
+            if len(matches) == 1:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO question_contributors
+                        (question_id, admin_id, position)
+                    VALUES (?, ?, ?)
+                    """,
+                    (question_id, matches[0], position),
+                )
+
+    for material_id, raw_creator in cursor.execute(
+        """
+        SELECT m.id, m.creator
+        FROM materials m
+        WHERE NOT EXISTS (
+            SELECT 1 FROM material_contributors mc WHERE mc.material_id = m.id
+        )
+        """
+    ).fetchall():
+        for position, name in enumerate(_parse_legacy_names(raw_creator)):
+            matches = admin_matches.get(name.casefold(), [])
+            if len(matches) == 1:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO material_contributors
+                        (material_id, admin_id, position)
+                    VALUES (?, ?, ?)
+                    """,
+                    (material_id, matches[0], position),
+                )
+
+    if missing_fallback_count and os.getenv("ENVIRONMENT") == "production":
+        print(
+            f"WARNING: {missing_fallback_count} questions have no author, but "
+            f"account '{DEFAULT_EMPTY_QUESTION_OWNER}' was not found uniquely; "
+            "their ownership was left unchanged."
+        )
 
 
 def init_db():
@@ -85,6 +180,9 @@ def init_db():
             role TEXT NOT NULL DEFAULT 'question_admin' CHECK(role IN ('super_admin', 'question_admin', 'quiz_operator')),
             is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
             token_version INTEGER NOT NULL DEFAULT 0,
+            display_name TEXT,
+            profile_url TEXT,
+            legacy_producer_id INTEGER,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
@@ -169,6 +267,15 @@ def init_db():
         cursor.execute(
             'ALTER TABLE admins ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0')
 
+    if 'display_name' not in admin_columns:
+        cursor.execute('ALTER TABLE admins ADD COLUMN display_name TEXT')
+
+    if 'profile_url' not in admin_columns:
+        cursor.execute('ALTER TABLE admins ADD COLUMN profile_url TEXT')
+
+    if 'legacy_producer_id' not in admin_columns:
+        cursor.execute('ALTER TABLE admins ADD COLUMN legacy_producer_id INTEGER')
+
     if 'created_at' not in admin_columns:
         cursor.execute('ALTER TABLE admins ADD COLUMN created_at TEXT')
 
@@ -177,7 +284,8 @@ def init_db():
 
     cursor.execute('''
         UPDATE admins
-        SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+        SET display_name = COALESCE(NULLIF(TRIM(display_name), ''), username),
+            created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
             updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
     ''')
 
@@ -206,6 +314,9 @@ def init_db():
                     CHECK(role IN ('super_admin', 'question_admin', 'quiz_operator')),
                 is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
                 token_version INTEGER NOT NULL DEFAULT 0,
+                display_name TEXT,
+                profile_url TEXT,
+                legacy_producer_id INTEGER,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
@@ -213,14 +324,51 @@ def init_db():
         cursor.execute('''
             INSERT INTO admins (
                 id, username, password, role, is_active,
-                token_version, created_at, updated_at
+                token_version, display_name, profile_url, legacy_producer_id,
+                created_at, updated_at
             )
             SELECT
                 id, username, password, role, is_active,
-                token_version, created_at, updated_at
+                token_version, display_name, profile_url, legacy_producer_id,
+                created_at, updated_at
             FROM admins_legacy_roles
         ''')
         cursor.execute('DROP TABLE admins_legacy_roles')
+
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_admins_legacy_producer
+        ON admins(legacy_producer_id)
+        WHERE legacy_producer_id IS NOT NULL
+    ''')
+
+    # 题目和物料直接绑定账号。旧的 author/creator 字段保留作为回滚兼容数据。
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS question_contributors (
+            question_id TEXT NOT NULL,
+            admin_id INTEGER NOT NULL,
+            position INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (question_id, admin_id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_question_contributors_admin
+        ON question_contributors(admin_id, question_id)
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS material_contributors (
+            material_id TEXT NOT NULL,
+            admin_id INTEGER NOT NULL,
+            position INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (material_id, admin_id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_material_contributors_admin
+        ON material_contributors(admin_id, material_id)
+    ''')
+    _backfill_account_contributors(cursor)
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS admin_refresh_tokens (

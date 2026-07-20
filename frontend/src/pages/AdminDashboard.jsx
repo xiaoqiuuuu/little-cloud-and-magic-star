@@ -28,7 +28,7 @@ function AdminDashboard() {
   const [questions, setQuestions] = useState([]);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState({ total: 0, concert: 0, vlog: 0, common: 0 });
-  const [producers, setProducers] = useState([]);
+  const [contributors, setContributors] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filter & Pagination State
@@ -36,7 +36,7 @@ function AdminDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filterTag, setFilterTag] = useState('all');
-  const [filterAuthor, setFilterAuthor] = useState(null);
+  const [filterContributorId, setFilterContributorId] = useState(null);
   const [sortDesc, setSortDesc] = useState(true);
 
   // Modal State
@@ -101,7 +101,7 @@ function AdminDashboard() {
       };
       if (searchKeyword) params.keyword = searchKeyword;
       if (filterTag !== 'all') params.tag = filterTag;
-      if (filterAuthor) params.author = filterAuthor;
+      if (filterContributorId) params.contributor_id = filterContributorId;
 
       const response = await getLatest(
         'admin-questions-list',
@@ -125,7 +125,7 @@ function AdminDashboard() {
   }, [
     canManageQuestions,
     currentPage,
-    filterAuthor,
+    filterContributorId,
     filterTag,
     pageSize,
     searchKeyword,
@@ -142,23 +142,23 @@ function AdminDashboard() {
     let active = true;
     const supportingRequests = [
       getDeduplicated('/admin/stats'),
-      getDeduplicated('/admin/producers', { params: { page_size: 1000 } }),
+      getDeduplicated('/admin/users/contributors'),
     ];
 
     Promise.allSettled(supportingRequests).then((results) => {
       if (!active) return;
 
-      const [statsResult, producersResult] = results;
+      const [statsResult, contributorsResult] = results;
       if (statsResult.status === 'fulfilled') {
         setStats(statsResult.value.data);
       } else {
         console.error('获取统计失败:', statsResult.reason);
       }
 
-      if (producersResult.status === 'fulfilled') {
-        setProducers(producersResult.value.data.items);
+      if (contributorsResult.status === 'fulfilled') {
+        setContributors(contributorsResult.value.data);
       } else {
-        console.error('获取制作人失败:', producersResult.reason);
+        console.error('获取贡献账号失败:', contributorsResult.reason);
       }
 
     });
@@ -178,8 +178,8 @@ function AdminDashboard() {
     setCurrentPage(1);
   }, []);
 
-  const handleFilterAuthorChange = useCallback((author) => {
-    setFilterAuthor(author);
+  const handleFilterContributorChange = useCallback((contributorId) => {
+    setFilterContributorId(contributorId);
     setCurrentPage(1);
   }, []);
 
@@ -380,11 +380,11 @@ function AdminDashboard() {
           setSearchKeyword={handleSearchKeywordChange}
           filterTag={filterTag}
           setFilterTag={handleFilterTagChange}
-          filterAuthor={filterAuthor}
-          setFilterAuthor={handleFilterAuthorChange}
+          filterContributorId={filterContributorId}
+          setFilterContributorId={handleFilterContributorChange}
           total={total}
           loading={loading}
-          producers={producers}
+          contributors={contributors}
           isSuperAdmin={isSuperAdmin}
           tagOptions={questionTagOptions}
         />
@@ -419,7 +419,9 @@ function AdminDashboard() {
           fetchStats();
         }}
         editingQuestion={editingQuestion}
-        producers={producers}
+        contributors={contributors}
+        currentUser={currentUser}
+        isSuperAdmin={isSuperAdmin}
         tagOptions={questionTagOptions}
       />
     </div>

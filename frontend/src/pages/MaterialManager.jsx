@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { App } from 'antd';
+import { useOutletContext } from 'react-router-dom';
 import api from '../api';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
@@ -7,6 +8,8 @@ import AudioPreview from '../components/AudioPreview';
 
 function MaterialManager() {
   const { message, modal } = App.useApp();
+  const { currentUser } = useOutletContext();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
   
   const [materials, setMaterials] = useState([]);
   const [total, setTotal] = useState(0);
@@ -17,10 +20,11 @@ function MaterialManager() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    creator: [],
+    contributor_ids: [],
     resources: '',
   });
-  const [producers, setProducers] = useState([]); // 制作人列表
+  const [contributors, setContributors] = useState([]);
+  const [filterContributorId, setFilterContributorId] = useState(null);
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,19 +32,18 @@ function MaterialManager() {
 
   useEffect(() => {
     fetchMaterials();
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, filterContributorId]);
 
   useEffect(() => {
-    fetchProducers();
+    fetchContributors();
   }, []);
 
-  const fetchProducers = async () => {
+  const fetchContributors = async () => {
     try {
-      // 获取所有制作人用于下拉选择
-      const response = await api.get('/admin/producers', { params: { page_size: 1000 } });
-      setProducers(response.data.items);
+      const response = await api.get('/admin/users/contributors');
+      setContributors(response.data);
     } catch (error) {
-      console.error('获取制作人失败:', error);
+      console.error('获取贡献账号失败:', error);
     }
   };
 
@@ -48,6 +51,7 @@ function MaterialManager() {
     try {
       setLoading(true);
       const params = { page: currentPage, page_size: pageSize };
+      if (filterContributorId) params.contributor_id = filterContributorId;
       const response = await api.get('/admin/materials', { params });
       setMaterials(response.data.items);
       setTotal(response.data.total);
@@ -64,7 +68,7 @@ function MaterialManager() {
       setFormData({
         name: material.name,
         description: material.description,
-        creator: Array.isArray(material.creator) ? material.creator : (material.creator ? [material.creator] : []),
+        contributor_ids: material.contributors?.map((item) => item.id) || [],
         resources: material.resources.join('\n'),
       });
     } else {
@@ -72,7 +76,7 @@ function MaterialManager() {
       setFormData({
         name: '',
         description: '',
-        creator: [],
+        contributor_ids: currentUser?.id ? [currentUser.id] : [],
         resources: '',
       });
     }
@@ -85,7 +89,7 @@ function MaterialManager() {
     setFormData({
       name: '',
       description: '',
-      creator: [],
+      contributor_ids: [],
       resources: '',
     });
   };
@@ -96,7 +100,7 @@ function MaterialManager() {
     const data = {
       name: formData.name,
       description: formData.description,
-      creator: formData.creator,
+      contributor_ids: formData.contributor_ids,
       resources: formData.resources
         .split('\n')
         .map((url) => url.trim())
@@ -152,6 +156,30 @@ function MaterialManager() {
         </button>
       </div>
 
+      {isSuperAdmin && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            按贡献账号筛选
+          </label>
+          <select
+            value={filterContributorId || ''}
+            onChange={(event) => {
+              setFilterContributorId(event.target.value ? Number(event.target.value) : null);
+              setCurrentPage(1);
+            }}
+            className="w-full sm:max-w-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">全部账号</option>
+            {contributors.map((contributor) => (
+              <option key={contributor.id} value={contributor.id}>
+                {contributor.display_name}（{contributor.username}）
+                {!contributor.is_active ? '（已停用）' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {materials.map((material) => {
           const coverImage = material.resources?.find(url => /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(url));
@@ -169,7 +197,7 @@ function MaterialManager() {
                   <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded h-fit">#{material.id}</span>
                 </div>
                 <p className="text-sm text-gray-600 mb-2 line-clamp-2">{material.description || '暂无介绍'}</p>
-                <p className="text-xs text-gray-500 mb-3">制作人: {Array.isArray(material.creator) ? material.creator.join(', ') : (material.creator || '未知')}</p>
+                <p className="text-xs text-gray-500 mb-3">署名: {Array.isArray(material.creator) ? material.creator.join(', ') : (material.creator || '未知')}</p>
                 
                 <div className="mb-3 text-gray-700 text-sm mt-auto">
                   {material.resources && material.resources.length > 0 ? `${material.resources.length} 个资源` : '无资源'}
@@ -323,43 +351,64 @@ function MaterialManager() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    制作人（可多选）
+                    贡献账号（可多选）
                   </label>
                   <div className="space-y-2">
                     <select
                       multiple
-                      value={formData.creator}
+                      value={formData.contributor_ids.map(String)}
                       onChange={(e) => {
-                        const selected = Array.from(e.target.selectedOptions, option => option.value);
-                        setFormData({ ...formData, creator: selected });
+                        const selected = Array.from(
+                          e.target.selectedOptions,
+                          (option) => Number(option.value),
+                        );
+                        setFormData({ ...formData, contributor_ids: selected });
                       }}
+                      disabled={!isSuperAdmin}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       size="5"
                     >
-                      {producers.map((producer) => (
-                        <option key={producer.id} value={producer.name}>
-                          {producer.name}
+                      {contributors.map((contributor) => (
+                        <option
+                          key={contributor.id}
+                          value={contributor.id}
+                          disabled={!contributor.is_active}
+                        >
+                          {contributor.display_name}（{contributor.username}）
+                          {!contributor.is_active ? '（已停用）' : ''}
                         </option>
                       ))}
                     </select>
-                    {formData.creator.length > 0 && (
+                    {formData.contributor_ids.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {formData.creator.map((name, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                            {name}
-                            <button
-                              type="button"
-                              onClick={() => setFormData({ ...formData, creator: formData.creator.filter((_, i) => i !== idx) })}
-                              className="text-blue-600 hover:text-blue-800 font-bold"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
+                        {formData.contributor_ids.map((contributorId) => {
+                          const contributor = contributors.find((item) => item.id === contributorId);
+                          return contributor ? (
+                            <span key={contributorId} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                              {contributor.display_name}（{contributor.username}）
+                              {isSuperAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({
+                                    ...formData,
+                                    contributor_ids: formData.contributor_ids.filter((id) => id !== contributorId),
+                                  })}
+                                  className="text-blue-600 hover:text-blue-800 font-bold"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </span>
+                          ) : null;
+                        })}
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">按住Ctrl/Cmd键点击可多选，如需新增请前往“制作人管理”页面</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isSuperAdmin
+                      ? '按住 Ctrl/Cmd 可选择多个账号；新物料默认绑定当前账号。'
+                      : '题目管理员新建物料时默认绑定自己。'}
+                  </p>
                 </div>
 
                 <div>

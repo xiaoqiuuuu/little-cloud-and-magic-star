@@ -9,10 +9,11 @@ database/
 ├── init_db.py           # 数据库初始化（创建所有表）
 ├── questions.py         # 题目表相关操作
 ├── admins.py            # 管理员表相关操作
+├── contributors.py     # 题目/物料与账号的贡献关系
 ├── activities.py        # 答题活动、活动题目与独立统计
 ├── tokens.py            # Refresh Token 轮换与撤销状态
 ├── materials.py         # 物料表相关操作
-└── producers.py         # 制作人表相关操作
+└── producers.py         # 历史制作人兼容操作
 ```
 
 ## 使用方式
@@ -59,6 +60,12 @@ from database import (
 - `reset_admin_password()`: 重置哈希密码并使旧 Token 失效
 - `increment_admin_token_version()`: 注销账号现有 JWT
 
+### contributors.py（内容贡献账号）
+- 题目和物料通过 `admins.id` 直接绑定账号
+- 为旧 `author` / `creator` 字符串数据提供兼容读取和认领
+- `set_question_contributors()` / `set_material_contributors()`: 更新内容账号关系
+- `claim_legacy_producer_content()`: 认领历史制作人内容，不覆盖原署名
+
 ### tokens.py（Refresh Token 表）
 - `create_refresh_token()`: 登记登录时签发的 Refresh Token
 - `rotate_refresh_token()`: 原子消费旧 Token 并登记新 Token
@@ -79,7 +86,7 @@ from database import (
 - `update_material()`: 更新物料
 - `delete_material()`: 删除物料
 
-### producers.py（制作人表）
+### producers.py（历史制作人兼容表）
 - `get_producers_count()`: 获取制作人总数
 - `get_all_producers()`: 获取所有制作人（支持分页）
 - `get_producer_by_id()`: 根据ID获取制作人

@@ -11,7 +11,7 @@ api/
 ├── activities.py      # 答题活动、题目范围与活动状态 API
 ├── questions.py       # 题目相关的所有API
 ├── materials.py       # 物料相关的所有API
-└── producers.py       # 制作人相关的所有API
+└── producers.py       # 历史制作人兼容 API
 ```
 
 ## 各模块说明
@@ -29,11 +29,12 @@ api/
 - `GET /me`: 获取数据库中的实时账号和角色信息
 
 ### users.py（人员管理模块）
-**前缀**: `/api/admin/users`，全部接口仅超级管理员可用
+**前缀**: `/api/admin/users`
 
 - `GET /`: 获取后台账号列表
+- `GET /contributors`: 获取题目/物料可绑定的内容账号
 - `POST /`: 创建后台账号
-- `PATCH /{admin_id}`: 修改用户名、角色或启停状态
+- `PATCH /{admin_id}`: 修改账号、名片、角色或启停状态
 - `PUT /{admin_id}/password`: 重置密码
 - `DELETE /{admin_id}`: 删除账号
 
@@ -76,13 +77,13 @@ api/
 - `PUT /materials/{material_id}`: 更新物料
 - `DELETE /materials/{material_id}`: 删除物料
 
-### producers.py（制作人模块）
+### producers.py（历史制作人兼容模块）
 **前缀**: `/api/admin`
 
-- `GET /producers`: 获取制作人列表（分页）
+- `GET /producers`: 获取可供账号认领的历史制作人
 - `POST /producers`: 创建制作人
-- `PUT /producers/{producer_id}`: 更新制作人
-- `DELETE /producers/{producer_id}`: 删除制作人
+- `PUT /producers/{producer_id}`: 更新未被账号认领的制作人
+- `DELETE /producers/{producer_id}`: 删除未被账号认领的制作人
 
 ## 使用方式
 

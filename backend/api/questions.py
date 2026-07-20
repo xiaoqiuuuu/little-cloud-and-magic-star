@@ -12,6 +12,10 @@ from database import (
     create_question, update_question, delete_question,
     get_next_question_id, get_questions_count,
     get_question_tag_counts,
+    add_question_contributor,
+    get_admin_legacy_names,
+    get_content_contributor,
+    get_content_contributors,
     increment_random_clicks, increment_hide_clicks,
     reset_question_stats, reset_all_questions_stats,
     check_duplicate_question,
@@ -21,8 +25,11 @@ from database import (
     get_active_activity_questions,
     get_started_activity_using_question,
     increment_active_activity_stat,
+    question_has_contributor,
+    question_has_contributors,
+    resolve_contributors_by_names,
+    set_question_contributors,
 )
-from database.producers import get_or_create_producer
 from .dependencies import (
     get_current_user_info_dep,
     require_content_admin,
@@ -40,6 +47,36 @@ def _clean_tag(tag: str) -> str:
     if not cleaned:
         raise HTTPException(status_code=422, detail="题目标签不能为空")
     return cleaned
+
+
+def _get_requested_contributors(admin_ids: List[int]):
+    unique_ids = list(dict.fromkeys(int(admin_id) for admin_id in admin_ids))
+    if not unique_ids:
+        raise HTTPException(status_code=422, detail="题目至少需要绑定一个账号")
+    contributors = get_content_contributors(unique_ids)
+    if len(contributors) != len(unique_ids):
+        raise HTTPException(
+            status_code=422,
+            detail="题目只能绑定超级管理员或题目管理员账号",
+        )
+    return contributors
+
+
+def _legacy_question_belongs_to_user(question: Question, user_info: dict) -> bool:
+    aliases = {
+        name.strip().casefold()
+        for name in get_admin_legacy_names(user_info["id"])
+        if name.strip()
+    }
+    return bool(aliases.intersection(
+        str(name).strip().casefold() for name in question.author
+    ))
+
+
+def _question_belongs_to_user(question: Question, user_info: dict) -> bool:
+    if question_has_contributors(question.id):
+        return question_has_contributor(question.id, user_info["id"])
+    return _legacy_question_belongs_to_user(question, user_info)
 
 
 def _ensure_quiz_operator_question(question_id: str, role: str) -> None:
@@ -73,19 +110,20 @@ def _ensure_question_not_in_started_activity(question_id: str) -> None:
 @router.get("/api/questions/ids")
 def list_question_ids(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目ID列表（轻量级）"""
-    username = user_info["username"]
     role = user_info["role"]
     if role == "quiz_operator":
         return get_active_activity_question_ids() if get_active_activity() else []
-    # 题目管理员只能获取自己出的题目ID
-    author_filter = None if role == "super_admin" else username
-    return get_all_question_ids(author=author_filter)
+    if role == "super_admin":
+        return get_all_question_ids()
+    return get_all_question_ids(
+        contributor_id=user_info["id"],
+        legacy_names=get_admin_legacy_names(user_info["id"]),
+    )
 
 
 @router.get("/api/questions", response_model=List[Question])
 def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
     """获取所有题目（包含答案，需登录）"""
-    username = user_info["username"]
     role = user_info["role"]
     if role == "quiz_operator":
         if not get_active_activity():
@@ -95,10 +133,13 @@ def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
             for question_id in get_active_activity_questions()
             if (question := get_question_by_id(question_id)) is not None
         ]
-    # 题目管理员只能获取自己出的题目
-    author_filter = None if role == "super_admin" else username
-    questions = get_all_questions(page_size=0, author=author_filter)
-    return questions
+    if role == "super_admin":
+        return get_all_questions(page_size=0)
+    return get_all_questions(
+        page_size=0,
+        contributor_id=user_info["id"],
+        legacy_names=get_admin_legacy_names(user_info["id"]),
+    )
 
 
 @router.get("/api/quiz/questions/ids")
@@ -130,7 +171,6 @@ def get_live_question(
 @router.get("/api/questions/{question_id}", response_model=Question)
 def get_question(question_id: str, user_info: dict = Depends(get_current_user_info_dep)):
     """获取单个题目（包含答案，需登录）"""
-    username = user_info["username"]
     role = user_info["role"]
 
     _ensure_quiz_operator_question(question_id, role)
@@ -141,8 +181,7 @@ def get_question(question_id: str, user_info: dict = Depends(get_current_user_in
 
     # 题目管理员只能查看自己创建的题目
     if role == "question_admin":
-        author_list = question.author if isinstance(question.author, list) else []
-        if username not in author_list:
+        if not _question_belongs_to_user(question, user_info):
             raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
 
     return question
@@ -232,15 +271,17 @@ def track_hide_click(
 @router.get("/api/admin/stats")
 def get_stats(user_info: dict = Depends(require_content_admin)):
     """获取题目统计信息"""
-    username = user_info["username"]
     role = user_info["role"]
 
-    # 题目管理员只能看到自己创建的题目的统计
-    author_filter = None if role == "super_admin" else username
+    contributor_id = None if role == "super_admin" else user_info["id"]
+    legacy_names = None if role == "super_admin" else get_admin_legacy_names(user_info["id"])
 
-    by_tag = get_question_tag_counts(author=author_filter)
+    by_tag = get_question_tag_counts(contributor_id, legacy_names)
     return {
-        "total": get_questions_count(author=author_filter),
+        "total": get_questions_count(
+            contributor_id=contributor_id,
+            legacy_names=legacy_names,
+        ),
         "concert": by_tag.get("concert", 0),
         "vlog": by_tag.get("vlog", 0),
         "common": by_tag.get("common", 0),
@@ -253,15 +294,12 @@ def reset_stats_single(question_id: str, user_info: dict = Depends(require_conte
     """单题归零"""
     # 题目管理员只能操作自己创建的题目
     role = user_info["role"]
-    username = user_info["username"]
 
     if role != "super_admin":
         question = get_question_by_id(question_id)
         if not question:
             raise HTTPException(status_code=404, detail="题目不存在")
-        # 检查是否是本人创建的题目
-        author_list = question.author if isinstance(question.author, list) else []
-        if username not in author_list:
+        if not _question_belongs_to_user(question, user_info):
             raise HTTPException(status_code=403, detail="只能操作自己创建的题目")
 
     success = reset_question_stats(question_id)
@@ -285,21 +323,38 @@ def admin_list_questions(
     tag: Optional[str] = None,
     sort_order: str = 'asc',
     author: Optional[str] = None,
+    contributor_id: Optional[int] = None,
     user_info: dict = Depends(require_content_admin)
 ):
     """管理员获取题目（分页）- 题目管理员只能看到自己创建的题目"""
-    username = user_info["username"]
     role = user_info["role"]
 
-    # 超级管理员可以看到所有题目，题目管理员只能看到自己创建的
-    # 如果超级管理员指定了author筛选，则使用指定的作者
     if role == "super_admin":
-        author_filter = author
+        selected_contributor_id = contributor_id
+        legacy_names = [author] if author and contributor_id is None else None
+        if contributor_id is not None and not get_content_contributor(contributor_id):
+            raise HTTPException(status_code=422, detail="筛选账号不存在")
+        if contributor_id is not None:
+            legacy_names = get_admin_legacy_names(contributor_id)
     else:
-        author_filter = username  # 题目管理员只能看到自己的
+        selected_contributor_id = user_info["id"]
+        legacy_names = get_admin_legacy_names(user_info["id"])
 
-    questions = get_all_questions(page, page_size, keyword, tag, sort_order, author_filter)
-    total = get_questions_count(keyword, tag, author_filter)
+    questions = get_all_questions(
+        page,
+        page_size,
+        keyword,
+        tag,
+        sort_order,
+        selected_contributor_id,
+        legacy_names,
+    )
+    total = get_questions_count(
+        keyword,
+        tag,
+        selected_contributor_id,
+        legacy_names,
+    )
     return PaginatedQuestions(
         total=total,
         page=page,
@@ -311,7 +366,6 @@ def admin_list_questions(
 @router.get("/api/admin/questions/{question_id}", response_model=Question)
 def admin_get_question(question_id: str, user_info: dict = Depends(require_content_admin)):
     """管理员获取单个题目（包含答案）"""
-    username = user_info["username"]
     role = user_info["role"]
 
     question = get_question_by_id(question_id)
@@ -320,8 +374,7 @@ def admin_get_question(question_id: str, user_info: dict = Depends(require_conte
 
     # 题目管理员只能查看自己创建的题目
     if role != "super_admin":
-        author_list = question.author if isinstance(question.author, list) else []
-        if username not in author_list:
+        if not _question_belongs_to_user(question, user_info):
             raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
 
     return question
@@ -330,14 +383,18 @@ def admin_get_question(question_id: str, user_info: dict = Depends(require_conte
 @router.post("/api/admin/questions", response_model=Question)
 def admin_create_question(question_data: QuestionCreate, user_info: dict = Depends(require_content_admin)):
     """管理员创建题目"""
-    username = user_info["username"]
     role = user_info["role"]
 
     # 生成自增ID
     question_id = get_next_question_id()
 
-    # 题目管理员不能伪造或追加其他出题人。
-    author = [username] if role == "question_admin" else question_data.author
+    requested_ids = (
+        [user_info["id"]]
+        if role == "question_admin"
+        else (question_data.contributor_ids or [user_info["id"]])
+    )
+    contributors = _get_requested_contributors(requested_ids)
+    author = [contributor.display_name for contributor in contributors]
 
     question = Question(
         id=question_id,
@@ -347,7 +404,7 @@ def admin_create_question(question_data: QuestionCreate, user_info: dict = Depen
         tag=_clean_tag(question_data.tag),
         author=author
     )
-    return create_question(question)
+    return create_question(question, [contributor.id for contributor in contributors])
 
 
 @router.put("/api/admin/questions/{question_id}", response_model=Question)
@@ -357,7 +414,6 @@ def admin_update_question(
     user_info: dict = Depends(require_content_admin)
 ):
     """管理员更新题目"""
-    username = user_info["username"]
     role = user_info["role"]
 
     existing = get_question_by_id(question_id)
@@ -366,25 +422,46 @@ def admin_update_question(
 
     # 题目管理员只能更新自己创建的题目
     if role != "super_admin":
-        author_list = existing.author if isinstance(existing.author, list) else []
-        if username not in author_list:
+        if not _question_belongs_to_user(existing, user_info):
             raise HTTPException(status_code=403, detail="只能更新自己创建的题目")
 
     _ensure_question_not_in_started_activity(question_id)
 
     updates = question_data.model_dump(exclude_unset=True)
+    requested_contributor_ids = updates.pop("contributor_ids", None)
+    legacy_author_update = updates.pop("author", None)
     if "tag" in updates and updates["tag"] is not None:
         updates["tag"] = _clean_tag(updates["tag"])
-    if role != "super_admin" and "author" in updates:
-        updates["author"] = [username]
+
+    contributors = None
+    if role == "super_admin":
+        if requested_contributor_ids is None and legacy_author_update is not None:
+            resolved = resolve_contributors_by_names(legacy_author_update)
+            if resolved:
+                requested_contributor_ids = [contributor.id for contributor in resolved]
+            else:
+                updates["author"] = legacy_author_update
+        if requested_contributor_ids is not None:
+            contributors = _get_requested_contributors(requested_contributor_ids)
+            updates["author"] = [
+                contributor.display_name for contributor in contributors
+            ]
+    elif not question_has_contributors(question_id):
+        # 题目管理员编辑旧题时顺便建立稳定的账号关系，不改写旧署名。
+        add_question_contributor(question_id, user_info["id"])
+
     updated = update_question(question_id, updates)
+    if contributors is not None:
+        set_question_contributors(
+            question_id, [contributor.id for contributor in contributors]
+        )
+        updated = get_question_by_id(question_id)
     return updated
 
 
 @router.delete("/api/admin/questions/{question_id}")
 def admin_delete_question(question_id: str, user_info: dict = Depends(require_content_admin)):
     """管理员删除题目"""
-    username = user_info["username"]
     role = user_info["role"]
 
     # 题目管理员只能删除自己创建的题目
@@ -392,8 +469,7 @@ def admin_delete_question(question_id: str, user_info: dict = Depends(require_co
         question = get_question_by_id(question_id)
         if not question:
             raise HTTPException(status_code=404, detail="题目不存在")
-        author_list = question.author if isinstance(question.author, list) else []
-        if username not in author_list:
+        if not _question_belongs_to_user(question, user_info):
             raise HTTPException(status_code=403, detail="只能删除自己创建的题目")
 
     _ensure_question_not_in_started_activity(question_id)
@@ -406,7 +482,7 @@ def admin_delete_question(question_id: str, user_info: dict = Depends(require_co
 @router.post("/api/admin/questions/batch_import", response_model=QuestionBatchImportResult)
 def admin_batch_import_questions(
     batch_data: QuestionBatchImport,
-    _: dict = Depends(require_super_admin),
+    user_info: dict = Depends(require_super_admin),
 ):
     """仅超级管理员可以批量导入题目。"""
     success_count = 0
@@ -416,11 +492,15 @@ def admin_batch_import_questions(
     for index, item in enumerate(batch_data.questions):
         try:
             cleaned_tag = _clean_tag(item.tag)
-            # 处理制作人：确保所有制作人都存在于数据库中
-            if item.author:
-                for author_name in item.author:
-                    if author_name.strip():  # 跳过空字符串
-                        get_or_create_producer(author_name.strip())
+            resolved_contributors = resolve_contributors_by_names(item.author)
+            if not resolved_contributors:
+                resolved_contributors = _get_requested_contributors([user_info["id"]])
+            contributor_ids = [
+                contributor.id for contributor in resolved_contributors
+            ]
+            author_names = item.author or [
+                contributor.display_name for contributor in resolved_contributors
+            ]
             
             if item.id:
                 # 有ID，尝试更新
@@ -450,7 +530,8 @@ def admin_batch_import_questions(
                     and existing.answer.lower() == item.answer.lower()
                     and existing.resources == item.resources
                     and existing.tag == cleaned_tag
-                    and existing.author == item.author
+                    and existing.author == author_names
+                    and question_has_contributors(item.id)
                 ):
                     errors.append({
                         "index": index,
@@ -466,9 +547,10 @@ def admin_batch_import_questions(
                     "answer": item.answer,
                     "resources": item.resources,
                     "tag": cleaned_tag,
-                    "author": item.author
+                    "author": author_names
                 }
                 update_question(item.id, updates)
+                set_question_contributors(item.id, contributor_ids)
                 success_count += 1
             else:
                 # 无ID，检查是否存在重复题目
@@ -490,11 +572,11 @@ def admin_batch_import_questions(
                     answer=item.answer,
                     resources=item.resources,
                     tag=cleaned_tag,
-                    author=item.author,
+                    author=author_names,
                     random_clicks=0,
                     hide_clicks=0
                 )
-                create_question(question)
+                create_question(question, contributor_ids)
                 success_count += 1
         except Exception as e:
             errors.append({

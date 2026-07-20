@@ -5,11 +5,11 @@ const QuestionFilter = ({
   setSearchKeyword,
   filterTag,
   setFilterTag,
-  filterAuthor,
-  setFilterAuthor,
+  filterContributorId,
+  setFilterContributorId,
   total,
   loading,
-  producers,
+  contributors,
   isSuperAdmin = true,
   tagOptions = [],
 }) => {
@@ -64,21 +64,24 @@ const QuestionFilter = ({
           </select>
         </div>
 
-        {/* 出题人筛选 - 仅超级管理员可见 */}
+        {/* 账号筛选 - 仅超级管理员可见 */}
         {isSuperAdmin && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              出题人
+              贡献账号
             </label>
             <select
-              value={filterAuthor || ''}
-              onChange={(e) => setFilterAuthor(e.target.value || null)}
+              value={filterContributorId || ''}
+              onChange={(e) => setFilterContributorId(
+                e.target.value ? Number(e.target.value) : null
+              )}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">全部出题人</option>
-              {producers && producers.map((producer) => (
-                <option key={producer.id} value={producer.name}>
-                  {producer.name}
+              <option value="">全部账号</option>
+              {contributors && contributors.map((contributor) => (
+                <option key={contributor.id} value={contributor.id}>
+                  {contributor.display_name}（{contributor.username}）
+                  {!contributor.is_active ? '（已停用）' : ''}
                 </option>
               ))}
             </select>
@@ -90,13 +93,13 @@ const QuestionFilter = ({
       <div className="mt-4 text-sm text-gray-600 flex items-center flex-wrap gap-2">
         <span>找到 <span className="font-bold text-blue-600">{total}</span> 条结果</span>
         {loading && <span className="text-gray-500 flex items-center"><span className="animate-spin mr-1">⟳</span> 加载中...</span>}
-        {(searchKeyword || filterTag !== 'all' || filterAuthor) && (
+        {(searchKeyword || filterTag !== 'all' || filterContributorId) && (
           <button
             onClick={() => {
               setSearchKeyword('');
               setInputValue('');
               setFilterTag('all');
-              setFilterAuthor(null);
+              setFilterContributorId(null);
             }}
             className="ml-2 text-blue-600 hover:text-blue-800 underline"
           >

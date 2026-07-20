@@ -1,6 +1,16 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 
+
+class ContentContributor(BaseModel):
+    id: int
+    username: str
+    display_name: str
+    profile_url: Optional[str] = None
+    role: Literal["super_admin", "question_admin"]
+    is_active: bool
+
+
 # 题目模型
 
 
@@ -11,6 +21,7 @@ class Question(BaseModel):
     resources: List[str] = []
     tag: str = Field(min_length=1, max_length=50)
     author: List[str] = []  # 改为多选
+    contributors: List[ContentContributor] = Field(default_factory=list)
     random_clicks: int = 0
     hide_clicks: int = 0
     created_at: Optional[str] = None
@@ -25,6 +36,7 @@ class QuestionCreate(BaseModel):
     resources: List[str] = []
     tag: str = Field(default="common", min_length=1, max_length=50)
     author: List[str] = []
+    contributor_ids: List[int] = Field(default_factory=list)
 
 # 更新题目请求
 
@@ -35,6 +47,7 @@ class QuestionUpdate(BaseModel):
     resources: Optional[List[str]] = None
     tag: Optional[str] = Field(default=None, min_length=1, max_length=50)
     author: Optional[List[str]] = None
+    contributor_ids: Optional[List[int]] = None
 
 # 批量导入题目项
 
@@ -108,6 +121,9 @@ class AdminUser(BaseModel):
     username: str
     role: Literal["super_admin", "question_admin", "quiz_operator"]
     is_active: bool
+    display_name: str
+    profile_url: Optional[str] = None
+    legacy_producer_id: Optional[int] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -116,12 +132,18 @@ class AdminUserCreate(BaseModel):
     username: str = Field(min_length=2, max_length=50)
     password: str = Field(min_length=8, max_length=128)
     role: Literal["super_admin", "question_admin", "quiz_operator"] = "question_admin"
+    display_name: Optional[str] = Field(default=None, max_length=100)
+    profile_url: Optional[str] = Field(default=None, max_length=500)
+    legacy_producer_id: Optional[int] = None
 
 
 class AdminUserUpdate(BaseModel):
     username: Optional[str] = Field(default=None, min_length=2, max_length=50)
     role: Optional[Literal["super_admin", "question_admin", "quiz_operator"]] = None
     is_active: Optional[bool] = None
+    display_name: Optional[str] = Field(default=None, max_length=100)
+    profile_url: Optional[str] = Field(default=None, max_length=500)
+    legacy_producer_id: Optional[int] = None
 
 
 class AdminPasswordReset(BaseModel):
@@ -272,6 +294,7 @@ class Material(BaseModel):
     name: str
     description: str
     creator: List[str] = []  # 改为多选
+    contributors: List[ContentContributor] = Field(default_factory=list)
     resources: List[str] = []
 
 
@@ -282,6 +305,7 @@ class MaterialCreate(BaseModel):
     name: str
     description: str
     creator: List[str] = []
+    contributor_ids: List[int] = Field(default_factory=list)
     resources: List[str] = []
 
 
@@ -292,6 +316,7 @@ class MaterialUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     creator: Optional[List[str]] = None
+    contributor_ids: Optional[List[int]] = None
     resources: Optional[List[str]] = None
 
 # 制作人模型
@@ -301,6 +326,8 @@ class Producer(BaseModel):
     id: int
     name: str
     profile_url: Optional[str] = None
+    bound_admin_id: Optional[int] = None
+    bound_username: Optional[str] = None
 
 
 class PaginatedQuestions(BaseModel):

@@ -7,7 +7,6 @@ import QuizPage from './pages/QuizPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import MaterialManager from './pages/MaterialManager';
-import ProducerManager from './pages/ProducerManager';
 import RoleManager from './pages/RoleManager';
 import AdminUserManager from './pages/AdminUserManager';
 import QuizActivityManager from './pages/QuizActivityManager';
@@ -120,7 +119,7 @@ function App() {
                   </Suspense>
                 } />
                 <Route path="materials" element={<MaterialManager />} />
-                <Route path="producers" element={<ProducerManager />} />
+                <Route path="producers" element={<Navigate to="/admin/users" replace />} />
                 <Route path="roles" element={<RoleManager />} />
                 <Route path="users" element={
                   <RequireSuperAdmin>
