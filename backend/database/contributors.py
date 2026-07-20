@@ -1,7 +1,7 @@
-"""账号名片与题目/物料贡献者关系。
+"""账号资料与题目/物料贡献者关系。
 
 新关系始终使用 admins.id。旧的 questions.author 和 materials.creator
-字符串数组仅用于兼容读取和历史制作人认领，不会在认领过程中被覆盖。
+字符串数组仅用于兼容读取。
 """
 
 import json
@@ -105,9 +105,8 @@ def get_admin_legacy_names(admin_id: int) -> List[str]:
     try:
         row = conn.execute(
             """
-            SELECT a.username, COALESCE(NULLIF(a.display_name, ''), a.username), p.name
+            SELECT a.username, COALESCE(NULLIF(a.display_name, ''), a.username)
             FROM admins a
-            LEFT JOIN producers p ON p.id = a.legacy_producer_id
             WHERE a.id = ?
             """,
             (admin_id,),
@@ -129,9 +128,8 @@ def resolve_contributors_by_names(names: Iterable[str]) -> List[ContentContribut
     try:
         rows = conn.execute(
             f"""
-            SELECT {CONTRIBUTOR_COLUMNS}, p.name
+            SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
-            LEFT JOIN producers p ON p.id = a.legacy_producer_id
             WHERE a.role IN (?, ?)
             """,
             CONTENT_ADMIN_ROLES,
@@ -142,7 +140,7 @@ def resolve_contributors_by_names(names: Iterable[str]) -> List[ContentContribut
     matches: Dict[str, List[ContentContributor]] = {}
     for row in rows:
         contributor = _row_to_contributor(row)
-        aliases = {contributor.username, contributor.display_name, row[6]}
+        aliases = {contributor.username, contributor.display_name}
         for alias in aliases:
             if alias and alias.strip():
                 matches.setdefault(alias.strip().casefold(), []).append(contributor)
@@ -323,72 +321,6 @@ def _delete_relations(table: str, content_column: str, content_id: str) -> None:
             f"DELETE FROM {table} WHERE {content_column} = ?", (content_id,)
         )
         conn.commit()
-    finally:
-        conn.close()
-
-
-def claim_legacy_producer_content(admin_id: int, producer_id: int) -> Dict[str, int]:
-    """认领历史制作人名下内容：只新增账号关系，不改写旧署名。"""
-    conn = get_connection()
-    try:
-        producer = conn.execute(
-            "SELECT name FROM producers WHERE id = ?", (producer_id,)
-        ).fetchone()
-        if not producer:
-            raise ValueError("历史制作人不存在")
-        target_name = producer[0].strip().casefold()
-        question_rows = conn.execute("SELECT id, author FROM questions").fetchall()
-        material_rows = conn.execute("SELECT id, creator FROM materials").fetchall()
-
-        question_ids = [
-            row[0]
-            for row in question_rows
-            if target_name in {name.casefold() for name in _parse_legacy_names(row[1])}
-        ]
-        material_ids = [
-            row[0]
-            for row in material_rows
-            if target_name in {name.casefold() for name in _parse_legacy_names(row[1])}
-        ]
-
-        conn.execute("BEGIN IMMEDIATE")
-        for question_id in question_ids:
-            position = conn.execute(
-                """
-                SELECT COALESCE(MAX(position), -1) + 1
-                FROM question_contributors WHERE question_id = ?
-                """,
-                (question_id,),
-            ).fetchone()[0]
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO question_contributors
-                    (question_id, admin_id, position)
-                VALUES (?, ?, ?)
-                """,
-                (question_id, admin_id, position),
-            )
-        for material_id in material_ids:
-            position = conn.execute(
-                """
-                SELECT COALESCE(MAX(position), -1) + 1
-                FROM material_contributors WHERE material_id = ?
-                """,
-                (material_id,),
-            ).fetchone()[0]
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO material_contributors
-                    (material_id, admin_id, position)
-                VALUES (?, ?, ?)
-                """,
-                (material_id, admin_id, position),
-            )
-        conn.commit()
-        return {"questions": len(question_ids), "materials": len(material_ids)}
-    except Exception:
-        conn.rollback()
-        raise
     finally:
         conn.close()
 

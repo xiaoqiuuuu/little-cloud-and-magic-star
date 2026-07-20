@@ -713,66 +713,6 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(delete_bound_account.status_code, 409)
 
-    async def test_legacy_producer_claim_creates_account_relations_without_rewriting_history(self):
-        conn = get_connection()
-        try:
-            producer_id = conn.execute(
-                "INSERT INTO producers (name, profile_url) VALUES (?, ?)",
-                ("历史小秋", "https://example.com/legacy"),
-            ).lastrowid
-            conn.execute(
-                """
-                INSERT INTO questions (id, question, answer, resources, tag, author)
-                VALUES ('80', '历史题目', 'a', '[]', 'common', ?)
-                """,
-                (json.dumps(["历史小秋"], ensure_ascii=False),),
-            )
-            conn.execute(
-                """
-                INSERT INTO materials (id, name, description, creator, resources)
-                VALUES ('80', '历史物料', '', ?, '[]')
-                """,
-                (json.dumps(["历史小秋"], ensure_ascii=False),),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-        tokens = await self.login("rootadmin", "StrongPass123")
-        headers = self.auth_headers(tokens["access_token"])
-        created = await self.client.post(
-            "/api/admin/users",
-            headers=headers,
-            json={
-                "username": "legacyxiaoqiu",
-                "password": "LegacyPass123",
-                "role": "question_admin",
-                "legacy_producer_id": producer_id,
-            },
-        )
-        self.assertEqual(created.status_code, 201, created.text)
-        created_user = created.json()
-        self.assertEqual(created_user["display_name"], "历史小秋")
-        self.assertEqual(created_user["profile_url"], "https://example.com/legacy")
-
-        question = await self.client.get("/api/admin/questions/80", headers=headers)
-        material = await self.client.get("/api/admin/materials/80", headers=headers)
-        self.assertEqual(question.json()["contributors"][0]["id"], created_user["id"])
-        self.assertEqual(material.json()["contributors"][0]["id"], created_user["id"])
-
-        conn = get_connection()
-        try:
-            raw_author = conn.execute(
-                "SELECT author FROM questions WHERE id = '80'"
-            ).fetchone()[0]
-            raw_creator = conn.execute(
-                "SELECT creator FROM materials WHERE id = '80'"
-            ).fetchone()[0]
-        finally:
-            conn.close()
-        self.assertEqual(json.loads(raw_author), ["历史小秋"])
-        self.assertEqual(json.loads(raw_creator), ["历史小秋"])
-
     async def test_database_initialization_binds_username_authors_and_empty_questions(self):
         fallback = create_admin(
             "fylgcyzlm",

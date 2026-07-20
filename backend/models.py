@@ -123,7 +123,6 @@ class AdminUser(BaseModel):
     is_active: bool
     display_name: str
     profile_url: Optional[str] = None
-    legacy_producer_id: Optional[int] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -134,7 +133,6 @@ class AdminUserCreate(BaseModel):
     role: Literal["super_admin", "question_admin", "quiz_operator"] = "question_admin"
     display_name: Optional[str] = Field(default=None, max_length=100)
     profile_url: Optional[str] = Field(default=None, max_length=500)
-    legacy_producer_id: Optional[int] = None
 
 
 class AdminUserUpdate(BaseModel):
@@ -143,7 +141,6 @@ class AdminUserUpdate(BaseModel):
     is_active: Optional[bool] = None
     display_name: Optional[str] = Field(default=None, max_length=100)
     profile_url: Optional[str] = Field(default=None, max_length=500)
-    legacy_producer_id: Optional[int] = None
 
 
 class AdminPasswordReset(BaseModel):
@@ -326,8 +323,6 @@ class Producer(BaseModel):
     id: int
     name: str
     profile_url: Optional[str] = None
-    bound_admin_id: Optional[int] = None
-    bound_username: Optional[str] = None
 
 
 class PaginatedQuestions(BaseModel):

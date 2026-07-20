@@ -77,13 +77,13 @@ api/
 - `PUT /materials/{material_id}`: 更新物料
 - `DELETE /materials/{material_id}`: 删除物料
 
-### producers.py（历史制作人兼容模块）
+### producers.py（制作人兼容模块）
 **前缀**: `/api/admin`
 
-- `GET /producers`: 获取可供账号认领的历史制作人
+- `GET /producers`: 获取历史制作人列表
 - `POST /producers`: 创建制作人
-- `PUT /producers/{producer_id}`: 更新未被账号认领的制作人
-- `DELETE /producers/{producer_id}`: 删除未被账号认领的制作人
+- `PUT /producers/{producer_id}`: 更新制作人
+- `DELETE /producers/{producer_id}`: 删除制作人
 
 ## 使用方式
 

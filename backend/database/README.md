@@ -62,9 +62,8 @@ from database import (
 
 ### contributors.py（内容贡献账号）
 - 题目和物料通过 `admins.id` 直接绑定账号
-- 为旧 `author` / `creator` 字符串数据提供兼容读取和认领
+- 为旧 `author` / `creator` 字符串数据提供兼容读取
 - `set_question_contributors()` / `set_material_contributors()`: 更新内容账号关系
-- `claim_legacy_producer_content()`: 认领历史制作人内容，不覆盖原署名
 
 ### tokens.py（Refresh Token 表）
 - `create_refresh_token()`: 登记登录时签发的 Refresh Token
