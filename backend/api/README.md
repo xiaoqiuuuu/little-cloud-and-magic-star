@@ -7,11 +7,10 @@ api/
 ├── __init__.py         # 导出所有路由器
 ├── dependencies.py     # 公共依赖项（如认证依赖）
 ├── admin.py           # 双 Token 认证 API
-├── users.py           # 超级管理员人员管理 API
+├── users.py           # 人员管理与个人资料 API
 ├── activities.py      # 答题活动、题目范围与活动状态 API
 ├── questions.py       # 题目相关的所有API
-├── materials.py       # 物料相关的所有API
-└── producers.py       # 历史制作人兼容 API
+└── materials.py       # 物料相关的所有API
 ```
 
 ## 各模块说明
@@ -33,6 +32,7 @@ api/
 
 - `GET /`: 获取后台账号列表
 - `GET /contributors`: 获取题目/物料可绑定的内容账号
+- `PATCH /me/profile`: 当前账号修改自己的署名名称和个人主页
 - `POST /`: 创建后台账号
 - `PATCH /{admin_id}`: 修改账号、名片、角色或启停状态
 - `PUT /{admin_id}/password`: 重置密码
@@ -77,14 +77,6 @@ api/
 - `PUT /materials/{material_id}`: 更新物料
 - `DELETE /materials/{material_id}`: 删除物料
 
-### producers.py（制作人兼容模块）
-**前缀**: `/api/admin`
-
-- `GET /producers`: 获取历史制作人列表
-- `POST /producers`: 创建制作人
-- `PUT /producers/{producer_id}`: 更新制作人
-- `DELETE /producers/{producer_id}`: 删除制作人
-
 ## 使用方式
 
 在 `main.py` 中注册路由：
@@ -93,14 +85,12 @@ api/
 from api import (
     auth_router,
     questions_router,
-    materials_router,
-    producers_router
+    materials_router
 )
 
 app.include_router(auth_router)      # 认证接口
 app.include_router(questions_router) # 题目接口
 app.include_router(materials_router) # 物料接口
-app.include_router(producers_router) # 制作人接口
 ```
 
 ## 添加新的API模块

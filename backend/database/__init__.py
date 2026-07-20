@@ -72,14 +72,6 @@ from .materials import (
     update_material,
     delete_material
 )
-from .producers import (
-    get_producers_count,
-    get_all_producers,
-    get_producer_by_id,
-    create_producer,
-    update_producer,
-    delete_producer
-)
 from .init_db import init_db
 from .site_events import (
     activate_site_event,
@@ -165,13 +157,6 @@ __all__ = [
     'create_material',
     'update_material',
     'delete_material',
-    # 制作人相关
-    'get_producers_count',
-    'get_all_producers',
-    'get_producer_by_id',
-    'create_producer',
-    'update_producer',
-    'delete_producer',
     # 官网活动相关
     'list_site_events',
     'get_site_event',

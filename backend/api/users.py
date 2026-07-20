@@ -1,4 +1,4 @@
-"""仅超级管理员可用的后台账号管理 API。"""
+"""后台账号管理与当前账号资料 API。"""
 
 import sqlite3
 from typing import List, Optional
@@ -21,6 +21,7 @@ from database import (
 from database.tokens import revoke_all_refresh_tokens
 from models import (
     AdminPasswordReset,
+    AdminProfileUpdate,
     AdminUser,
     AdminUserCreate,
     AdminUserUpdate,
@@ -29,6 +30,7 @@ from models import (
 
 
 router = APIRouter(prefix="/api/admin/users", tags=["人员管理"])
+AUTH_ACCOUNT_FIELDS = {"username", "role", "is_active"}
 
 
 def _get_admin_or_404(admin_id: int) -> dict:
@@ -73,6 +75,25 @@ def get_admin_users(_: dict = Depends(require_super_admin)):
 def get_content_accounts(_: dict = Depends(require_content_admin)):
     """题目和物料可绑定的账号，包含已停用账号以便查看历史内容。"""
     return list_content_contributors(include_inactive=True)
+
+
+@router.patch("/me/profile", response_model=AdminUser)
+def update_current_admin_profile(
+    request: AdminProfileUpdate,
+    current_user: dict = Depends(require_content_admin),
+):
+    """当前内容账号编辑自己的署名资料，不改变权限或登录身份。"""
+    display_name = _normalize_optional_text(request.display_name)
+    if not display_name:
+        raise HTTPException(status_code=422, detail="署名名称不能为空")
+    updated = update_admin(
+        current_user["id"],
+        display_name=display_name,
+        profile_url=_normalize_optional_text(request.profile_url),
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="管理员账号不存在")
+    return updated
 
 
 @router.post("", response_model=AdminUser, status_code=status.HTTP_201_CREATED)
@@ -164,7 +185,8 @@ def update_admin_user(
     if not updated:
         raise HTTPException(status_code=404, detail="管理员账号不存在")
 
-    revoke_all_refresh_tokens(admin_id)
+    if AUTH_ACCOUNT_FIELDS.intersection(changed):
+        revoke_all_refresh_tokens(admin_id)
     return updated
 
 

@@ -76,7 +76,7 @@ const ExcelImportExport = ({ onImportSuccess }) => {
         '答案': '1998年',
         '资源链接（多个用|分隔）': 'https://example.com/image1.jpg|https://example.com/video.mp4',
         '标签': 'common',
-        '出题人（多个用|分隔）': '制作人A|制作人B',
+        '出题人（多个用|分隔）': '账号A|账号B',
         '随机点击数': '（导入时可留空）',
         '隐藏点击数': '（导入时可留空）',
       },

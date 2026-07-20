@@ -42,7 +42,6 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             conn.execute("DELETE FROM materials")
             conn.execute("DELETE FROM admin_refresh_tokens")
             conn.execute("DELETE FROM admins")
-            conn.execute("DELETE FROM producers")
             conn.commit()
         finally:
             conn.close()
@@ -712,6 +711,63 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             headers=super_headers,
         )
         self.assertEqual(delete_bound_account.status_code, 409)
+
+    async def test_content_admin_can_update_own_profile(self):
+        tokens = await self.login("editor", "EditorPass123")
+        headers = self.auth_headers(tokens["access_token"])
+
+        updated = await self.client.patch(
+            "/api/admin/users/me/profile",
+            headers=headers,
+            json={
+                "display_name": "编辑自己的主页",
+                "profile_url": "https://example.com/editor",
+            },
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["username"], "editor")
+        self.assertEqual(updated.json()["role"], "question_admin")
+        self.assertEqual(updated.json()["display_name"], "编辑自己的主页")
+        self.assertEqual(
+            updated.json()["profile_url"],
+            "https://example.com/editor",
+        )
+
+        current = await self.client.get("/api/admin/me", headers=headers)
+        self.assertEqual(current.status_code, 200, current.text)
+        self.assertEqual(current.json()["display_name"], "编辑自己的主页")
+
+    async def test_database_initialization_drops_legacy_producers_table(self):
+        conn = get_connection()
+        try:
+            conn.execute(
+                """
+                CREATE TABLE producers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    profile_url TEXT
+                )
+                """
+            )
+            conn.execute(
+                "INSERT INTO producers (name) VALUES ('历史制作人')"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        init_db()
+        conn = get_connection()
+        try:
+            producer_table = conn.execute(
+                """
+                SELECT 1 FROM sqlite_master
+                WHERE type = 'table' AND name = 'producers'
+                """
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertIsNone(producer_table)
 
     async def test_database_initialization_binds_username_authors_and_empty_questions(self):
         fallback = create_admin(

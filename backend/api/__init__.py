@@ -3,7 +3,6 @@
 from .admin import router as auth_router
 from .questions import router as questions_router
 from .materials import router as materials_router
-from .producers import router as producers_router
 from .users import router as users_router
 from .activities import router as activities_router
 from .site_events import admin_router as site_events_admin_router
@@ -13,7 +12,6 @@ __all__ = [
     'auth_router',
     'questions_router',
     'materials_router',
-    'producers_router',
     'users_router',
     'activities_router',
     'site_events_admin_router',

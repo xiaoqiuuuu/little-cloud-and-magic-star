@@ -12,8 +12,7 @@ database/
 ├── contributors.py     # 题目/物料与账号的贡献关系
 ├── activities.py        # 答题活动、活动题目与独立统计
 ├── tokens.py            # Refresh Token 轮换与撤销状态
-├── materials.py         # 物料表相关操作
-└── producers.py         # 历史制作人兼容操作
+└── materials.py         # 物料表相关操作
 ```
 
 ## 使用方式
@@ -39,6 +38,7 @@ from database import (
 
 ### init_db.py
 - `init_db()`: 初始化所有数据库表
+- 部署迁移会删除已停用的历史 `producers` 表
 
 ### questions.py（题目表）
 - `get_questions_count()`: 获取题目总数
@@ -84,14 +84,6 @@ from database import (
 - `create_material()`: 创建物料
 - `update_material()`: 更新物料
 - `delete_material()`: 删除物料
-
-### producers.py（历史制作人兼容表）
-- `get_producers_count()`: 获取制作人总数
-- `get_all_producers()`: 获取所有制作人（支持分页）
-- `get_producer_by_id()`: 根据ID获取制作人
-- `create_producer()`: 创建制作人
-- `update_producer()`: 更新制作人
-- `delete_producer()`: 删除制作人
 
 ## 添加新表
 

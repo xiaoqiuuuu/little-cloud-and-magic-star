@@ -143,6 +143,11 @@ class AdminUserUpdate(BaseModel):
     profile_url: Optional[str] = Field(default=None, max_length=500)
 
 
+class AdminProfileUpdate(BaseModel):
+    display_name: str = Field(min_length=1, max_length=100)
+    profile_url: Optional[str] = Field(default=None, max_length=500)
+
+
 class AdminPasswordReset(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
@@ -316,15 +321,6 @@ class MaterialUpdate(BaseModel):
     contributor_ids: Optional[List[int]] = None
     resources: Optional[List[str]] = None
 
-# 制作人模型
-
-
-class Producer(BaseModel):
-    id: int
-    name: str
-    profile_url: Optional[str] = None
-
-
 class PaginatedQuestions(BaseModel):
     total: int
     page: int
@@ -338,22 +334,6 @@ class PaginatedMaterials(BaseModel):
     page_size: int
     items: List[Material]
 
-
-class PaginatedProducers(BaseModel):
-    total: int
-    page: int
-    page_size: int
-    items: List[Producer]
-
-
-class ProducerCreate(BaseModel):
-    name: str
-    profile_url: Optional[str] = None
-
-
-class ProducerUpdate(BaseModel):
-    name: Optional[str] = None
-    profile_url: Optional[str] = None
 
 # 系统配置相关模型
 
