@@ -3,6 +3,7 @@ import ComponentLibraryShell from '../components/component-library/ComponentLibr
 import { componentCatalog, componentGroups, getComponentById } from '../components/component-library/catalog';
 import XiaoyunButtonDocs from '../components/component-library/previews/XiaoyunButtonDocs';
 import ShengriButtonDocs from '../components/component-library/previews/ShengriButtonDocs';
+import CharacterCardDocs from '../components/component-library/previews/CharacterCardDocs';
 
 
 const readyComponents = componentCatalog.filter((item) => item.status === 'ready');
@@ -141,6 +142,7 @@ function ComponentLibraryPage() {
   let pageContent = <ComponentLibraryOverview />;
   if (componentId === 'xiaoyun-button') pageContent = <XiaoyunButtonDocs />;
   if (componentId === 'shengri-button') pageContent = <ShengriButtonDocs />;
+  if (componentId === 'character-card') pageContent = <CharacterCardDocs />;
   if (componentId && (!activeComponent || activeComponent.status !== 'ready')) {
     pageContent = <UnknownComponent componentId={componentId} />;
   }
