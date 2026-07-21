@@ -3,30 +3,16 @@ import {
   characterPacks,
   defaultThemeId,
   getCharacterPack,
+  getCharacterCssVariables,
   getThemePreset,
+  getThemeCharacters,
+  getTokenCssVariables,
   themePresets,
 } from './registry';
 import './theme.css';
 
 
 const STORAGE_KEY = 'cloud-ui-preferences';
-
-const tokenVariableMap = {
-  colorPrimary: '--cui-color-primary',
-  colorPrimaryHover: '--cui-color-primary-hover',
-  colorPrimarySoft: '--cui-color-primary-soft',
-  colorOnPrimary: '--cui-color-on-primary',
-  colorSurface: '--cui-color-surface',
-  colorSurfaceRaised: '--cui-color-surface-raised',
-  colorSurfaceMuted: '--cui-color-surface-muted',
-  colorText: '--cui-color-text',
-  colorTextMuted: '--cui-color-text-muted',
-  colorBorder: '--cui-color-border',
-  colorFocus: '--cui-color-focus',
-  colorDanger: '--cui-color-danger',
-  colorSuccess: '--cui-color-success',
-  shadowCard: '--cui-shadow-card',
-};
 
 const CloudUIContext = createContext(null);
 
@@ -43,27 +29,36 @@ function readInitialPreferences() {
 
 export function CloudUIProvider({ children }) {
   const initialPreferences = useMemo(readInitialPreferences, []);
-  const [themeId, setThemeId] = useState(initialPreferences.themeId || defaultThemeId);
   const initialPreset = getThemePreset(initialPreferences.themeId || defaultThemeId);
+  const savedCharacter = getCharacterPack(initialPreferences.characterPackId);
+  const initialCharacterPackId = initialPreset.characterPackIds.includes(savedCharacter.id)
+    ? savedCharacter.id
+    : initialPreset.defaultCharacterPack;
+  const [themeId, setThemeId] = useState(initialPreset.id);
   const [characterPackId, setCharacterPackId] = useState(
-    initialPreferences.characterPackId || initialPreset.defaultCharacterPack,
+    initialCharacterPackId,
   );
   const [mode, setMode] = useState(initialPreferences.mode === 'dark' ? 'dark' : 'light');
 
   const theme = getThemePreset(themeId);
   const tokens = theme.tokens[mode];
   const characterPack = getCharacterPack(characterPackId);
+  const themeCharacters = getThemeCharacters(theme.id);
 
   const selectTheme = useCallback((nextThemeId, options = {}) => {
     const nextTheme = getThemePreset(nextThemeId);
     setThemeId(nextTheme.id);
-    if (options.keepCharacter !== true) {
-      setCharacterPackId(nextTheme.defaultCharacterPack);
-    }
+    setCharacterPackId((currentPackId) => (
+      options.keepCharacter === true && nextTheme.characterPackIds.includes(currentPackId)
+        ? currentPackId
+        : nextTheme.defaultCharacterPack
+    ));
   }, []);
 
   const selectCharacterPack = useCallback((nextPackId) => {
-    setCharacterPackId(getCharacterPack(nextPackId).id);
+    const nextPack = getCharacterPack(nextPackId);
+    setThemeId(getThemePreset(nextPack.themeId).id);
+    setCharacterPackId(nextPack.id);
   }, []);
 
   const toggleMode = useCallback(() => {
@@ -77,13 +72,12 @@ export function CloudUIProvider({ children }) {
     root.dataset.cuiMode = mode;
     root.style.colorScheme = mode;
 
-    Object.entries(tokens).forEach(([tokenName, tokenValue]) => {
-      const variableName = tokenVariableMap[tokenName];
-      if (variableName) root.style.setProperty(variableName, tokenValue);
+    Object.entries({
+      ...getTokenCssVariables(tokens),
+      ...getCharacterCssVariables(characterPack),
+    }).forEach(([variableName, variableValue]) => {
+      root.style.setProperty(variableName, variableValue);
     });
-    root.style.setProperty('--cui-character-accent', characterPack.accent);
-    root.style.setProperty('--cui-character-accent-deep', characterPack.accentDeep);
-    root.style.setProperty('--cui-character-accent-soft', characterPack.accentSoft);
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
       themeId: theme.id,
@@ -104,9 +98,10 @@ export function CloudUIProvider({ children }) {
     characterPackId: characterPack.id,
     characterPack,
     characterPacks,
+    themeCharacters,
     selectCharacterPack,
     getCharacterPack,
-  }), [characterPack, mode, selectCharacterPack, selectTheme, theme, tokens, toggleMode]);
+  }), [characterPack, mode, selectCharacterPack, selectTheme, theme, themeCharacters, tokens, toggleMode]);
 
   return <CloudUIContext.Provider value={value}>{children}</CloudUIContext.Provider>;
 }

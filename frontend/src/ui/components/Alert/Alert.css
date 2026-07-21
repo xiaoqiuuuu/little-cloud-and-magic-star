@@ -1,0 +1,107 @@
+.cui-alert {
+  --cui-alert-color: var(--cui-color-info);
+
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--cui-alert-color) 28%, var(--cui-color-border));
+  border-radius: var(--cui-radius-medium);
+  color: var(--cui-color-text);
+  background: color-mix(in srgb, var(--cui-alert-color) 8%, var(--cui-color-surface-raised));
+  font-family: var(--cui-font-family);
+}
+
+.cui-alert--success {
+  --cui-alert-color: var(--cui-color-success);
+}
+
+.cui-alert--warning {
+  --cui-alert-color: var(--cui-color-warning);
+}
+
+.cui-alert--error {
+  --cui-alert-color: var(--cui-color-danger);
+}
+
+.cui-alert--closable {
+  padding-right: 44px;
+}
+
+.cui-alert__icon {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--cui-color-surface-raised);
+  background: var(--cui-alert-color);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.cui-alert__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.cui-alert__content strong,
+.cui-alert__content div {
+  display: block;
+}
+
+.cui-alert__content strong {
+  font-size: 12px;
+}
+
+.cui-alert__content div {
+  margin-top: 4px;
+  color: var(--cui-color-text-muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.cui-alert__action {
+  flex: 0 0 auto;
+}
+
+.cui-alert__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--cui-color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.cui-alert__close:hover {
+  color: var(--cui-color-text);
+  background: color-mix(in srgb, var(--cui-color-text) 8%, transparent);
+}
+
+.cui-alert__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--cui-color-focus);
+}
+
+@media (max-width: 520px) {
+  .cui-alert {
+    flex-wrap: wrap;
+  }
+
+  .cui-alert__content {
+    flex: 1 1 calc(100% - 36px);
+  }
+
+  .cui-alert__action {
+    width: 100%;
+    padding-left: 33px;
+  }
+}

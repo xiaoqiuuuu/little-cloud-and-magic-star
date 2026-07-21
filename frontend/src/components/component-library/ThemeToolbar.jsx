@@ -4,6 +4,7 @@ import { useCloudUI } from '../../ui';
 function ThemeToolbar() {
   const {
     themeId,
+    theme,
     themePresets,
     selectTheme,
     characterPackId,
@@ -12,6 +13,7 @@ function ThemeToolbar() {
     mode,
     toggleMode,
   } = useCloudUI();
+  const availableCharacterPacks = theme.characterPackIds.map((packId) => characterPacks[packId]);
 
   return (
     <div className="cl-theme-toolbar" aria-label="全局主题设置">
@@ -26,7 +28,7 @@ function ThemeToolbar() {
       <label>
         <span>人物</span>
         <select value={characterPackId} onChange={(event) => selectCharacterPack(event.target.value)}>
-          {Object.values(characterPacks).map((pack) => (
+          {availableCharacterPacks.map((pack) => (
             <option key={pack.id} value={pack.id}>{pack.name}</option>
           ))}
         </select>

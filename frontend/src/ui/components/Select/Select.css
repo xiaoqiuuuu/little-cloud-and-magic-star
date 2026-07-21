@@ -1,0 +1,105 @@
+.cui-select-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--cui-color-text);
+  font-family: var(--cui-font-family);
+}
+
+.cui-select-field--block {
+  width: 100%;
+}
+
+.cui-select-field__label {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.cui-select {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  border: 1px solid var(--cui-color-border);
+  border-radius: var(--cui-radius-medium);
+  color: var(--cui-color-text);
+  background: var(--cui-color-surface-raised);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.cui-select--small {
+  min-height: var(--cui-control-small);
+  border-radius: var(--cui-radius-small);
+}
+
+.cui-select--medium {
+  min-height: var(--cui-control-medium);
+}
+
+.cui-select--large {
+  min-height: var(--cui-control-large);
+  border-radius: var(--cui-radius-large);
+}
+
+.cui-select:focus-within {
+  border-color: var(--cui-color-primary);
+  box-shadow: 0 0 0 4px var(--cui-color-focus);
+}
+
+.cui-select--error {
+  border-color: var(--cui-color-danger);
+}
+
+.cui-select--success {
+  border-color: var(--cui-color-success);
+}
+
+.cui-select.is-disabled {
+  background: var(--cui-color-surface-muted);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.cui-select select {
+  width: 100%;
+  min-width: 0;
+  min-height: inherit;
+  padding: 0 38px 0 12px;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cui-select select:disabled {
+  cursor: not-allowed;
+}
+
+.cui-select__arrow {
+  position: absolute;
+  right: 12px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: var(--cui-color-text-muted);
+  pointer-events: none;
+}
+
+.cui-select-field__message {
+  color: var(--cui-color-text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.cui-select-field__message.is-error {
+  color: var(--cui-color-danger);
+}
+
+.cui-select-field__message.is-success {
+  color: var(--cui-color-success);
+}

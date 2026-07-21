@@ -1,0 +1,76 @@
+.cui-tag {
+  --cui-tag-color: var(--cui-color-text-muted);
+  --cui-tag-soft: var(--cui-color-surface-muted);
+
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--cui-tag-color);
+  background: var(--cui-tag-soft);
+  font-family: var(--cui-font-family);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.cui-tag--primary {
+  --cui-tag-color: var(--cui-color-primary);
+  --cui-tag-soft: var(--cui-color-primary-soft);
+}
+
+.cui-tag--success {
+  --cui-tag-color: var(--cui-color-success);
+  --cui-tag-soft: color-mix(in srgb, var(--cui-color-success) 12%, var(--cui-color-surface-raised));
+}
+
+.cui-tag--warning {
+  --cui-tag-color: var(--cui-color-warning);
+  --cui-tag-soft: color-mix(in srgb, var(--cui-color-warning) 13%, var(--cui-color-surface-raised));
+}
+
+.cui-tag--danger {
+  --cui-tag-color: var(--cui-color-danger);
+  --cui-tag-soft: color-mix(in srgb, var(--cui-color-danger) 12%, var(--cui-color-surface-raised));
+}
+
+.cui-tag--info {
+  --cui-tag-color: var(--cui-color-info);
+  --cui-tag-soft: color-mix(in srgb, var(--cui-color-info) 12%, var(--cui-color-surface-raised));
+}
+
+.cui-tag--outlined {
+  border-color: color-mix(in srgb, var(--cui-tag-color) 44%, var(--cui-color-border));
+  background: transparent;
+}
+
+.cui-tag--solid {
+  color: var(--cui-color-on-primary);
+  background: var(--cui-tag-color);
+}
+
+.cui-tag__icon {
+  display: inline-flex;
+}
+
+.cui-tag button {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cui-tag button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}

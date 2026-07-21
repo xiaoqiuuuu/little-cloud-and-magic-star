@@ -76,15 +76,11 @@
 .cui-character-button__avatar img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center bottom;
+  object-fit: cover;
+  object-position: var(--cui-character-local-avatar-position, center 20%);
   filter: drop-shadow(0 2px 2px rgba(49, 68, 91, 0.15));
   user-select: none;
   transition: transform 180ms ease;
-}
-
-.cui-character-button--square .cui-character-button__avatar img {
-  object-fit: cover;
 }
 
 .cui-character-button:hover:not(:disabled) .cui-character-button__avatar img {

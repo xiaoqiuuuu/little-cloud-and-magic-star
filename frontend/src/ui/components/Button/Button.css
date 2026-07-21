@@ -41,12 +41,12 @@
 
 .cui-button--primary {
   color: var(--cui-color-on-primary);
-  background: var(--cui-color-primary);
+  background: var(--cui-gradient-primary);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--cui-color-primary) 24%, transparent);
 }
 
 .cui-button--primary:hover:not(:disabled) {
-  background: var(--cui-color-primary-hover);
+  filter: saturate(1.08) brightness(0.98);
   transform: translateY(-1px);
 }
 
