@@ -257,6 +257,24 @@ class SiteEventCreate(SiteEventBase):
     pass
 
 
+# 星辰大海
+
+
+class XcdhMessage(BaseModel):
+    id: int
+    username: str
+    content: str
+    x: float
+    y: float
+    click_count: int = 0
+    created_at: Optional[str] = None
+
+
+class XcdhMessageCreate(BaseModel):
+    username: str = Field(min_length=1, max_length=20)
+    content: str = Field(min_length=1, max_length=100)
+
+
 class SiteEventUpdate(BaseModel):
     slug: Optional[str] = Field(
         default=None,

@@ -453,5 +453,29 @@ def init_db():
         json.dumps(DEFAULT_SITE_EVENT['content'], ensure_ascii=False),
     ))
 
+    # 星辰大海：公开星愿留言及其在星空中的固定位置。
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS xcdh_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            content TEXT NOT NULL,
+            x REAL NOT NULL CHECK(x >= 0 AND x <= 100),
+            y REAL NOT NULL CHECK(y >= 0 AND y <= 100),
+            click_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute("PRAGMA table_info(xcdh_messages)")
+    xcdh_columns = {column[1] for column in cursor.fetchall()}
+    if "click_count" not in xcdh_columns:
+        cursor.execute(
+            "ALTER TABLE xcdh_messages "
+            "ADD COLUMN click_count INTEGER NOT NULL DEFAULT 0"
+        )
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_xcdh_messages_created_at
+        ON xcdh_messages(created_at, id)
+    ''')
+
     conn.commit()
     conn.close()

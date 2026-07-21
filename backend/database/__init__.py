@@ -85,6 +85,11 @@ from .site_events import (
     list_site_events,
     update_site_event,
 )
+from .xcdh import (
+    create_xcdh_message,
+    increment_xcdh_message_click,
+    list_xcdh_messages,
+)
 
 __all__ = [
     # 配置
@@ -168,5 +173,9 @@ __all__ = [
     'activate_site_event',
     'archive_site_event',
     'delete_site_event',
+    # 星辰大海相关
+    'list_xcdh_messages',
+    'create_xcdh_message',
+    'increment_xcdh_message_click',
 ]
 from .configs import get_config, set_config

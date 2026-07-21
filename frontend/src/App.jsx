@@ -23,6 +23,7 @@ import 'antd/dist/reset.css'; // Ant Design 样式
 
 
 const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
+const XcdhPage = lazy(() => import('./pages/XcdhPage'));
 
 function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -70,6 +71,11 @@ function App() {
               {/* 首页 - 产品介绍 */}
               <Route path="/" element={<HomePage />} />
               <Route path="/events/:slug" element={<HomePage />} />
+              <Route path="/xcdh" element={
+                <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+                  <XcdhPage />
+                </Suspense>
+              } />
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               

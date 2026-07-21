@@ -7,6 +7,7 @@ from .users import router as users_router
 from .activities import router as activities_router
 from .site_events import admin_router as site_events_admin_router
 from .site_events import public_router as site_events_public_router
+from .xcdh import router as xcdh_router
 
 __all__ = [
     'auth_router',
@@ -16,6 +17,7 @@ __all__ = [
     'activities_router',
     'site_events_admin_router',
     'site_events_public_router',
+    'xcdh_router',
 ]
 from .configs import router as configs_router
 from .roles import router as roles_router
