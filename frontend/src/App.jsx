@@ -32,6 +32,7 @@ import 'antd/dist/reset.css'; // Ant Design 样式
 
 const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
 const ComponentLibraryPage = lazy(() => import('./pages/ComponentLibraryPage'));
+const XcdhPage = lazy(() => import('./pages/XcdhPage'));
 
 
 function AdminIndexRedirect() {
@@ -182,6 +183,11 @@ function AppContent() {
                 path="/xiaoyun-buttons"
                 element={<Navigate to="/components/character-components" replace />}
               />
+              <Route path="/xcdh" element={(
+                <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+                  <XcdhPage />
+                </Suspense>
+              )} />
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               
