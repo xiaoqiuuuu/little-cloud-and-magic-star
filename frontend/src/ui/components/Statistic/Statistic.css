@@ -1,0 +1,62 @@
+.cui-statistic {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--cui-color-border);
+  border-radius: var(--cui-radius-medium);
+  color: var(--cui-color-text);
+  background: var(--cui-color-surface-raised);
+  font-family: var(--cui-font-family);
+}
+
+.cui-statistic--emphasis {
+  border-color: color-mix(in srgb, var(--cui-color-primary) 25%, var(--cui-color-border));
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--cui-color-accent) 15%, transparent), transparent 46%),
+    var(--cui-color-primary-soft);
+}
+
+.cui-statistic__label {
+  display: block;
+  overflow: hidden;
+  color: var(--cui-color-text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cui-statistic__value {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 9px;
+}
+
+.cui-statistic__value strong {
+  overflow: hidden;
+  font-size: 26px;
+  line-height: 1;
+  text-overflow: ellipsis;
+}
+
+.cui-statistic__value small {
+  color: var(--cui-color-text-muted);
+  font-size: 11px;
+}
+
+.cui-statistic__trend {
+  display: inline-flex;
+  margin-top: 9px;
+  color: var(--cui-color-text-muted);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.cui-statistic__trend.is-up {
+  color: var(--cui-color-success);
+}
+
+.cui-statistic__trend.is-down {
+  color: var(--cui-color-danger);
+}

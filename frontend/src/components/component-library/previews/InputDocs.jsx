@@ -9,7 +9,7 @@ function InputDocs() {
     <article className="cl-docs">
       <header className="cl-docs-header">
         <div><div className="cl-kicker">GENERAL · FORM</div><h1>Input 输入框</h1><p>统一标签、辅助信息、前后缀、尺寸和校验状态，作为后续表单组件的基础。</p></div>
-        <div className="cl-docs-meta"><span className="cl-status-badge">● Stable</span><span>v0.1.0</span></div>
+        <div className="cl-docs-meta"><span className="cl-status-badge">● Stable</span><span>v0.2.0</span></div>
       </header>
 
       <section className="cl-section">

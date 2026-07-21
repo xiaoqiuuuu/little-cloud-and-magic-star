@@ -11,7 +11,7 @@ function CardDocs() {
     <article className="cl-docs">
       <header className="cl-docs-header">
         <div><div className="cl-kicker">GENERAL · CONTAINER</div><h1>Card 卡片</h1><p>通用内容容器。人物卡片在它的边框、圆角、阴影和交互规范之上增加装饰资源。</p></div>
-        <div className="cl-docs-meta"><span className="cl-status-badge">● Stable</span><span>v0.1.0</span></div>
+        <div className="cl-docs-meta"><span className="cl-status-badge">● Stable</span><span>v0.2.0</span></div>
       </header>
 
       <section className="cl-section">

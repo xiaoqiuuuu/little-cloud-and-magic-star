@@ -15,7 +15,7 @@ function ButtonDocs() {
     <article className="cl-docs">
       <header className="cl-docs-header">
         <div><div className="cl-kicker">GENERAL · ACTION</div><h1>Button 按钮</h1><p>所有业务按钮的基础实现，人物按钮也建立在它的尺寸、状态和交互规范之上。</p></div>
-        <div className="cl-docs-meta"><span className="cl-status-badge">● Stable</span><span>v0.1.0</span></div>
+        <div className="cl-docs-meta"><span className="cl-status-badge">● Stable</span><span>v0.2.0</span></div>
       </header>
 
       <section className="cl-section">

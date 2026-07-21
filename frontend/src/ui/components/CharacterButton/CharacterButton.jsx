@@ -18,6 +18,7 @@ function CharacterButton({
     '--cui-character-local-accent': characterPack.accent,
     '--cui-character-local-accent-deep': characterPack.accentDeep,
     '--cui-character-local-accent-soft': characterPack.accentSoft,
+    '--cui-character-local-avatar-position': characterPack.avatarPosition,
     ...style,
   };
 

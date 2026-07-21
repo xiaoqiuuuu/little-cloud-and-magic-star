@@ -1,4 +1,76 @@
-import { Card, CharacterButton, useCloudUI } from '../../../ui';
+import {
+  Alert,
+  Button,
+  CharacterButton,
+  getCharacterCssVariables,
+  getCharacterPack,
+  getTokenCssVariables,
+  Input,
+  Select,
+  Statistic,
+  Switch,
+  Tag,
+  useCloudUI,
+} from '../../../ui';
+
+
+function ThemeKit({ preset, mode, active, onSelectTheme, onSelectCharacter }) {
+  const characters = preset.characterPackIds.map((packId) => getCharacterPack(packId));
+  const defaultCharacter = getCharacterPack(preset.defaultCharacterPack);
+  const previewStyle = {
+    ...getTokenCssVariables(preset.tokens[mode]),
+    ...getCharacterCssVariables(defaultCharacter),
+  };
+
+  return (
+    <section className={`cl-theme-kit ${active ? 'is-active' : ''}`} style={previewStyle}>
+      <header className="cl-theme-kit__header">
+        <div>
+          <span>{preset.tagline}</span>
+          <h3>{preset.name}</h3>
+          <p>{preset.description}</p>
+        </div>
+        <Button size="small" variant={active ? 'primary' : 'secondary'} onClick={() => onSelectTheme(preset.id)}>
+          {active ? '当前主题' : '应用主题'}
+        </Button>
+      </header>
+
+      <div className="cl-theme-kit__characters" aria-label={`${preset.name}角色`}>
+        {characters.map((character) => (
+          <button key={character.id} type="button" onClick={() => onSelectCharacter(character.id)}>
+            <span><img src={character.assets.buttonAvatar} alt="" /></span>
+            <strong>{character.name}</strong>
+          </button>
+        ))}
+      </div>
+
+      <div className="cl-theme-kit__components">
+        <div className="cl-theme-kit__form">
+          <Input label="活动名称" placeholder="输入活动名称" defaultValue={preset.name} />
+          <Select
+            label="内容状态"
+            defaultValue="published"
+            options={[
+              { value: 'draft', label: '草稿' },
+              { value: 'published', label: '已发布' },
+            ]}
+          />
+          <Switch defaultChecked label="公开展示" description="同步到活动页面" />
+        </div>
+        <div className="cl-theme-kit__display">
+          <div className="cl-theme-kit__tags">
+            <Tag tone="primary">主题色</Tag>
+            <Tag tone="success">已启用</Tag>
+            <Tag tone="warning">待确认</Tag>
+          </div>
+          <Statistic label="今日参与" value="1,286" suffix="人" trend="较昨日 +18%" trendDirection="up" emphasis />
+          <Alert type="info" title="主题组件已同步" description="Button、表单、反馈组件和 Ant Design 会读取同一套 Token。" />
+          <CharacterButton character={defaultCharacter.id}>进入主题活动</CharacterButton>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 
 function ThemeSystemDocs() {
@@ -9,9 +81,7 @@ function ThemeSystemDocs() {
     selectTheme,
     mode,
     toggleMode,
-    characterPackId,
     characterPack,
-    characterPacks,
     selectCharacterPack,
     tokens,
   } = useCloudUI();
@@ -21,68 +91,39 @@ function ThemeSystemDocs() {
       <header className="cl-docs-header">
         <div>
           <div className="cl-kicker">FOUNDATION · THEME</div>
-          <h1>全局主题系统</h1>
-          <p>颜色模式、语义 Token、Ant Design 和人物资源包由同一个 Provider 统一管理。</p>
+          <h1>两套主题，六个角色</h1>
+          <p>角色按视觉气质归入主题；业务组件只使用语义 Token 和角色资源位，不绑定具体图片。</p>
         </div>
-        <div className="cl-docs-meta"><span className="cl-status-badge">● Active</span><span>{mode}</span></div>
+        <div className="cl-docs-meta"><span className="cl-status-badge">● {theme.name}</span><span>{mode}</span></div>
       </header>
 
       <section className="cl-section">
         <div className="cl-section-heading">
-          <div><span className="cl-section-index">01</span><h2>主题预设</h2></div>
-          <p>切换预设时默认同步对应人物，也可以在顶部工具栏单独覆盖。</p>
+          <div><span className="cl-section-index">01</span><h2>主题组件套装</h2></div>
+          <p>每套主题包含三位角色，并为常用组件提供完整的亮色与暗色 Token。</p>
         </div>
-        <div className="cl-theme-preset-grid">
+        <div className="cl-theme-kit-grid">
           {Object.values(themePresets).map((preset) => (
-            <Card
+            <ThemeKit
               key={preset.id}
-              variant={themeId === preset.id ? 'soft' : 'outlined'}
-              selected={themeId === preset.id}
-              onClick={() => selectTheme(preset.id)}
-            >
-              <div className="cl-theme-preset-card">
-                <span className="cl-theme-swatch" style={{ background: preset.tokens.light.colorPrimary }} />
-                <div><strong>{preset.name}</strong><p>{preset.description}</p></div>
-              </div>
-            </Card>
+              preset={preset}
+              mode={mode}
+              active={themeId === preset.id}
+              onSelectTheme={selectTheme}
+              onSelectCharacter={selectCharacterPack}
+            />
           ))}
         </div>
         <div className="cl-theme-mode-row">
-          <div><strong>颜色模式</strong><span>当前为 {mode === 'light' ? '浅色模式' : '深色模式'}</span></div>
+          <div><strong>颜色模式</strong><span>当前组合：{theme.name} · {characterPack.name} · {mode === 'light' ? '浅色' : '深色'}</span></div>
           <button type="button" onClick={toggleMode}>{mode === 'light' ? '切换深色' : '切换浅色'}</button>
         </div>
       </section>
 
       <section className="cl-section">
         <div className="cl-section-heading">
-          <div><span className="cl-section-index">02</span><h2>人物资源包</h2></div>
-          <p>组件使用角色化资源名称，不依赖具体图片文件路径。</p>
-        </div>
-        <div className="cl-character-pack-grid">
-          {Object.values(characterPacks).map((pack) => (
-            <button
-              type="button"
-              key={pack.id}
-              className={`cl-character-pack-card ${characterPackId === pack.id ? 'is-active' : ''}`}
-              onClick={() => selectCharacterPack(pack.id)}
-            >
-              <span className={`cl-character-pack-image is-${pack.artworkShape}`}>
-                <img src={pack.assets.buttonAvatar} alt="" />
-              </span>
-              <span><strong>{pack.name}</strong><small>{pack.description}</small></span>
-            </button>
-          ))}
-        </div>
-        <div className="cl-theme-live-example">
-          <span>当前组合：{theme.name} · {characterPack.name}</span>
-          <CharacterButton>主题实时预览</CharacterButton>
-        </div>
-      </section>
-
-      <section className="cl-section">
-        <div className="cl-section-heading">
-          <div><span className="cl-section-index">03</span><h2>语义 Token</h2></div>
-          <p>基础组件只读取语义变量，不直接写死主题颜色。</p>
+          <div><span className="cl-section-index">02</span><h2>当前语义 Token</h2></div>
+          <p>自定义组件和 Ant Design ConfigProvider 使用同一个 Token 来源。</p>
         </div>
         <div className="cl-token-grid">
           {Object.entries(tokens).map(([name, value]) => (
@@ -96,10 +137,10 @@ function ThemeSystemDocs() {
 
       <section className="cl-section">
         <div className="cl-section-heading">
-          <div><span className="cl-section-index">04</span><h2>接入方式</h2></div>
-          <p>Provider 已在应用根节点接入，并同步 Ant Design ConfigProvider。</p>
+          <div><span className="cl-section-index">03</span><h2>接入方式</h2></div>
+          <p>选择角色时会自动切换到它所属的主题，避免出现角色和视觉体系不匹配。</p>
         </div>
-        <div className="cl-code-block"><pre><code>{`<CloudUIProvider>\n  <App />\n</CloudUIProvider>\n\nconst { selectTheme, selectCharacterPack, toggleMode } = useCloudUI();`}</code></pre></div>
+        <div className="cl-code-block"><pre><code>{`<CloudUIProvider>\n  <App />\n</CloudUIProvider>\n\nconst {\n  selectTheme,\n  selectCharacterPack,\n  toggleMode,\n} = useCloudUI();`}</code></pre></div>
       </section>
     </article>
   );

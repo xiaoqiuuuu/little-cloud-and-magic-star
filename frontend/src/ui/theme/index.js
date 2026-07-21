@@ -1,2 +1,10 @@
 export { CloudUIProvider, useCharacterPack, useCloudUI } from './CloudUIProvider';
-export { characterPacks, getCharacterPack, getThemePreset, themePresets } from './registry';
+export {
+  characterPacks,
+  getCharacterCssVariables,
+  getCharacterPack,
+  getThemeCharacters,
+  getThemePreset,
+  getTokenCssVariables,
+  themePresets,
+} from './registry';

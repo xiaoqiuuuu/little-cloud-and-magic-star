@@ -3,6 +3,7 @@
   --cui-color-primary-hover: #2f7da8;
   --cui-color-primary-soft: #e9f5fb;
   --cui-color-on-primary: #ffffff;
+  --cui-color-accent: #8b7ec3;
   --cui-color-surface: #ffffff;
   --cui-color-surface-raised: #ffffff;
   --cui-color-surface-muted: #f4f7fb;
@@ -12,10 +13,15 @@
   --cui-color-focus: rgba(63, 143, 186, 0.25);
   --cui-color-danger: #d75d73;
   --cui-color-success: #3c9b75;
+  --cui-color-warning: #c58a37;
+  --cui-color-info: #4f83ad;
+  --cui-gradient-primary: linear-gradient(135deg, #4f83ad 0%, #7778b8 100%);
   --cui-shadow-card: 0 12px 32px rgba(50, 76, 108, 0.10);
+  --cui-shadow-floating: 0 18px 46px rgba(45, 67, 96, 0.16);
   --cui-character-accent: #72b8dc;
   --cui-character-accent-deep: #3e7fa7;
   --cui-character-accent-soft: #e2f2fb;
+  --cui-character-avatar-position: center 20%;
   --cui-radius-small: 8px;
   --cui-radius-medium: 12px;
   --cui-radius-large: 18px;

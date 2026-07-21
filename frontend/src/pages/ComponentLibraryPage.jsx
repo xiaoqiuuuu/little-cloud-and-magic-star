@@ -6,6 +6,9 @@ import ButtonDocs from '../components/component-library/previews/ButtonDocs';
 import InputDocs from '../components/component-library/previews/InputDocs';
 import CardDocs from '../components/component-library/previews/CardDocs';
 import CharacterComponentsDocs from '../components/component-library/previews/CharacterComponentsDocs';
+import SelectionControlsDocs from '../components/component-library/previews/SelectionControlsDocs';
+import DataDisplayDocs from '../components/component-library/previews/DataDisplayDocs';
+import FeedbackDocs from '../components/component-library/previews/FeedbackDocs';
 
 
 const readyComponents = componentCatalog.filter((item) => item.status === 'ready');
@@ -20,7 +23,7 @@ function ComponentLibraryOverview() {
           <span className="cl-kicker">LITTLE CLOUD DESIGN SYSTEM</span>
           <h1>把可爱的视觉语言，整理成可复用的系统组件。</h1>
           <p>
-            第一版基础体系已经包含全局主题、人物资源包、Button、Input、Card，以及统一的人物按钮和人物卡片。
+            Cloud UI 现在包含两套主题、六个角色，以及覆盖操作、录入、展示和反馈场景的基础组件。
           </p>
           <div className="cl-overview-actions">
             <Link className="cl-primary-link" to="/components/theme-system">
@@ -146,6 +149,9 @@ function ComponentLibraryPage() {
   if (componentId === 'button') pageContent = <ButtonDocs />;
   if (componentId === 'input') pageContent = <InputDocs />;
   if (componentId === 'card') pageContent = <CardDocs />;
+  if (componentId === 'selection-controls') pageContent = <SelectionControlsDocs />;
+  if (componentId === 'status-display') pageContent = <DataDisplayDocs />;
+  if (componentId === 'feedback-components') pageContent = <FeedbackDocs />;
   if (componentId === 'character-components') pageContent = <CharacterComponentsDocs />;
   if (componentId && (!activeComponent || activeComponent.status !== 'ready')) {
     pageContent = <UnknownComponent componentId={componentId} />;

@@ -4,6 +4,7 @@ import { componentGroups, getComponentById } from './catalog';
 import ThemeToolbar from './ThemeToolbar';
 import './ComponentLibrary.css';
 import './ComponentLibraryExtras.css';
+import './ComponentLibraryShowcase.css';
 
 
 function ComponentLibraryShell({ activeId, children }) {
@@ -131,7 +132,7 @@ function ComponentLibraryShell({ activeId, children }) {
 
         <div className="cl-sidebar-footer">
           <span>Internal library</span>
-          <strong>v0.1</strong>
+          <strong>v0.2</strong>
         </div>
       </aside>
 

@@ -61,13 +61,18 @@ function AppContent() {
         algorithm: mode === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
           colorPrimary: tokens.colorPrimary,
+          colorInfo: tokens.colorInfo,
+          colorSuccess: tokens.colorSuccess,
+          colorWarning: tokens.colorWarning,
+          colorError: tokens.colorDanger,
           colorBgBase: tokens.colorSurface,
           colorBgContainer: tokens.colorSurfaceRaised,
           colorBgLayout: tokens.colorSurfaceMuted,
           colorText: tokens.colorText,
           colorTextSecondary: tokens.colorTextMuted,
           colorBorder: tokens.colorBorder,
-          borderRadius: 12,
+          colorLink: tokens.colorPrimary,
+          borderRadius: Number.parseFloat(tokens.radiusMedium),
         },
       }}
     >
