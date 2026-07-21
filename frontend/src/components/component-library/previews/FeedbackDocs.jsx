@@ -1,11 +1,14 @@
-import { Alert, Button, CharacterEmptyState, EmptyState } from '../../../ui';
+import { useState } from 'react';
+import { Alert, Button, CharacterEmptyState, EmptyState, Input, Modal } from '../../../ui';
 
 
 function FeedbackDocs() {
+  const [modalOpen, setModalOpen] = useState(false);
+
   return (
     <article className="cl-docs">
       <header className="cl-docs-header">
-        <div><div className="cl-kicker">FEEDBACK · STATES</div><h1>提示与空状态</h1><p>用于保存结果、风险提示、无数据和首次使用等场景。</p></div>
+        <div><div className="cl-kicker">FEEDBACK · STATES</div><h1>反馈与弹窗</h1><p>用于保存结果、风险提示、无数据、首次使用和聚焦任务等场景。</p></div>
         <div className="cl-docs-meta"><span className="cl-status-badge">● Ready</span><span>v0.2.0</span></div>
       </header>
 
@@ -28,7 +31,32 @@ function FeedbackDocs() {
       </section>
 
       <section className="cl-section">
-        <div className="cl-section-heading"><div><span className="cl-section-index">03</span><h2>人物空状态</h2></div><p>全局角色变化时只替换插画与角色强调色。</p></div>
+        <div className="cl-section-heading"><div><span className="cl-section-index">03</span><h2>Modal</h2></div><p>支持遮罩与 Escape 关闭、焦点约束、滚动锁定和四种宽度。</p></div>
+        <div className="cl-modal-demo">
+          <div>
+            <strong>聚焦完成一项任务</strong>
+            <p>适合创建、编辑和二次确认；复杂表单仍可组合现有输入组件。</p>
+          </div>
+          <Button onClick={() => setModalOpen(true)}>打开弹窗</Button>
+        </div>
+        <Modal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title="创建主题方案"
+          description="这是一段可选的补充说明。"
+          footer={(
+            <>
+              <Button variant="secondary" onClick={() => setModalOpen(false)}>取消</Button>
+              <Button onClick={() => setModalOpen(false)}>确认创建</Button>
+            </>
+          )}
+        >
+          <Input label="方案名称" placeholder="例如：夏日庆典" autoFocus />
+        </Modal>
+      </section>
+
+      <section className="cl-section">
+        <div className="cl-section-heading"><div><span className="cl-section-index">04</span><h2>人物空状态</h2></div><p>全局角色变化时只替换插画与角色强调色。</p></div>
         <CharacterEmptyState action={<Button size="small">添加第一项</Button>} />
       </section>
     </article>

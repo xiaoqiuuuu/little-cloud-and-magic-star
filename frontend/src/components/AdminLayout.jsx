@@ -19,6 +19,9 @@ import {
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession, getDeduplicated } from '../api';
 import { hasContentAdminAccess } from '../utils/adminAccess';
+import { useCloudUI } from '../ui';
+import AdminThemeSwitcher from './admin/AdminThemeSwitcher';
+import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -43,6 +46,7 @@ function AdminLayout() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const { mode, theme, characterPack } = useCloudUI();
 
   useEffect(() => {
     const hasSession = localStorage.getItem('token') || localStorage.getItem('refreshToken');
@@ -99,9 +103,7 @@ function AdminLayout() {
   const userRole = currentUser?.role || '';
   const isSuperAdmin = userRole === 'super_admin';
   const roleLabel = isSuperAdmin ? '超级管理员' : '题目管理员';
-  const roleBadgeClassName = isSuperAdmin
-    ? 'bg-purple-100 text-purple-700'
-    : 'bg-blue-100 text-blue-700';
+  const roleBadgeClassName = `admin-role-badge ${isSuperAdmin ? 'is-super' : 'is-admin'}`;
 
   if (!authLoading && !currentUser) {
     return <Navigate to="/admin/login" replace />;
@@ -186,33 +188,39 @@ function AdminLayout() {
     : PAGE_TITLES[selectedMenuKey] || '后台管理';
 
   return (
-    <Layout className="min-h-screen">
+    <Layout className="cloud-admin-shell">
       <Sider
-        theme="light"
+        theme={mode === 'dark' ? 'dark' : 'light'}
         width={224}
         collapsedWidth={72}
         collapsed={siderCollapsed}
         trigger={null}
-        className="hidden md:block border-r border-gray-200"
+        className="cloud-admin-sider hidden md:block"
         style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'auto' }}
       >
-        <div className={`h-16 flex items-center border-b border-gray-100 ${siderCollapsed ? 'justify-center' : 'px-5'}`}>
-          <span className="text-xl" aria-hidden="true">🎵</span>
+        <div className={`cloud-admin-brand ${siderCollapsed ? 'is-collapsed' : ''}`}>
+          <span className="cloud-admin-brand__avatar" aria-hidden="true">
+            <img src={characterPack.assets.buttonAvatar} alt="" draggable="false" />
+          </span>
           {!siderCollapsed && (
-            <span className="ml-3 font-semibold text-gray-800 whitespace-nowrap">后台管理</span>
+            <span className="cloud-admin-brand__copy">
+              <strong>后台管理</strong>
+              <small>{theme.name} · {characterPack.name}</small>
+            </span>
           )}
         </div>
         <Menu
+          theme={mode === 'dark' ? 'dark' : 'light'}
           mode="inline"
           selectedKeys={[selectedMenuKey]}
           items={menuItems}
-          className="border-0 py-3"
+          className="cloud-admin-menu"
           inlineIndent={18}
         />
       </Sider>
 
       <Layout className="min-w-0">
-        <Header className="bg-white flex items-center justify-between !px-4 md:!px-6 sticky top-0 z-10 border-b border-gray-200 shadow-sm">
+        <Header className="cloud-admin-header">
           <div className="flex items-center min-w-0">
             <Button
               className="hidden md:inline-flex mr-3"
@@ -228,12 +236,13 @@ function AdminLayout() {
               onClick={() => setDrawerVisible(true)}
               aria-label="打开导航"
             />
-            <Title level={5} className="!mb-0 truncate">
+            <Title level={5} className="cloud-admin-header__title !mb-0 truncate">
               {currentPageTitle}
             </Title>
           </div>
 
-          <div className="flex items-center gap-1 md:gap-2">
+          <div className="cloud-admin-header__actions">
+            <AdminThemeSwitcher />
             <Button
               className="hidden lg:inline-flex"
               type="text"
@@ -257,15 +266,16 @@ function AdminLayout() {
               </Button>
             )}
             {!authLoading && currentUser && (
-              <div className="hidden md:flex items-center ml-1 mr-1">
+              <div className="cloud-admin-user hidden md:flex">
                 <Button
                   type="text"
                   icon={<UserOutlined />}
+                  className="cloud-admin-user__profile"
                   onClick={() => navigate('/admin/profile')}
                 >
                   {displayName}
                 </Button>
-                <span className={`ml-2 px-2 py-0.5 rounded text-xs ${roleBadgeClassName}`}>
+                <span className={roleBadgeClassName}>
                   {roleLabel}
                 </span>
               </div>
@@ -283,8 +293,8 @@ function AdminLayout() {
           </div>
         </Header>
 
-        <Content className="p-4 md:p-6 bg-gray-50">
-          <div className="max-w-7xl mx-auto">
+        <Content className="cloud-admin-content">
+          <div className="cloud-admin-content__inner">
             {authLoading ? (
               <div className="flex justify-center py-20">
                 <Spin size="large" tip="正在验证登录状态..." />
@@ -303,25 +313,32 @@ function AdminLayout() {
       </Layout>
 
       <Drawer
-        title={<span><span className="mr-2" aria-hidden="true">🎵</span>后台管理</span>}
+        title={(
+          <span className="cloud-admin-drawer__title">
+            <span className="cloud-admin-brand__avatar" aria-hidden="true">
+              <img src={characterPack.assets.buttonAvatar} alt="" draggable="false" />
+            </span>
+            后台管理
+          </span>
+        )}
         placement="left"
         width={288}
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
-        className="md:hidden"
+        className="cloud-admin-drawer md:hidden"
       >
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <div className="font-medium text-gray-800">{displayName}</div>
-          <div className="text-xs text-gray-500 mt-0.5">{username}</div>
+        <div className="cloud-admin-drawer-profile">
+          <strong>{displayName}</strong>
+          <span className="cloud-admin-drawer-profile__username">{username}</span>
           {!authLoading && currentUser && (
-            <div className="mt-1">
-              <span className={`px-2 py-0.5 rounded text-xs ${roleBadgeClassName}`}>
+            <div className="cloud-admin-drawer-profile__role">
+              <span className={roleBadgeClassName}>
                 {roleLabel}
               </span>
             </div>
           )}
           <Button
-            className="mt-4"
+            className="cloud-admin-drawer-profile__edit"
             icon={<UserOutlined />}
             onClick={() => {
               setDrawerVisible(false);
@@ -331,22 +348,26 @@ function AdminLayout() {
           >
             编辑个人资料
           </Button>
-          <div className={`grid gap-2 mt-4 ${isSuperAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className={`cloud-admin-drawer-links ${isSuperAdmin ? 'is-double' : ''}`}>
             <Button icon={<GlobalOutlined />} href="/" target="_blank" rel="noreferrer">预览官网</Button>
             {isSuperAdmin && (
               <Button icon={<PlayCircleOutlined />} href="/quiz" target="_blank" rel="noreferrer">现场答题</Button>
             )}
           </div>
         </div>
+        <div className="cloud-admin-drawer-theme">
+          <AdminThemeSwitcher variant="panel" />
+        </div>
         <Menu
+          theme={mode === 'dark' ? 'dark' : 'light'}
           mode="inline"
           selectedKeys={[selectedMenuKey]}
           items={menuItems}
-          className="border-0"
+          className="cloud-admin-menu"
           inlineIndent={18}
           onClick={() => setDrawerVisible(false)}
         />
-        <div className="mt-4 pt-4 border-t">
+        <div className="cloud-admin-drawer-logout">
           <Button
             type="text"
             danger

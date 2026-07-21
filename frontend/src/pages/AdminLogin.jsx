@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Card, Typography, Space } from 'antd';
+import { Form, Typography, Space } from 'antd';
 import { UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons';
 import api, { clearAuthSession, saveTokenPair } from '../api';
 import { showSuccess, showError } from '../utils/message';
+import { Button, Card, Input, useCloudUI } from '../ui';
+import AdminThemeSwitcher from '../components/admin/AdminThemeSwitcher';
+import './AdminLogin.css';
 
 const { Title, Text } = Typography;
 
@@ -11,6 +14,7 @@ function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const { theme, characterPack } = useCloudUI();
 
   const handleSubmit = async (values) => {
     try {
@@ -57,13 +61,18 @@ function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <Card 
-        className="w-full max-w-md shadow-2xl"
-        bordered={false}
-      >
+    <div className="cloud-admin-login">
+      <div className="cloud-admin-login__theme">
+        <AdminThemeSwitcher />
+      </div>
+      <div className="cloud-admin-login__stage">
+        <div className="cloud-admin-login__character" aria-hidden="true">
+          <img src={characterPack.assets.cardCorner} alt="" draggable="false" />
+        </div>
+        <Card className="cloud-admin-login__card" variant="elevated" padding="large">
         <Space direction="vertical" size="large" className="w-full">
-          <div className="text-center">
+          <div className="cloud-admin-login__heading">
+            <span className="cloud-admin-login__kicker">{theme.name} · {characterPack.name}</span>
             <Title level={2} className="!mb-2">
               账号登录
             </Title>
@@ -100,7 +109,8 @@ function AdminLogin() {
                 { min: 6, message: '密码至少6个字符' }
               ]}
             >
-              <Input.Password
+              <Input
+                type="password"
                 prefix={<LockOutlined />}
                 placeholder="密码"
                 autoComplete="current-password"
@@ -109,10 +119,10 @@ function AdminLogin() {
 
             <Form.Item className="!mb-0">
               <Button
-                type="primary"
-                htmlType="submit"
+                type="submit"
+                variant="primary"
                 loading={loading}
-                icon={<LoginOutlined />}
+                prefix={<LoginOutlined />}
                 block
                 size="large"
               >
@@ -121,7 +131,8 @@ function AdminLogin() {
             </Form.Item>
           </Form>
         </Space>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,17 @@
+.cloud-navbar {
+  position: relative;
+  z-index: 30;
+  border-bottom: 1px solid var(--cui-color-border);
+  color: var(--cui-color-text);
+  background: color-mix(in srgb, var(--cui-color-surface-raised) 90%, transparent);
+  box-shadow: 0 5px 18px color-mix(in srgb, var(--cui-color-text) 5%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.cloud-navbar__brand {
+  color: var(--cui-color-text);
+}
+
+.cloud-navbar__brand:hover {
+  color: var(--cui-color-primary);
+}

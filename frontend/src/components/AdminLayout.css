@@ -1,0 +1,458 @@
+.cloud-admin-shell,
+.cloud-admin-shell .ant-layout {
+  min-height: 100vh;
+  color: var(--cui-color-text);
+  background: var(--cui-color-surface-muted);
+}
+
+.cloud-admin-sider.ant-layout-sider {
+  border-right: 1px solid var(--cui-color-border);
+  background: var(--cui-color-surface-raised);
+  box-shadow: 8px 0 28px color-mix(in srgb, var(--cui-color-text) 4%, transparent);
+}
+
+.cloud-admin-sider .ant-layout-sider-children {
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--cui-color-primary) 9%, transparent), transparent 30%),
+    var(--cui-color-surface-raised);
+}
+
+.cloud-admin-brand {
+  display: flex;
+  height: 65px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 17px;
+  border-bottom: 1px solid var(--cui-color-border);
+}
+
+.cloud-admin-brand.is-collapsed {
+  justify-content: center;
+  padding: 0;
+}
+
+.cloud-admin-brand__avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: end center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cui-character-accent) 38%, var(--cui-color-border));
+  border-radius: 13px;
+  background: var(--cui-character-accent-soft);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--cui-character-accent) 18%, transparent);
+}
+
+.cloud-admin-brand__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--cui-character-avatar-position);
+}
+
+.cloud-admin-brand__copy {
+  min-width: 0;
+}
+
+.cloud-admin-brand__copy strong,
+.cloud-admin-brand__copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-admin-brand__copy strong {
+  color: var(--cui-color-text);
+  font-size: 14px;
+}
+
+.cloud-admin-brand__copy small {
+  margin-top: 2px;
+  color: var(--cui-color-text-muted);
+  font-size: 9px;
+}
+
+.cloud-admin-menu.ant-menu {
+  padding: 10px 8px;
+  border-inline-end: 0;
+  color: var(--cui-color-text-muted);
+  background: transparent;
+}
+
+.cloud-admin-menu .ant-menu-item-group-title {
+  padding-top: 13px;
+  color: var(--cui-color-text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.cloud-admin-menu .ant-menu-item {
+  border-radius: var(--cui-radius-small);
+}
+
+.cloud-admin-menu .ant-menu-item-selected {
+  color: var(--cui-color-primary);
+  background: var(--cui-color-primary-soft);
+  font-weight: 750;
+}
+
+.cloud-admin-menu .ant-menu-item:hover {
+  color: var(--cui-color-primary);
+  background: color-mix(in srgb, var(--cui-color-primary-soft) 72%, transparent);
+}
+
+.cloud-admin-header.ant-layout-header {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: flex;
+  height: 65px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--cui-color-border);
+  background: color-mix(in srgb, var(--cui-color-surface-raised) 88%, transparent);
+  box-shadow: 0 5px 18px color-mix(in srgb, var(--cui-color-text) 5%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.cloud-admin-header__title.ant-typography {
+  color: var(--cui-color-text);
+}
+
+.cloud-admin-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cloud-admin-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 0 5px;
+}
+
+.cloud-admin-user__name {
+  color: var(--cui-color-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--cui-color-primary);
+  background: var(--cui-color-primary-soft);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.admin-role-badge.is-super {
+  color: var(--cui-color-accent);
+  background: color-mix(in srgb, var(--cui-color-accent) 13%, var(--cui-color-surface-raised));
+}
+
+.cloud-admin-content.ant-layout-content {
+  min-width: 0;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 92% 2%, color-mix(in srgb, var(--cui-color-accent) 9%, transparent), transparent 24%),
+    radial-gradient(circle at 8% 95%, color-mix(in srgb, var(--cui-color-primary) 8%, transparent), transparent 25%),
+    var(--cui-color-surface-muted);
+}
+
+.cloud-admin-content__inner {
+  width: min(100%, 1280px);
+  margin: 0 auto;
+}
+
+.cloud-admin-drawer .ant-drawer-content,
+.cloud-admin-drawer .ant-drawer-header,
+.cloud-admin-drawer .ant-drawer-body {
+  color: var(--cui-color-text);
+  background: var(--cui-color-surface-raised);
+}
+
+.cloud-admin-drawer .ant-drawer-header {
+  border-color: var(--cui-color-border);
+}
+
+.cloud-admin-drawer__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.cloud-admin-drawer__title .cloud-admin-brand__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.cloud-admin-drawer-profile {
+  margin-bottom: 14px;
+  padding: 13px;
+  border: 1px solid var(--cui-color-border);
+  border-radius: var(--cui-radius-medium);
+  background: var(--cui-color-surface-muted);
+}
+
+.cloud-admin-drawer-profile strong {
+  display: block;
+  color: var(--cui-color-text);
+  font-size: 13px;
+}
+
+.cloud-admin-drawer-profile__role {
+  margin-top: 5px;
+}
+
+.cloud-admin-drawer-links {
+  display: grid;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.cloud-admin-drawer-links.is-double {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cloud-admin-drawer-theme {
+  margin-bottom: 14px;
+}
+
+.cloud-admin-drawer-logout {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--cui-color-border);
+}
+
+/* Legacy admin pages: map the most common Tailwind colors to semantic theme tokens. */
+.cloud-admin-shell .bg-white {
+  background-color: var(--cui-color-surface-raised) !important;
+}
+
+.cloud-admin-shell .bg-gray-50,
+.cloud-admin-shell .bg-gray-100,
+.cloud-admin-shell .bg-slate-50 {
+  background-color: var(--cui-color-surface-muted) !important;
+}
+
+.cloud-admin-shell .text-gray-900,
+.cloud-admin-shell .text-gray-800,
+.cloud-admin-shell .text-gray-700,
+.cloud-admin-shell .text-slate-900,
+.cloud-admin-shell .text-slate-800,
+.cloud-admin-shell .text-slate-700 {
+  color: var(--cui-color-text) !important;
+}
+
+.cloud-admin-shell .text-gray-600,
+.cloud-admin-shell .text-gray-500,
+.cloud-admin-shell .text-gray-400,
+.cloud-admin-shell .text-slate-600,
+.cloud-admin-shell .text-slate-500,
+.cloud-admin-shell .text-slate-400 {
+  color: var(--cui-color-text-muted) !important;
+}
+
+.cloud-admin-shell .border-gray-100,
+.cloud-admin-shell .border-gray-200,
+.cloud-admin-shell .border-gray-300,
+.cloud-admin-shell .border-slate-100,
+.cloud-admin-shell .border-slate-200,
+.cloud-admin-shell .border-slate-300 {
+  border-color: var(--cui-color-border) !important;
+}
+
+.cloud-admin-shell .bg-blue-600,
+.cloud-admin-shell .bg-indigo-600,
+.cloud-admin-shell .bg-purple-600 {
+  color: var(--cui-color-on-primary) !important;
+  background: var(--cui-gradient-primary) !important;
+}
+
+.cloud-admin-shell .hover\:bg-blue-700:hover,
+.cloud-admin-shell .hover\:bg-indigo-700:hover,
+.cloud-admin-shell .hover\:bg-purple-700:hover {
+  filter: saturate(1.08) brightness(0.96);
+}
+
+.cloud-admin-shell .bg-green-600 {
+  color: #ffffff !important;
+  background-color: var(--cui-color-success) !important;
+}
+
+.cloud-admin-shell .hover\:bg-green-700:hover {
+  background-color: var(--cui-color-success) !important;
+  filter: saturate(1.08) brightness(0.94);
+}
+
+.cloud-admin-shell .bg-orange-500,
+.cloud-admin-shell .bg-amber-500 {
+  color: #ffffff !important;
+  background-color: var(--cui-color-warning) !important;
+}
+
+.cloud-admin-shell .hover\:bg-orange-600:hover,
+.cloud-admin-shell .hover\:bg-amber-600:hover {
+  background-color: var(--cui-color-warning) !important;
+  filter: saturate(1.08) brightness(0.94);
+}
+
+.cloud-admin-shell .bg-red-500,
+.cloud-admin-shell .bg-red-600 {
+  color: #ffffff !important;
+  background-color: var(--cui-color-danger) !important;
+}
+
+.cloud-admin-shell .hover\:bg-red-600:hover,
+.cloud-admin-shell .hover\:bg-red-700:hover {
+  background-color: var(--cui-color-danger) !important;
+  filter: saturate(1.08) brightness(0.94);
+}
+
+.cloud-admin-shell .bg-blue-50,
+.cloud-admin-shell .bg-blue-100 {
+  background-color: var(--cui-color-primary-soft) !important;
+}
+
+.cloud-admin-shell .text-blue-600,
+.cloud-admin-shell .text-blue-700,
+.cloud-admin-shell .text-blue-800,
+.cloud-admin-shell .border-blue-200 {
+  color: var(--cui-color-primary) !important;
+  border-color: color-mix(in srgb, var(--cui-color-primary) 32%, var(--cui-color-border)) !important;
+}
+
+.cloud-admin-shell .bg-purple-100 {
+  background-color: color-mix(in srgb, var(--cui-color-accent) 13%, var(--cui-color-surface-raised)) !important;
+}
+
+.cloud-admin-shell .text-purple-700 {
+  color: var(--cui-color-accent) !important;
+}
+
+.cloud-admin-shell .bg-red-50,
+.cloud-admin-shell .bg-red-100 {
+  background-color: color-mix(in srgb, var(--cui-color-danger) 10%, var(--cui-color-surface-raised)) !important;
+}
+
+.cloud-admin-shell .text-red-600,
+.cloud-admin-shell .text-red-700,
+.cloud-admin-shell .border-red-200 {
+  color: var(--cui-color-danger) !important;
+  border-color: color-mix(in srgb, var(--cui-color-danger) 30%, var(--cui-color-border)) !important;
+}
+
+.cloud-admin-shell :where(input, select, textarea):not(.ant-input):not(.ant-select-selection-search-input) {
+  border-color: var(--cui-color-border) !important;
+  color: var(--cui-color-text);
+  background: var(--cui-color-surface-raised);
+}
+
+.cloud-admin-shell :where(input, select, textarea):not(.ant-input):not(.ant-select-selection-search-input):focus {
+  border-color: var(--cui-color-primary) !important;
+  box-shadow: 0 0 0 3px var(--cui-color-focus) !important;
+}
+
+.cloud-admin-shell .shadow,
+.cloud-admin-shell .shadow-sm,
+.cloud-admin-shell .shadow-md,
+.cloud-admin-shell .shadow-lg {
+  box-shadow: var(--cui-shadow-card) !important;
+}
+
+.admin-metric-card {
+  --admin-metric-tone: var(--cui-color-primary);
+
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--admin-metric-tone) 20%, var(--cui-color-border));
+  border-radius: var(--cui-radius-large);
+  color: var(--admin-metric-tone);
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--admin-metric-tone) 16%, transparent), transparent 45%),
+    var(--cui-color-surface-raised);
+  box-shadow: var(--cui-shadow-card);
+}
+
+.admin-metric-card.is-cyan {
+  --admin-metric-tone: var(--cui-color-info);
+}
+
+.admin-metric-card.is-amber {
+  --admin-metric-tone: var(--cui-color-warning);
+}
+
+.admin-metric-card.is-pink {
+  --admin-metric-tone: var(--cui-color-danger);
+}
+
+.admin-metric-card.is-emerald {
+  --admin-metric-tone: var(--cui-color-success);
+}
+
+.admin-metric-card.is-violet {
+  --admin-metric-tone: var(--cui-color-accent);
+}
+
+.admin-metric-card__label {
+  color: var(--cui-color-text-muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.admin-metric-card__icon {
+  font-size: 18px;
+}
+
+.admin-metric-card__value {
+  margin-top: 10px;
+  color: var(--cui-color-text);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.admin-metric-card__hint {
+  min-height: 20px;
+  margin-top: 7px;
+  color: var(--cui-color-text-muted);
+  font-size: 11px;
+}
+
+.admin-chart-panel {
+  padding: 16px;
+  border: 1px solid var(--cui-color-border);
+  border-radius: var(--cui-radius-large);
+  background: var(--cui-color-surface-raised);
+  box-shadow: var(--cui-shadow-card);
+}
+
+@media (min-width: 640px) {
+  .admin-chart-panel {
+    padding: 24px;
+  }
+}
+
+@media (min-width: 768px) {
+  .cloud-admin-header.ant-layout-header {
+    padding-inline: 24px;
+  }
+
+  .cloud-admin-content.ant-layout-content {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .cloud-admin-content.ant-layout-content {
+    padding: 14px;
+  }
+}

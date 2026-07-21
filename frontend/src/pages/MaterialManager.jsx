@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react';
 import { App } from 'antd';
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useOutletContext } from 'react-router-dom';
 import api from '../api';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
+import {
+  Button,
+  Card,
+  CharacterButton,
+  CharacterEmptyState,
+  Input,
+  Modal,
+  Select,
+  Tag,
+} from '../ui';
+import './AdminResourceManager.css';
 
 function MaterialManager() {
   const { message, modal } = App.useApp();
@@ -16,6 +28,7 @@ function MaterialManager() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -84,6 +97,7 @@ function MaterialManager() {
   };
 
   const handleCloseModal = () => {
+    if (submitting) return;
     setShowModal(false);
     setEditingMaterial(null);
     setFormData({
@@ -108,6 +122,7 @@ function MaterialManager() {
     };
 
     try {
+      setSubmitting(true);
       if (editingMaterial) {
         await api.put(`/admin/materials/${editingMaterial.id}`, data);
         message.success('更新成功!');
@@ -115,11 +130,15 @@ function MaterialManager() {
         await api.post('/admin/materials', data);
         message.success('创建成功!');
       }
-      handleCloseModal();
+      setShowModal(false);
+      setEditingMaterial(null);
+      setFormData({ name: '', description: '', contributor_ids: [], resources: '' });
       fetchMaterials();
     } catch (error) {
       console.error('操作失败:', error);
       message.error('操作失败，请稍后重试');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -142,134 +161,124 @@ function MaterialManager() {
   const totalPages = Math.ceil(total / pageSize);
   
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-bold text-gray-800">物料列表 (共 {total} 条)</h2>
-          {loading && <span className="text-sm text-gray-500 animate-pulse">加载中...</span>}
+    <div className="admin-resource-page">
+      <div className="admin-resource-page__header">
+        <div>
+          <h2>物料列表 (共 {total} 条)</h2>
+          {loading && <span className="admin-resource-page__loading-copy">加载中...</span>}
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium text-sm"
-        >
-          + 新建物料
-        </button>
+        <CharacterButton onClick={() => handleOpenModal()}>
+          新建物料
+        </CharacterButton>
       </div>
 
       {isSuperAdmin && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            按贡献账号筛选
-          </label>
-          <select
+        <Card variant="outlined" padding="small" className="admin-resource-filter-card">
+          <Select
+            label="按贡献账号筛选"
             value={filterContributorId || ''}
             onChange={(event) => {
               setFilterContributorId(event.target.value ? Number(event.target.value) : null);
               setCurrentPage(1);
             }}
-            className="w-full sm:max-w-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">全部账号</option>
-            {contributors.map((contributor) => (
-              <option key={contributor.id} value={contributor.id}>
-                {contributor.display_name}（{contributor.username}）
-                {!contributor.is_active ? '（已停用）' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
+            options={[
+              { value: '', label: '全部账号' },
+              ...contributors.map((contributor) => ({
+                value: contributor.id,
+                label: `${contributor.display_name}（${contributor.username}）${contributor.is_active ? '' : '（已停用）'}`,
+              })),
+            ]}
+          />
+        </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="admin-resource-grid">
         {materials.map((material) => {
           const coverImage = material.resources?.find(url => /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(url));
           
           return (
-            <div key={material.id} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col">
+            <Card key={material.id} variant="elevated" padding="none" className="admin-material-card">
               {coverImage && (
-                <div className="h-48 w-full bg-gray-100 relative border-b border-gray-100">
-                  <img src={coverImage} alt={material.name} className="w-full h-full object-cover" />
+                <div className="admin-material-card__cover">
+                  <img src={coverImage} alt={material.name} />
                 </div>
               )}
-              <div className="p-4 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-lg text-gray-900">{material.name}</h3>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded h-fit">#{material.id}</span>
+              {!coverImage && (
+                <div className="admin-material-card__cover admin-material-card__cover--empty" aria-hidden="true">
+                  <span>☁</span>
                 </div>
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">{material.description || '暂无介绍'}</p>
-                <p className="text-xs text-gray-500 mb-3">署名: {Array.isArray(material.creator) ? material.creator.join(', ') : (material.creator || '未知')}</p>
+              )}
+              <div className="admin-material-card__content">
+                <div className="admin-material-card__heading">
+                  <h3>{material.name}</h3>
+                  <Tag>#{material.id}</Tag>
+                </div>
+                <p className="admin-material-card__description">{material.description || '暂无介绍'}</p>
+                <p className="admin-material-card__creator">署名：{Array.isArray(material.creator) ? material.creator.join(', ') : (material.creator || '未知')}</p>
                 
-                <div className="mb-3 text-gray-700 text-sm mt-auto">
+                <div className="admin-material-card__resource-count">
                   {material.resources && material.resources.length > 0 ? `${material.resources.length} 个资源` : '无资源'}
                 </div>
 
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={() => handleOpenModal(material)}
-                    className="flex-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 text-sm"
-                  >
+                <div className="admin-material-card__actions">
+                  <Button block size="small" variant="soft" prefix={<EditOutlined />} onClick={() => handleOpenModal(material)}>
                     编辑
-                  </button>
-                  <button
-                    onClick={() => handleDelete(material.id)}
-                    className="flex-1 px-3 py-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100 text-sm"
-                  >
+                  </Button>
+                  <Button block size="small" variant="ghost" prefix={<DeleteOutlined />} className="admin-danger-ghost" onClick={() => handleDelete(material.id)}>
                     删除
-                  </button>
+                  </Button>
                 </div>
               </div>
-            </div>
+            </Card>
           );
         })}
-        {materials.length === 0 && (
-          <div className="col-span-full text-center py-8 text-gray-500">
-            暂无物料，请添加
-          </div>
-        )}
       </div>
+
+      {!loading && materials.length === 0 && (
+        <CharacterEmptyState
+          title="暂无物料，请添加"
+          action={<CharacterButton size="small" onClick={() => handleOpenModal()}>新建物料</CharacterButton>}
+        />
+      )}
 
       {/* 分页控件 */}
       {materials.length > 0 && (
-        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span>每页显示:</span>
-            <select
+        <Card variant="outlined" padding="small" className="admin-pagination-card">
+          <div className="admin-pagination-card__summary">
+            <span>每页显示</span>
+            <Select
+              size="small"
+              block={false}
               value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
+              aria-label="每页显示数量"
+              className="admin-pagination-card__select"
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
                 setCurrentPage(1);
               }}
-              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={6}>6条</option>
-              <option value={12}>12条</option>
-              <option value={18}>18条</option>
-              <option value={24}>24条</option>
-              <option value={30}>30条</option>
-              <option value={60}>60条</option>
-            </select>
-            <span className="ml-2">
+              options={[
+                { value: 6, label: '6 条' },
+                { value: 12, label: '12 条' },
+                { value: 18, label: '18 条' },
+                { value: 24, label: '24 条' },
+                { value: 30, label: '30 条' },
+                { value: 60, label: '60 条' },
+              ]}
+            />
+            <span>
               共 {total} 条，第 {currentPage} / {totalPages || 1} 页
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+          <div className="admin-pagination-card__actions">
+            <Button size="small" variant="secondary" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
               首页
-            </button>
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            </Button>
+            <Button size="small" variant="secondary" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>
               上一页
-            </button>
+            </Button>
             
-            <div className="hidden sm:flex gap-1">
+            <div className="admin-pagination-card__pages">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let pageNum;
                 if (totalPages <= 5) {
@@ -282,79 +291,78 @@ function MaterialManager() {
                   pageNum = currentPage - 2 + i;
                 }
                 return (
-                  <button
+                  <Button
                     key={pageNum}
+                    size="small"
+                    variant={currentPage === pageNum ? 'primary' : 'secondary'}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`w-8 h-8 flex items-center justify-center text-sm rounded ${
-                      currentPage === pageNum
-                        ? 'bg-blue-600 text-white'
-                        : 'border border-gray-300 hover:bg-gray-50'
-                    }`}
+                    className="admin-pagination-card__page"
+                    aria-label={`第 ${pageNum} 页`}
+                    aria-current={currentPage === pageNum ? 'page' : undefined}
                   >
                     {pageNum}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
 
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button size="small" variant="secondary" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages}>
               下一页
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            </Button>
+            <Button size="small" variant="secondary" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>
               末页
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* 编辑/创建模态框 */}
-      {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-4">
-          <div className="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white mb-4">
-            <div className="mt-3">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">
-                {editingMaterial ? '编辑物料' : '新建物料'}
-              </h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    名称 *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+      <Modal
+        open={showModal}
+        onClose={handleCloseModal}
+        title={editingMaterial ? '编辑物料' : '新建物料'}
+        width="large"
+        closeOnOverlay={!submitting}
+        closeOnEscape={!submitting}
+        showClose={!submitting}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={submitting}>取消</Button>
+            <Button type="submit" form="material-form" loading={submitting}>
+              {editingMaterial ? '更新' : '创建'}
+            </Button>
+          </>
+        )}
+      >
+        <form id="material-form" onSubmit={handleSubmit} className="admin-resource-form admin-resource-form--material">
+                <Input
+                  label="名称 *"
+                  type="text"
+                  required
+                  autoFocus
+                  value={formData.name}
+                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                />
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="admin-resource-form__label" htmlFor="material-description">
                     介绍
                   </label>
                   <textarea
+                    id="material-description"
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                    className="admin-resource-form__textarea"
                     rows="3"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="admin-resource-form__label" htmlFor="material-contributors">
                     贡献账号（可多选）
                   </label>
                   <div className="space-y-2">
                     <select
+                      id="material-contributors"
                       multiple
                       value={formData.contributor_ids.map(String)}
                       onChange={(e) => {
@@ -380,25 +388,21 @@ function MaterialManager() {
                       ))}
                     </select>
                     {formData.contributor_ids.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="admin-resource-form__tags">
                         {formData.contributor_ids.map((contributorId) => {
                           const contributor = contributors.find((item) => item.id === contributorId);
                           return contributor ? (
-                            <span key={contributorId} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                            <Tag
+                              key={contributorId}
+                              tone="primary"
+                              closable={isSuperAdmin}
+                              onClose={() => setFormData({
+                                ...formData,
+                                contributor_ids: formData.contributor_ids.filter((id) => id !== contributorId),
+                              })}
+                            >
                               {contributor.display_name}（{contributor.username}）
-                              {isSuperAdmin && (
-                                <button
-                                  type="button"
-                                  onClick={() => setFormData({
-                                    ...formData,
-                                    contributor_ids: formData.contributor_ids.filter((id) => id !== contributorId),
-                                  })}
-                                  className="text-blue-600 hover:text-blue-800 font-bold"
-                                >
-                                  ×
-                                </button>
-                              )}
-                            </span>
+                            </Tag>
                           ) : null;
                         })}
                       </div>
@@ -412,7 +416,7 @@ function MaterialManager() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="admin-resource-form__label">
                     上传资源（图片/视频/音频，支持拖拽/多选，最大10M）
                   </label>
                   {/* 拖拽上传区域 */}
@@ -559,26 +563,8 @@ function MaterialManager() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-6">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    {editingMaterial ? '更新' : '创建'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   );
 }

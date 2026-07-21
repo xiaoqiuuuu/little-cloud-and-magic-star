@@ -68,11 +68,62 @@ function AppContent() {
           colorBgBase: tokens.colorSurface,
           colorBgContainer: tokens.colorSurfaceRaised,
           colorBgLayout: tokens.colorSurfaceMuted,
+          colorBgElevated: tokens.colorSurfaceRaised,
           colorText: tokens.colorText,
           colorTextSecondary: tokens.colorTextMuted,
           colorBorder: tokens.colorBorder,
+          colorBorderSecondary: tokens.colorBorder,
+          colorSplit: tokens.colorBorder,
           colorLink: tokens.colorPrimary,
           borderRadius: Number.parseFloat(tokens.radiusMedium),
+          borderRadiusLG: Number.parseFloat(tokens.radiusLarge),
+          boxShadow: tokens.shadowCard,
+          boxShadowSecondary: tokens.shadowFloating,
+        },
+        components: {
+          Layout: {
+            bodyBg: tokens.colorSurfaceMuted,
+            headerBg: tokens.colorSurfaceRaised,
+            siderBg: tokens.colorSurfaceRaised,
+            triggerBg: tokens.colorSurfaceRaised,
+          },
+          Menu: {
+            itemBg: 'transparent',
+            subMenuItemBg: 'transparent',
+            itemColor: tokens.colorTextMuted,
+            itemHoverColor: tokens.colorPrimary,
+            itemHoverBg: tokens.colorPrimarySoft,
+            itemSelectedColor: tokens.colorPrimary,
+            itemSelectedBg: tokens.colorPrimarySoft,
+            groupTitleColor: tokens.colorTextMuted,
+          },
+          Button: {
+            primaryShadow: `0 6px 14px color-mix(in srgb, ${tokens.colorPrimary} 24%, transparent)`,
+          },
+          Card: {
+            headerBg: tokens.colorSurfaceRaised,
+          },
+          Table: {
+            headerBg: tokens.colorSurfaceMuted,
+            headerColor: tokens.colorText,
+            rowHoverBg: tokens.colorPrimarySoft,
+            borderColor: tokens.colorBorder,
+          },
+          Modal: {
+            contentBg: tokens.colorSurfaceRaised,
+            headerBg: tokens.colorSurfaceRaised,
+          },
+          Form: {
+            labelColor: tokens.colorText,
+          },
+          Input: {
+            activeBorderColor: tokens.colorPrimary,
+            hoverBorderColor: tokens.colorPrimary,
+          },
+          Select: {
+            optionActiveBg: tokens.colorSurfaceMuted,
+            optionSelectedBg: tokens.colorPrimarySoft,
+          },
         },
       }}
     >
