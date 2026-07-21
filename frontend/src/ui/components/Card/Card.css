@@ -1,0 +1,117 @@
+.cui-card {
+  appearance: none;
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--cui-color-border);
+  border-radius: var(--cui-radius-large);
+  color: var(--cui-color-text);
+  background: var(--cui-color-surface-raised);
+  font-family: var(--cui-font-family);
+  text-align: left;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.cui-card--full-width {
+  width: 100%;
+}
+
+.cui-card--outlined {
+  box-shadow: 0 1px 0 rgba(28, 43, 63, 0.02);
+}
+
+.cui-card--elevated {
+  border-color: color-mix(in srgb, var(--cui-color-border) 68%, transparent);
+  box-shadow: var(--cui-shadow-card);
+}
+
+.cui-card--soft {
+  border-color: color-mix(in srgb, var(--cui-color-primary) 15%, var(--cui-color-border));
+  background: var(--cui-color-primary-soft);
+}
+
+.cui-card--padding-none .cui-card__body {
+  padding: 0;
+}
+
+.cui-card--padding-small .cui-card__body,
+.cui-card--padding-small .cui-card__header,
+.cui-card--padding-small .cui-card__footer {
+  padding: 14px;
+}
+
+.cui-card--padding-medium .cui-card__body,
+.cui-card--padding-medium .cui-card__header,
+.cui-card--padding-medium .cui-card__footer {
+  padding: 20px;
+}
+
+.cui-card--padding-large .cui-card__body,
+.cui-card--padding-large .cui-card__header,
+.cui-card--padding-large .cui-card__footer {
+  padding: 28px;
+}
+
+.cui-card__header,
+.cui-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cui-card__header {
+  border-bottom: 1px solid var(--cui-color-border);
+}
+
+.cui-card__footer {
+  border-top: 1px solid var(--cui-color-border);
+}
+
+.cui-card__title {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.cui-card__extra {
+  flex: 0 0 auto;
+  color: var(--cui-color-text-muted);
+  font-size: 11px;
+}
+
+.cui-card__body {
+  color: inherit;
+}
+
+.cui-card.is-interactive {
+  cursor: pointer;
+}
+
+.cui-card.is-interactive:hover:not(:disabled) {
+  border-color: var(--cui-color-primary);
+  box-shadow: var(--cui-shadow-card);
+  transform: translateY(-2px);
+}
+
+.cui-card.is-interactive:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--cui-color-focus), var(--cui-shadow-card);
+}
+
+.cui-card.is-selected {
+  border-color: var(--cui-color-primary);
+  box-shadow: 0 0 0 3px var(--cui-color-focus);
+}
+
+.cui-card.is-disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+  opacity: 0.56;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cui-card {
+    transition: none;
+  }
+}

@@ -1,0 +1,123 @@
+.cui-character-button.cui-button {
+  --cui-character-local-accent: var(--cui-character-accent);
+  --cui-character-local-accent-deep: var(--cui-character-accent-deep);
+  --cui-character-local-accent-soft: var(--cui-character-accent-soft);
+
+  position: relative;
+  overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--cui-character-local-accent) 48%, transparent);
+  color: var(--cui-character-local-accent-deep);
+  background:
+    radial-gradient(circle at 88% 20%, rgba(255, 255, 255, 0.92) 0 2px, transparent 3px),
+    linear-gradient(135deg, color-mix(in srgb, var(--cui-character-local-accent-soft) 52%, white), var(--cui-character-local-accent-soft));
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--cui-character-local-accent) 18%, transparent);
+}
+
+.cui-character-button.cui-button--small {
+  padding-left: 39px;
+}
+
+.cui-character-button.cui-button--medium {
+  padding-left: 49px;
+}
+
+.cui-character-button.cui-button--large {
+  padding-left: 58px;
+}
+
+.cui-character-button:hover:not(:disabled) {
+  border-color: var(--cui-character-local-accent);
+  color: var(--cui-character-local-accent-deep);
+  filter: saturate(1.06);
+}
+
+.cui-character-button:focus-visible {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--cui-character-local-accent) 24%, transparent),
+    0 6px 14px color-mix(in srgb, var(--cui-character-local-accent) 18%, transparent);
+}
+
+.cui-character-button.is-selected {
+  border-color: var(--cui-character-local-accent-deep);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--cui-character-local-accent) 16%, transparent),
+    0 6px 14px color-mix(in srgb, var(--cui-character-local-accent) 18%, transparent);
+}
+
+.cui-character-button__avatar {
+  position: absolute;
+  z-index: 2;
+  left: 2px;
+  bottom: 1px;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cui-character-local-accent) 20%, white);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cui-character-local-accent) 10%, transparent);
+}
+
+.cui-button--small .cui-character-button__avatar {
+  width: 34px;
+  height: 34px;
+}
+
+.cui-button--medium .cui-character-button__avatar {
+  width: 42px;
+  height: 42px;
+}
+
+.cui-button--large .cui-character-button__avatar {
+  width: 50px;
+  height: 50px;
+}
+
+.cui-character-button__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 2px 2px rgba(49, 68, 91, 0.15));
+  user-select: none;
+  transition: transform 180ms ease;
+}
+
+.cui-character-button--square .cui-character-button__avatar img {
+  object-fit: cover;
+}
+
+.cui-character-button:hover:not(:disabled) .cui-character-button__avatar img {
+  transform: translateY(-1px) scale(1.05);
+}
+
+.cui-character-button__sparkle {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: var(--cui-character-local-accent);
+  font-size: 9px;
+}
+
+.cui-character-button.is-selected .cui-character-button__sparkle::before {
+  content: '✓';
+  font-size: 10px;
+}
+
+.cui-character-button.is-selected .cui-character-button__sparkle {
+  color: transparent;
+  background: var(--cui-character-local-accent-deep);
+}
+
+.cui-character-button.is-selected .cui-character-button__sparkle::before {
+  color: white;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cui-character-button__avatar img {
+    transition: none;
+  }
+}
