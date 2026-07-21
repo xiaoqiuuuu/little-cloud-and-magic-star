@@ -168,6 +168,29 @@
   gap: 11px;
 }
 
+.cl-modal-demo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid var(--cui-color-border);
+  border-radius: var(--cui-radius-large);
+  background: var(--cui-color-surface-raised);
+}
+
+.cl-modal-demo strong {
+  color: var(--cui-color-text);
+  font-size: 13px;
+}
+
+.cl-modal-demo p {
+  margin: 6px 0 0;
+  color: var(--cui-color-text-muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
 .cl-empty-demo-grid,
 .cl-character-empty-grid {
   display: grid;
@@ -264,6 +287,11 @@
   .cl-theme-kit__characters button {
     flex-direction: column;
     text-align: center;
+  }
+
+  .cl-modal-demo {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .cl-theme-kit__characters strong {

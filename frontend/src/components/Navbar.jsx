@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import api, { clearAuthSession } from '../api';
 import { showSuccess } from '../utils/message';
+import './Navbar.css';
 
 
 function Navbar({
@@ -39,11 +40,11 @@ function Navbar({
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="cloud-navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to={homePath} className="text-xl font-bold text-gray-800 hover:text-blue-600 transition-colors">
+            <Link to={homePath} className="cloud-navbar__brand text-xl font-bold transition-colors">
               🎵 {brandText}
             </Link>
           </div>

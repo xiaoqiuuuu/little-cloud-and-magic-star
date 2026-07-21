@@ -6,6 +6,7 @@ export { default as CharacterCard } from './CharacterCard';
 export { default as CharacterEmptyState } from './CharacterEmptyState';
 export { default as EmptyState } from './EmptyState';
 export { default as Input } from './Input';
+export { default as Modal } from './Modal';
 export { default as Select } from './Select';
 export { default as Statistic } from './Statistic';
 export { default as Switch } from './Switch';

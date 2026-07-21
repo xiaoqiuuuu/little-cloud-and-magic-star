@@ -8,33 +8,22 @@ import {
 } from '@ant-design/icons';
 import api from '../api';
 import AnalyticsChart from '../components/AnalyticsChart';
+import { useCloudUI } from '../ui';
 
 
 const numberFormatter = new Intl.NumberFormat('zh-CN');
-const palette = ['#4f46e5', '#06b6d4', '#f59e0b', '#ec4899', '#10b981', '#8b5cf6'];
-
-
 const formatNumber = (value) => numberFormatter.format(value || 0);
 
 
 function MetricCard({ title, value, hint, icon, tone = 'indigo' }) {
-  const tones = {
-    indigo: 'from-indigo-50 to-white border-indigo-100 text-indigo-600',
-    cyan: 'from-cyan-50 to-white border-cyan-100 text-cyan-600',
-    amber: 'from-amber-50 to-white border-amber-100 text-amber-600',
-    pink: 'from-pink-50 to-white border-pink-100 text-pink-600',
-    emerald: 'from-emerald-50 to-white border-emerald-100 text-emerald-600',
-    violet: 'from-violet-50 to-white border-violet-100 text-violet-600',
-  };
-
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-5 shadow-sm ${tones[tone]}`}>
+    <div className={`admin-metric-card is-${tone}`}>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-slate-500">{title}</span>
-        <span className="text-lg">{icon}</span>
+        <span className="admin-metric-card__label">{title}</span>
+        <span className="admin-metric-card__icon">{icon}</span>
       </div>
-      <div className="mt-3 text-3xl font-bold tracking-tight text-slate-800">{value}</div>
-      <div className="mt-2 min-h-5 text-xs text-slate-400">{hint}</div>
+      <div className="admin-metric-card__value">{value}</div>
+      <div className="admin-metric-card__hint">{hint}</div>
     </div>
   );
 }
@@ -42,7 +31,7 @@ function MetricCard({ title, value, hint, icon, tone = 'indigo' }) {
 
 function ChartPanel({ title, subtitle, children }) {
   return (
-    <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+    <section className="admin-chart-panel">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-slate-800">{title}</h2>
         {subtitle && <p className="mt-1 text-xs text-slate-400">{subtitle}</p>}
@@ -61,6 +50,7 @@ const comparisonHint = (value, days) => {
 
 
 function VisitStatsPage() {
+  const { tokens } = useCloudUI();
   const [days, setDays] = useState(30);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,9 +81,22 @@ function VisitStatsPage() {
 
   const chartOptions = useMemo(() => {
     if (!stats) return {};
-    const axisStyle = { color: '#94a3b8', fontSize: 11 };
-    const splitLine = { lineStyle: { color: '#eef2f7' } };
-    const tooltip = { trigger: 'axis', backgroundColor: 'rgba(15, 23, 42, 0.92)', borderWidth: 0, textStyle: { color: '#fff' } };
+    const palette = [
+      tokens.colorPrimary,
+      tokens.colorInfo,
+      tokens.colorWarning,
+      tokens.colorDanger,
+      tokens.colorSuccess,
+      tokens.colorAccent,
+    ];
+    const axisStyle = { color: tokens.colorTextMuted, fontSize: 11 };
+    const splitLine = { lineStyle: { color: tokens.colorBorder } };
+    const tooltip = {
+      trigger: 'axis',
+      backgroundColor: tokens.colorText,
+      borderWidth: 0,
+      textStyle: { color: tokens.colorSurfaceRaised },
+    };
     return {
       trend: {
         color: palette,
@@ -105,7 +108,7 @@ function VisitStatsPage() {
           boundaryGap: false,
           data: stats.daily.map((item) => item.date.slice(5)),
           axisLabel: axisStyle,
-          axisLine: { lineStyle: { color: '#e2e8f0' } },
+          axisLine: { lineStyle: { color: tokens.colorBorder } },
         },
         yAxis: { type: 'value', minInterval: 1, axisLabel: axisStyle, splitLine },
         series: [
@@ -115,15 +118,15 @@ function VisitStatsPage() {
         ],
       },
       hourly: {
-        color: ['#06b6d4'],
+        color: [tokens.colorInfo],
         tooltip,
         grid: { left: 18, right: 12, top: 12, bottom: 18, containLabel: true },
-        xAxis: { type: 'category', data: stats.hourly.map((item) => `${item.hour}时`), axisLabel: axisStyle, axisLine: { lineStyle: { color: '#e2e8f0' } } },
+        xAxis: { type: 'category', data: stats.hourly.map((item) => `${item.hour}时`), axisLabel: axisStyle, axisLine: { lineStyle: { color: tokens.colorBorder } } },
         yAxis: { type: 'value', minInterval: 1, axisLabel: axisStyle, splitLine },
         series: [{ name: 'PV', type: 'bar', barMaxWidth: 18, data: stats.hourly.map((item) => item.pv), itemStyle: { borderRadius: [5, 5, 0, 0] } }],
       },
       pages: {
-        color: ['#4f46e5', '#a5b4fc'],
+        color: [tokens.colorPrimary, tokens.colorAccent],
         tooltip,
         legend: { top: 0, textStyle: axisStyle },
         grid: { left: 18, right: 16, top: 42, bottom: 12, containLabel: true },
@@ -138,22 +141,22 @@ function VisitStatsPage() {
         color: palette,
         tooltip: { trigger: 'item', formatter: '{b}<br/>PV：{c}（{d}%）' },
         legend: { type: 'scroll', bottom: 0, textStyle: axisStyle },
-        series: [{ name: '访问来源', type: 'pie', radius: ['42%', '68%'], center: ['50%', '43%'], avoidLabelOverlap: true, itemStyle: { borderColor: '#fff', borderWidth: 3 }, label: { formatter: '{b}\n{d}%', color: '#64748b' }, data: stats.sources.map((item) => ({ name: item.name, value: item.pv })) }],
+        series: [{ name: '访问来源', type: 'pie', radius: ['42%', '68%'], center: ['50%', '43%'], avoidLabelOverlap: true, itemStyle: { borderColor: tokens.colorSurfaceRaised, borderWidth: 3 }, label: { formatter: '{b}\n{d}%', color: tokens.colorTextMuted }, data: stats.sources.map((item) => ({ name: item.name, value: item.pv })) }],
       },
       devices: {
         color: palette,
         tooltip: { trigger: 'item', formatter: '{b}<br/>PV：{c}（{d}%）' },
         legend: { bottom: 0, textStyle: axisStyle },
-        series: [{ name: '设备类型', type: 'pie', radius: ['45%', '70%'], center: ['50%', '43%'], itemStyle: { borderColor: '#fff', borderWidth: 3 }, label: { formatter: '{b}\n{d}%', color: '#64748b' }, data: stats.devices.map((item) => ({ name: item.name, value: item.pv })) }],
+        series: [{ name: '设备类型', type: 'pie', radius: ['45%', '70%'], center: ['50%', '43%'], itemStyle: { borderColor: tokens.colorSurfaceRaised, borderWidth: 3 }, label: { formatter: '{b}\n{d}%', color: tokens.colorTextMuted }, data: stats.devices.map((item) => ({ name: item.name, value: item.pv })) }],
       },
       browsers: {
         color: palette.slice().reverse(),
         tooltip: { trigger: 'item', formatter: '{b}<br/>PV：{c}（{d}%）' },
         legend: { type: 'scroll', bottom: 0, textStyle: axisStyle },
-        series: [{ name: '浏览器', type: 'pie', roseType: 'radius', radius: ['28%', '68%'], center: ['50%', '43%'], itemStyle: { borderColor: '#fff', borderWidth: 3 }, label: { formatter: '{b}\n{d}%', color: '#64748b' }, data: stats.browsers.map((item) => ({ name: item.name, value: item.pv })) }],
+        series: [{ name: '浏览器', type: 'pie', roseType: 'radius', radius: ['28%', '68%'], center: ['50%', '43%'], itemStyle: { borderColor: tokens.colorSurfaceRaised, borderWidth: 3 }, label: { formatter: '{b}\n{d}%', color: tokens.colorTextMuted }, data: stats.browsers.map((item) => ({ name: item.name, value: item.pv })) }],
       },
     };
-  }, [stats]);
+  }, [stats, tokens]);
 
   const summary = stats?.summary || {};
   const hasVisits = (summary.period_pv || 0) > 0;
