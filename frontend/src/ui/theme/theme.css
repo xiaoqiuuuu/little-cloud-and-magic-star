@@ -1,0 +1,30 @@
+:root {
+  --cui-color-primary: #3f8fba;
+  --cui-color-primary-hover: #2f7da8;
+  --cui-color-primary-soft: #e9f5fb;
+  --cui-color-on-primary: #ffffff;
+  --cui-color-surface: #ffffff;
+  --cui-color-surface-raised: #ffffff;
+  --cui-color-surface-muted: #f4f7fb;
+  --cui-color-text: #1f2d43;
+  --cui-color-text-muted: #738198;
+  --cui-color-border: #dfe5ee;
+  --cui-color-focus: rgba(63, 143, 186, 0.25);
+  --cui-color-danger: #d75d73;
+  --cui-color-success: #3c9b75;
+  --cui-shadow-card: 0 12px 32px rgba(50, 76, 108, 0.10);
+  --cui-character-accent: #72b8dc;
+  --cui-character-accent-deep: #3e7fa7;
+  --cui-character-accent-soft: #e2f2fb;
+  --cui-radius-small: 8px;
+  --cui-radius-medium: 12px;
+  --cui-radius-large: 18px;
+  --cui-control-small: 32px;
+  --cui-control-medium: 40px;
+  --cui-control-large: 48px;
+  --cui-font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+[data-cui-mode='dark'] {
+  color-scheme: dark;
+}

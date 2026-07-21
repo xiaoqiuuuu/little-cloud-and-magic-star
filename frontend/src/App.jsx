@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, App as AntApp } from 'antd';
+import { ConfigProvider, App as AntApp, theme as antdTheme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import HomePage from './pages/HomePage';
 import GameRules from './pages/GameRules';
@@ -18,6 +18,7 @@ import RequireSuperAdmin from './components/RequireSuperAdmin';
 import Navbar from './components/Navbar';
 import RouterProgressBar from './components/RouterProgressBar';
 import AnalyticsTracker from './components/AnalyticsTracker';
+import { CloudUIProvider, useCloudUI } from './ui';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import 'antd/dist/reset.css'; // Ant Design 样式
 
@@ -25,7 +26,8 @@ import 'antd/dist/reset.css'; // Ant Design 样式
 const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
 const ComponentLibraryPage = lazy(() => import('./pages/ComponentLibraryPage'));
 
-function App() {
+function AppContent() {
+  const { mode, tokens } = useCloudUI();
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || '');
 
@@ -56,9 +58,16 @@ function App() {
     <ConfigProvider
       locale={zhCN}
       theme={{
+        algorithm: mode === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 6,
+          colorPrimary: tokens.colorPrimary,
+          colorBgBase: tokens.colorSurface,
+          colorBgContainer: tokens.colorSurfaceRaised,
+          colorBgLayout: tokens.colorSurfaceMuted,
+          colorText: tokens.colorText,
+          colorTextSecondary: tokens.colorTextMuted,
+          colorBorder: tokens.colorBorder,
+          borderRadius: 12,
         },
       }}
     >
@@ -83,7 +92,7 @@ function App() {
               )} />
               <Route
                 path="/xiaoyun-buttons"
-                element={<Navigate to="/components/xiaoyun-button" replace />}
+                element={<Navigate to="/components/character-components" replace />}
               />
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
@@ -162,5 +171,15 @@ function App() {
     </ConfigProvider>
   );
 }
+
+
+function App() {
+  return (
+    <CloudUIProvider>
+      <AppContent />
+    </CloudUIProvider>
+  );
+}
+
 
 export default App;

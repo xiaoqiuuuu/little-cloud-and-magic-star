@@ -1,9 +1,11 @@
 import { Link, useParams } from 'react-router-dom';
 import ComponentLibraryShell from '../components/component-library/ComponentLibraryShell';
 import { componentCatalog, componentGroups, getComponentById } from '../components/component-library/catalog';
-import XiaoyunButtonDocs from '../components/component-library/previews/XiaoyunButtonDocs';
-import ShengriButtonDocs from '../components/component-library/previews/ShengriButtonDocs';
-import CharacterCardDocs from '../components/component-library/previews/CharacterCardDocs';
+import ThemeSystemDocs from '../components/component-library/previews/ThemeSystemDocs';
+import ButtonDocs from '../components/component-library/previews/ButtonDocs';
+import InputDocs from '../components/component-library/previews/InputDocs';
+import CardDocs from '../components/component-library/previews/CardDocs';
+import CharacterComponentsDocs from '../components/component-library/previews/CharacterComponentsDocs';
 
 
 const readyComponents = componentCatalog.filter((item) => item.status === 'ready');
@@ -18,11 +20,11 @@ function ComponentLibraryOverview() {
           <span className="cl-kicker">LITTLE CLOUD DESIGN SYSTEM</span>
           <h1>把可爱的视觉语言，整理成可复用的系统组件。</h1>
           <p>
-            Cloud UI 是项目内部的自定义组件工作台，用来集中预览、调试和记录组件 API，方便后续持续补充新的界面能力。
+            第一版基础体系已经包含全局主题、人物资源包、Button、Input、Card，以及统一的人物按钮和人物卡片。
           </p>
           <div className="cl-overview-actions">
-            <Link className="cl-primary-link" to="/components/xiaoyun-button">
-              查看第一个组件
+            <Link className="cl-primary-link" to="/components/theme-system">
+              查看主题系统
               <span aria-hidden="true">→</span>
             </Link>
             <a className="cl-secondary-link" href="#extension-guide">如何新增组件</a>
@@ -103,17 +105,17 @@ function ComponentLibraryOverview() {
           <div className="cl-step-card">
             <span>1</span>
             <strong>创建组件</strong>
-            <p>在 components 下建立独立目录，收拢实现、样式和资源。</p>
+            <p>在 ui/components 下建立独立目录，基础组件不得直接依赖人物图片。</p>
           </div>
           <div className="cl-step-card">
             <span>2</span>
             <strong>登记目录</strong>
-            <p>在 component-library/catalog.js 中补充名称、分类和状态。</p>
+            <p>在 component-library/catalog.js 中登记组件名称、分类和文档入口。</p>
           </div>
           <div className="cl-step-card">
             <span>3</span>
             <strong>编写预览</strong>
-            <p>新增 previews 文档面板，覆盖交互、示例和 Props API。</p>
+            <p>人物素材先登记到 theme/registry.js，再由人物组件按资源角色读取。</p>
           </div>
         </div>
       </section>
@@ -140,9 +142,11 @@ function ComponentLibraryPage() {
   const activeComponent = componentId ? getComponentById(componentId) : null;
 
   let pageContent = <ComponentLibraryOverview />;
-  if (componentId === 'xiaoyun-button') pageContent = <XiaoyunButtonDocs />;
-  if (componentId === 'shengri-button') pageContent = <ShengriButtonDocs />;
-  if (componentId === 'character-card') pageContent = <CharacterCardDocs />;
+  if (componentId === 'theme-system') pageContent = <ThemeSystemDocs />;
+  if (componentId === 'button') pageContent = <ButtonDocs />;
+  if (componentId === 'input') pageContent = <InputDocs />;
+  if (componentId === 'card') pageContent = <CardDocs />;
+  if (componentId === 'character-components') pageContent = <CharacterComponentsDocs />;
   if (componentId && (!activeComponent || activeComponent.status !== 'ready')) {
     pageContent = <UnknownComponent componentId={componentId} />;
   }

@@ -1,0 +1,106 @@
+.cui-input-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--cui-color-text);
+  font-family: var(--cui-font-family);
+}
+
+.cui-input-field--block {
+  width: 100%;
+}
+
+.cui-input-field__label {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.cui-input {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--cui-color-border);
+  border-radius: var(--cui-radius-medium);
+  color: var(--cui-color-text);
+  background: var(--cui-color-surface-raised);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.cui-input--small {
+  min-height: var(--cui-control-small);
+  padding: 0 10px;
+  border-radius: var(--cui-radius-small);
+}
+
+.cui-input--medium {
+  min-height: var(--cui-control-medium);
+  padding: 0 12px;
+}
+
+.cui-input--large {
+  min-height: var(--cui-control-large);
+  padding: 0 14px;
+  border-radius: var(--cui-radius-large);
+}
+
+.cui-input:focus-within {
+  border-color: var(--cui-color-primary);
+  box-shadow: 0 0 0 4px var(--cui-color-focus);
+}
+
+.cui-input--error {
+  border-color: var(--cui-color-danger);
+}
+
+.cui-input--success {
+  border-color: var(--cui-color-success);
+}
+
+.cui-input.is-disabled {
+  background: var(--cui-color-surface-muted);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.cui-input input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+}
+
+.cui-input input::placeholder {
+  color: color-mix(in srgb, var(--cui-color-text-muted) 76%, transparent);
+}
+
+.cui-input input:disabled {
+  cursor: not-allowed;
+}
+
+.cui-input__prefix,
+.cui-input__suffix {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: var(--cui-color-text-muted);
+  font-size: 13px;
+}
+
+.cui-input-field__message {
+  color: var(--cui-color-text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.cui-input-field__message.is-error {
+  color: var(--cui-color-danger);
+}
+
+.cui-input-field__message.is-success {
+  color: var(--cui-color-success);
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { componentGroups, getComponentById } from './catalog';
+import ThemeToolbar from './ThemeToolbar';
 import './ComponentLibrary.css';
 import './ComponentLibraryExtras.css';
 
@@ -149,10 +150,13 @@ function ComponentLibraryShell({ activeId, children }) {
             <span className="cl-breadcrumb-divider">/</span>
             <strong>{currentTitle}</strong>
           </div>
-          <Link className="cl-site-link" to="/">
-            返回网站
-            <span aria-hidden="true">↗</span>
-          </Link>
+          <div className="cl-topbar-actions">
+            <ThemeToolbar />
+            <Link className="cl-site-link" to="/">
+              返回网站
+              <span aria-hidden="true">↗</span>
+            </Link>
+          </div>
         </header>
 
         <div className="cl-content">{children}</div>
