@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 
@@ -241,18 +241,26 @@ const createFlagship = () => {
 
 function XcdhFlagship3D() {
   const canvasRef = useRef(null);
+  const [webglUnavailable, setWebglUnavailable] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return undefined;
+    if (!canvas || webglUnavailable) return undefined;
 
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-      powerPreference: 'high-performance',
-      premultipliedAlpha: true,
-    });
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: true,
+        powerPreference: 'high-performance',
+        premultipliedAlpha: true,
+      });
+    } catch (error) {
+      console.error('3D 旗舰初始化失败，已切换为静态备用画面。', error);
+      setWebglUnavailable(true);
+      return undefined;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -278,10 +286,15 @@ function XcdhFlagship3D() {
 
     const pointer = { x: 0, y: 0 };
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleContextLost = (event) => {
+      event.preventDefault();
+      setWebglUnavailable(true);
+    };
     const handlePointerMove = (event) => {
       pointer.x = (event.clientX / window.innerWidth - 0.5) * 2;
       pointer.y = (event.clientY / window.innerHeight - 0.5) * 2;
     };
+    canvas.addEventListener('webglcontextlost', handleContextLost, false);
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
 
     const resize = () => {
@@ -311,6 +324,7 @@ function XcdhFlagship3D() {
     return () => {
       renderer.setAnimationLoop(null);
       resizeObserver.disconnect();
+      canvas.removeEventListener('webglcontextlost', handleContextLost, false);
       window.removeEventListener('pointermove', handlePointerMove);
       scene.traverse((object) => {
         object.geometry?.dispose?.();
@@ -322,9 +336,20 @@ function XcdhFlagship3D() {
       });
       ship.userData.glowTexture?.dispose();
       renderer.dispose();
-      renderer.forceContextLoss();
     };
-  }, []);
+  }, [webglUnavailable]);
+
+  if (webglUnavailable) {
+    return (
+      <img
+        className="xcdh-flagship-fallback"
+        src="/xcdh-flagship-cutout.svg"
+        alt=""
+        draggable="false"
+        aria-hidden="true"
+      />
+    );
+  }
 
   return <canvas ref={canvasRef} className="xcdh-flagship-canvas" aria-hidden="true" />;
 }
