@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './XcdhPage.css';
 import './XcdhCinematic.css';
+import XcdhFlagship3D from './XcdhFlagship3D';
 
 
 const WORLD_WIDTH = 2400;
@@ -21,6 +22,7 @@ const createBackgroundStars = () => Array.from({ length: 360 }, (_, index) => ({
   id: `background-star-${index}`,
   x: seededValue(index, 1) * WORLD_WIDTH,
   y: seededValue(index, 2) * WORLD_HEIGHT,
+  depth: -320 + seededValue(index, 8) * 520,
   size: 0.6 + seededValue(index, 3) * 2.8,
   opacity: 0.22 + seededValue(index, 4) * 0.75,
   duration: 2.2 + seededValue(index, 5) * 5.5,
@@ -45,6 +47,7 @@ const createMeteors = () => Array.from({ length: 9 }, (_, index) => {
     angle,
     dx: Math.cos(radians) * distance,
     dy: Math.sin(radians) * distance,
+    depth: -80 + seededValue(index, 18) * 220,
   };
 });
 
@@ -110,8 +113,10 @@ function StarShape({ message }) {
 function SpaceShip() {
   return (
     <div className="xcdh-spaceship" aria-hidden="true">
-      <div className="xcdh-spaceship__wake" />
-      <img src="/xcdh-flagship-cutout.svg" alt="" draggable="false" />
+      <div className="xcdh-spaceship__depth">
+        <div className="xcdh-spaceship__wake" />
+        <XcdhFlagship3D />
+      </div>
     </div>
   );
 }
@@ -471,6 +476,7 @@ function XcdhPage() {
             transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
           }}
         >
+          <div className="xcdh-deep-space" aria-hidden="true" />
           <div className="xcdh-nebula xcdh-nebula--one" />
           <div className="xcdh-nebula xcdh-nebula--two" />
           <div className="xcdh-nebula xcdh-nebula--three" />
@@ -495,6 +501,7 @@ function XcdhPage() {
                 background: star.color,
                 '--twinkle-duration': `${star.duration}s`,
                 '--twinkle-delay': `${star.delay}s`,
+                '--star-depth': `${star.depth}px`,
               }}
             />
           ))}
@@ -512,6 +519,7 @@ function XcdhPage() {
                 '--meteor-angle': `${meteor.angle}deg`,
                 '--meteor-dx': `${meteor.dx}px`,
                 '--meteor-dy': `${meteor.dy}px`,
+                '--meteor-depth': `${meteor.depth}px`,
               }}
             />
           ))}
@@ -522,7 +530,11 @@ function XcdhPage() {
             <button
               key={message.id}
               className="xcdh-wish-star"
-              style={{ left: `${message.x}%`, top: `${message.y}%` }}
+              style={{
+                left: `${message.x}%`,
+                top: `${message.y}%`,
+                '--wish-depth': `${-20 + seededValue(Number(message.id) || 1, 25) * 170}px`,
+              }}
               onClick={(event) => openMessage(message, event)}
               data-interactive="true"
               aria-label={`查看 ${message.username} 的星愿，已被发现 ${message.click_count || 0} 次`}
