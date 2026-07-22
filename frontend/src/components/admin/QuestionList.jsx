@@ -3,6 +3,7 @@ import { Table, Tag, Button, Space, App } from 'antd';
 import { BugOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { getQuestionTagMeta } from '../../constants/questionTags';
+import { CharacterButton, CharacterEmptyState } from '../../ui';
 
 const formatDateTime = (value) => {
   if (!value) return '-';
@@ -16,6 +17,7 @@ const QuestionList = ({
   loading, 
   searchKeyword, 
   filterTag, 
+  filterContributorId,
   sortDesc, 
   setSortDesc, 
   onDebug,
@@ -27,11 +29,13 @@ const QuestionList = ({
   currentPage,
   pageSize,
   total,
-  onPageChange
+  onPageChange,
+  onCreate,
 }) => {
   const { modal, message } = App.useApp();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
+  const hasActiveFilters = Boolean(searchKeyword || filterTag !== 'all' || filterContributorId);
 
   const handleBatchDelete = () => {
     if (selectedRowKeys.length === 0) {
@@ -351,7 +355,18 @@ const QuestionList = ({
         }}
         scroll={{ x: 1500 }}
         locale={{
-          emptyText: searchKeyword || filterTag !== 'all' ? '没有找到匹配的题目' : '暂无题目，请添加题目',
+          emptyText: (
+            <CharacterEmptyState
+              size="small"
+              title={hasActiveFilters ? '没有找到匹配的题目' : '还没有题目'}
+              description={hasActiveFilters
+                ? '换一个关键词或减少筛选条件，我再帮你找找。'
+                : '创建第一道题目后，当前角色会陪你一起整理题库。'}
+              action={!hasActiveFilters && onCreate ? (
+                <CharacterButton size="small" onClick={onCreate}>新建题目</CharacterButton>
+              ) : undefined}
+            />
+          ),
         }}
       />
     </div>

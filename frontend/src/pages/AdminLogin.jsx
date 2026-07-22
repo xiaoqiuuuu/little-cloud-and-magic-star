@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Typography, Space } from 'antd';
-import { UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import api, { clearAuthSession, saveTokenPair } from '../api';
 import { showSuccess, showError } from '../utils/message';
-import { Button, Card, Input, useCloudUI } from '../ui';
+import { Card, CharacterButton, Input, useCloudUI } from '../ui';
 import AdminThemeSwitcher from '../components/admin/AdminThemeSwitcher';
 import './AdminLogin.css';
 
@@ -118,16 +118,15 @@ function AdminLogin() {
             </Form.Item>
 
             <Form.Item className="!mb-0">
-              <Button
+              <CharacterButton
                 type="submit"
-                variant="primary"
                 loading={loading}
-                prefix={<LoginOutlined />}
                 block
                 size="large"
+                className="cloud-admin-login__submit"
               >
                 登录
-              </Button>
+              </CharacterButton>
             </Form.Item>
           </Form>
         </Space>
