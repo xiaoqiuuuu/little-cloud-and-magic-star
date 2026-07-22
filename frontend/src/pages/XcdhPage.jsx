@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './XcdhPage.css';
+import './XcdhCinematic.css';
 
 
 const WORLD_WIDTH = 2400;
@@ -113,65 +114,68 @@ function SpaceShip() {
       <svg viewBox="0 0 980 300">
         <defs>
           <linearGradient id="shipArmor" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#111827" />
-            <stop offset="0.42" stopColor="#475569" />
-            <stop offset="0.68" stopColor="#1e293b" />
-            <stop offset="1" stopColor="#020617" />
+            <stop offset="0" stopColor="#41474f" />
+            <stop offset="0.24" stopColor="#252b32" />
+            <stop offset="0.68" stopColor="#13181e" />
+            <stop offset="1" stopColor="#06090d" />
           </linearGradient>
           <linearGradient id="shipArmorLight" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#334155" />
-            <stop offset="0.48" stopColor="#94a3b8" />
-            <stop offset="1" stopColor="#1e293b" />
+            <stop offset="0" stopColor="#20262d" />
+            <stop offset="0.5" stopColor="#59616a" />
+            <stop offset="1" stopColor="#171c22" />
           </linearGradient>
           <linearGradient id="shipEnergy" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#0ea5e9" stopOpacity="0" />
-            <stop offset="0.45" stopColor="#67e8f9" />
-            <stop offset="1" stopColor="#fef3c7" />
+            <stop offset="0" stopColor="#d6b978" stopOpacity="0" />
+            <stop offset="0.5" stopColor="#e7d5a7" stopOpacity=".72" />
+            <stop offset="1" stopColor="#f8ead0" stopOpacity=".12" />
           </linearGradient>
           <linearGradient id="shipFlame" x1="1" y1="0" x2="0" y2="0">
             <stop offset="0" stopColor="#ffffff" />
-            <stop offset="0.16" stopColor="#67e8f9" />
-            <stop offset="0.58" stopColor="#2563eb" stopOpacity=".55" />
-            <stop offset="1" stopColor="#2563eb" stopOpacity="0" />
+            <stop offset="0.12" stopColor="#b8e7ff" />
+            <stop offset="0.5" stopColor="#3b82a6" stopOpacity=".48" />
+            <stop offset="1" stopColor="#17324b" stopOpacity="0" />
           </linearGradient>
           <filter id="shipGlow" x="-50%" y="-80%" width="200%" height="260%">
-            <feGaussianBlur stdDeviation="7" result="blur" />
+            <feGaussianBlur stdDeviation="4" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
           <filter id="shipShadow" x="-30%" y="-60%" width="170%" height="220%">
-            <feDropShadow dx="0" dy="12" stdDeviation="13" floodColor="#020617" floodOpacity=".9" />
+            <feDropShadow dx="0" dy="15" stdDeviation="14" floodColor="#000000" floodOpacity=".94" />
           </filter>
         </defs>
         <g className="xcdh-ship-thrusters" filter="url(#shipGlow)">
-          <path d="M170 103H6l120 28h54Z" fill="url(#shipFlame)" />
-          <path d="M172 139H0l128 22h52Z" fill="url(#shipFlame)" opacity=".9" />
-          <path d="M170 175H18l112 25h50Z" fill="url(#shipFlame)" opacity=".78" />
+          <path d="M178 120H12l126 18h43Z" fill="url(#shipFlame)" opacity=".72" />
+          <path d="M180 148H0l138 16h44Z" fill="url(#shipFlame)" />
+          <path d="M178 176H18l121 17h42Z" fill="url(#shipFlame)" opacity=".68" />
         </g>
         <g filter="url(#shipShadow)">
-          <path d="M182 123 334 60l386 5 242 80-238 88-390 5-154-70Z" fill="#020617" opacity=".72" />
-          <path d="M167 114 303 65l412 9 247 72-247 73-412 8-136-48Z" fill="url(#shipArmor)" stroke="#64748b" strokeWidth="4" />
-          <path d="m298 66 122-48 250 14 118 57-85 32-361-4Z" fill="url(#shipArmorLight)" stroke="#64748b" strokeWidth="3" />
-          <path d="m304 225 126 54 245-18 114-58-87-30-356 9Z" fill="#111827" stroke="#475569" strokeWidth="3" />
-          <path d="M351 82 212 7l350 55 94 57-280-12Z" fill="#182235" stroke="#64748b" strokeWidth="3" />
-          <path d="m355 207-145 83 360-69 92-54-288 13Z" fill="#0b1220" stroke="#475569" strokeWidth="3" />
-          <path d="M426 61 490 20h151l89 48-74 25-220-4Z" fill="#0f172a" stroke="#94a3b8" strokeWidth="3" />
-          <path d="M488 52 524 30h93l53 28-43 15-128-2Z" fill="#0c4a6e" stroke="#67e8f9" strokeWidth="2" />
-          <path d="M193 116h120l33 26-34 38H190l-28-31Z" fill="#0f172a" stroke="#64748b" strokeWidth="3" />
-          <path d="M710 76 962 146 713 218l84-73Z" fill="#111827" stroke="#94a3b8" strokeWidth="3" />
-          <path d="m790 111 172 35-171 37 52-37Z" fill="#334155" />
-          <path d="M296 143h572" stroke="url(#shipEnergy)" strokeWidth="5" filter="url(#shipGlow)" />
-          <path d="M346 119 698 124M350 176l350-8" stroke="#94a3b8" strokeOpacity=".42" strokeWidth="3" />
-          <path d="m404 91 26 25-18 27-27-25ZM505 93l25 26-18 25-26-25ZM608 96l24 25-18 24-25-24Z" fill="#020617" stroke="#475569" strokeWidth="2" />
-          <path d="m429 189 27-25 27 23-26 25ZM537 188l26-25 27 22-26 26ZM646 185l25-24 27 20-25 27Z" fill="#020617" stroke="#334155" strokeWidth="2" />
-          <g fill="#fde68a" filter="url(#shipGlow)">
-            <circle cx="338" cy="143" r="4" /><circle cx="424" cy="143" r="4" /><circle cx="514" cy="143" r="4" />
-            <circle cx="606" cy="143" r="4" /><circle cx="700" cy="143" r="4" /><circle cx="790" cy="143" r="4" />
+          <path d="M147 134 279 84l465 8 219 55-211 78-474 6-132-57Z" fill="#030609" opacity=".74" />
+          <path d="M151 126 284 91l459 9 220 47-218 66-464 7-130-49Z" fill="url(#shipArmor)" stroke="#59616a" strokeWidth="3" />
+          <path d="M151 126 291 63l452 21 220 63-221-25-461 5Z" fill="url(#shipArmorLight)" stroke="#6b737c" strokeWidth="3" />
+          <path d="m281 127 461-5 221 25-218 66-464 7Z" fill="#11161c" stroke="#363d45" strokeWidth="2" />
+          <path d="M384 70 445 39l156 5 75 43-71 23-221-7Z" fill="#151a20" stroke="#69717a" strokeWidth="2.5" />
+          <path d="m442 72 37-19 101 4 45 24-42 12-136-5Z" fill="#242d33" stroke="#8d969c" strokeWidth="1.5" />
+          <path d="M460 69h116l30 14-151-4Z" fill="#d7c295" opacity=".48" />
+          <path d="m177 120 86-23 48 29-29 93-103-42Z" fill="#12171c" stroke="#50575e" strokeWidth="3" />
+          <path d="M745 100 963 147 745 213l76-65Z" fill="#0b0f13" stroke="#50575e" strokeWidth="3" />
+          <path d="m825 127 138 20-140 27 39-26Z" fill="#282e34" />
+          <path d="M302 130 741 127M300 177l447-5" stroke="#70777d" strokeOpacity=".35" strokeWidth="2" />
+          <path d="M337 103 715 112M329 199l387-15" stroke="#0a0d10" strokeWidth="7" opacity=".74" />
+          <path d="M335 112 714 119M332 190l386-13" stroke="#596169" strokeWidth="1.5" opacity=".65" />
+          <path d="M310 148h532" stroke="url(#shipEnergy)" strokeWidth="3" />
+          <path d="m358 128 48-1-16 44-49 2ZM449 127l54-1-15 43-55 1ZM548 126l58-1-13 41-59 2ZM654 125l60-1-11 40-61 2Z" fill="#090c0f" stroke="#343a40" strokeWidth="2" />
+          <path d="m329 77 92-41 184 7 94 41-103-22-166-5Z" fill="#0c1014" opacity=".82" />
+          <path d="M562 45 575 10h8l5 35ZM498 45l-20-27 7-4 32 31Z" fill="#252b31" stroke="#6b737b" strokeWidth="1.5" />
+          <g fill="#e6d2a5" opacity=".72">
+            <rect x="454" y="107" width="34" height="3" rx="1.5" />
+            <rect x="500" y="108" width="42" height="3" rx="1.5" />
+            <rect x="553" y="109" width="32" height="3" rx="1.5" />
           </g>
-          <g className="xcdh-ship-navigation-lights" fill="#67e8f9" filter="url(#shipGlow)">
-            <circle cx="266" cy="104" r="6" /><circle cx="266" cy="190" r="6" /><circle cx="922" cy="146" r="7" />
+          <g className="xcdh-ship-navigation-lights" filter="url(#shipGlow)">
+            <circle cx="273" cy="110" r="3.5" fill="#a9d8e8" />
+            <circle cx="920" cy="147" r="4" fill="#e4d2aa" />
           </g>
-          <text x="545" y="157" textAnchor="middle" fill="#e2e8f0" fontFamily="system-ui, sans-serif" fontSize="25" fontWeight="700" letterSpacing="8">宇宙无敌号</text>
-          <text x="548" y="178" textAnchor="middle" fill="#67e8f9" fontFamily="system-ui, sans-serif" fontSize="10" letterSpacing="5">UNCONQUERED · FLAGSHIP</text>
+          <text x="674" y="191" fill="#7d858c" fontFamily="ui-monospace, monospace" fontSize="9" letterSpacing="3">XCDH / 01</text>
         </g>
       </svg>
     </div>
@@ -536,6 +540,9 @@ function XcdhPage() {
           <div className="xcdh-nebula xcdh-nebula--one" />
           <div className="xcdh-nebula xcdh-nebula--two" />
           <div className="xcdh-nebula xcdh-nebula--three" />
+          <div className="xcdh-cosmic-dust xcdh-cosmic-dust--one" />
+          <div className="xcdh-cosmic-dust xcdh-cosmic-dust--two" />
+          <div className="xcdh-volume-light" />
           <div className="xcdh-galaxy" aria-hidden="true" />
           <div className="xcdh-planet xcdh-planet--blue" aria-hidden="true" />
           <div className="xcdh-planet xcdh-planet--ringed" aria-hidden="true"><span /></div>
