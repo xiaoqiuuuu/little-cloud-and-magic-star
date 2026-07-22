@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { App, Button, Card, Form, Input, Space, Typography } from 'antd';
-import { SaveOutlined, UserOutlined } from '@ant-design/icons';
+import { App, Card, Form, Input, Space, Typography } from 'antd';
+import { UserOutlined } from '@ant-design/icons';
 import api from '../api';
+import { CharacterButton, CharacterCard, Tag } from '../ui';
+import './AdminProfile.css';
 
 
 const { Title, Text } = Typography;
@@ -13,6 +15,8 @@ function AdminProfile() {
   const { currentUser, onCurrentUserChange } = useOutletContext();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const displayName = currentUser?.display_name || currentUser?.username || '内容创作者';
+  const roleLabel = currentUser?.role === 'super_admin' ? '超级管理员' : '题目管理员';
 
   useEffect(() => {
     if (!currentUser) return;
@@ -45,55 +49,62 @@ function AdminProfile() {
   };
 
   return (
-    <Card bordered={false} className="max-w-2xl">
-      <Space align="start" className="mb-6">
-        <UserOutlined className="text-2xl text-blue-600 mt-1" />
-        <div>
-          <Title level={2} className="!mb-1">个人资料</Title>
-          <Text type="secondary">
-            署名名称会显示在你绑定的题目和物料上，个人主页可供内容展示时跳转。
-          </Text>
+    <div className="admin-profile-page">
+      <CharacterCard layout="watermark" className="admin-profile-character-card">
+        <span className="admin-profile-character-card__kicker">当前角色陪伴</span>
+        <h2>{displayName}</h2>
+        <p>修改署名和主页信息时，当前主题角色会陪你一起完成设置。</p>
+        <div className="admin-profile-character-card__meta">
+          <Tag tone="primary">{roleLabel}</Tag>
+          <Tag>{currentUser?.username || '—'}</Tag>
         </div>
-      </Space>
+      </CharacterCard>
 
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
-        <Form.Item name="username" label="登录用户名">
-          <Input disabled />
-        </Form.Item>
+      <Card bordered={false} className="admin-profile-form-card">
+        <Space align="start" className="mb-6">
+          <UserOutlined className="text-2xl text-blue-600 mt-1" />
+          <div>
+            <Title level={2} className="!mb-1">个人资料</Title>
+            <Text type="secondary">
+              署名名称会显示在你绑定的题目和物料上，个人主页可供内容展示时跳转。
+            </Text>
+          </div>
+        </Space>
 
-        <Form.Item
-          name="display_name"
-          label="署名名称"
-          rules={[
-            { required: true, message: '请输入署名名称' },
-            { max: 100, message: '署名名称最多 100 个字符' },
-          ]}
-        >
-          <Input placeholder="题目和物料中显示的名称" />
-        </Form.Item>
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+          <Form.Item name="username" label="登录用户名">
+            <Input disabled />
+          </Form.Item>
 
-        <Form.Item
-          name="profile_url"
-          label="个人主页链接"
-          rules={[
-            { type: 'url', warningOnly: true, message: '建议填写完整的 http(s) 链接' },
-            { max: 500, message: '个人主页链接最多 500 个字符' },
-          ]}
-          extra="可以留空；填写后作为账号的对外主页信息。"
-        >
-          <Input placeholder="https://example.com" />
-        </Form.Item>
+          <Form.Item
+            name="display_name"
+            label="署名名称"
+            rules={[
+              { required: true, message: '请输入署名名称' },
+              { max: 100, message: '署名名称最多 100 个字符' },
+            ]}
+          >
+            <Input placeholder="题目和物料中显示的名称" />
+          </Form.Item>
 
-        <Button
-          type="primary"
-          htmlType="submit"
-          icon={<SaveOutlined />}
-          loading={saving}
-        >
-          保存个人资料
-        </Button>
-      </Form>
-    </Card>
+          <Form.Item
+            name="profile_url"
+            label="个人主页链接"
+            rules={[
+              { type: 'url', warningOnly: true, message: '建议填写完整的 http(s) 链接' },
+              { max: 500, message: '个人主页链接最多 500 个字符' },
+            ]}
+            extra="可以留空；填写后作为账号的对外主页信息。"
+          >
+            <Input placeholder="https://example.com" />
+          </Form.Item>
+
+          <CharacterButton type="submit" loading={saving}>
+            保存个人资料
+          </CharacterButton>
+        </Form>
+      </Card>
+    </div>
   );
 }
 

@@ -115,6 +115,10 @@
   color: var(--cui-color-text);
 }
 
+.cloud-admin-login__submit.cui-character-button {
+  margin-top: 2px;
+}
+
 @media (max-width: 760px) {
   .cloud-admin-login {
     padding: 74px 18px 40px;

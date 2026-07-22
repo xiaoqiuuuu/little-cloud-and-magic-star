@@ -16,6 +16,7 @@ import QuestionList from '../components/admin/QuestionList';
 import QuestionModal from '../components/admin/QuestionModal';
 import ExcelImportExport from '../components/admin/ExcelImportExport';
 import { mergeQuestionTagOptions } from '../constants/questionTags';
+import { CharacterButton } from '../ui';
 
 function AdminDashboard() {
   const { message, modal } = App.useApp();
@@ -355,12 +356,9 @@ function AdminDashboard() {
                 全部统计归零
               </button>
             )}
-            <button
-              onClick={() => handleOpenModal()}
-              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium text-sm shadow-sm"
-            >
-              + 新建题目
-            </button>
+            <CharacterButton onClick={() => handleOpenModal()}>
+              新建题目
+            </CharacterButton>
           </div>
         </div>
 
@@ -395,6 +393,7 @@ function AdminDashboard() {
           loading={loading}
           searchKeyword={searchKeyword}
           filterTag={filterTag}
+          filterContributorId={filterContributorId}
           sortDesc={sortDesc}
           setSortDesc={setSortDesc}
           onDebug={(questionId) => navigate(`/admin/quiz/${questionId}`)}
@@ -407,6 +406,7 @@ function AdminDashboard() {
           pageSize={pageSize}
           total={total}
           onPageChange={handlePageChange}
+          onCreate={() => handleOpenModal()}
         />
       </div>
 
