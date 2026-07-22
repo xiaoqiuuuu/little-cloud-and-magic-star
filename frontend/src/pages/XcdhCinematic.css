@@ -147,12 +147,38 @@
 
 .xcdh-spaceship {
   filter: drop-shadow(0 26px 34px rgba(0, 0, 0, 0.92)) drop-shadow(0 0 12px rgba(140, 169, 181, 0.1));
+  animation: xcdh-reference-flagship-flight 58s cubic-bezier(0.42, 0, 0.58, 1) -12s infinite;
+}
+
+.xcdh-spaceship img {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  filter: contrast(1.08) saturate(0.82) drop-shadow(0 20px 24px rgba(0, 0, 0, 0.82));
 }
 
 .xcdh-spaceship__wake {
-  opacity: 0.17;
-  filter: blur(30px);
-  background: linear-gradient(90deg, transparent, rgba(47, 93, 114, 0.25), rgba(169, 211, 227, 0.48));
+  top: 24%;
+  right: auto;
+  left: 72%;
+  width: 330px;
+  height: 96px;
+  opacity: 0.2;
+  filter: blur(32px);
+  background: linear-gradient(90deg, rgba(172, 226, 255, 0.42), rgba(49, 111, 183, 0.24) 38%, transparent 100%);
+  transform: rotate(-13deg);
+}
+
+@keyframes xcdh-reference-flagship-flight {
+  0% { opacity: 0; transform: translate(1900px, -170px) rotate(1deg) scale(0.74); }
+  8% { opacity: 0.95; }
+  38% { opacity: 1; transform: translate(1180px, -20px) rotate(0deg) scale(0.9); }
+  68% { opacity: 1; transform: translate(520px, 90px) rotate(-1deg) scale(1); }
+  92% { opacity: 0.94; }
+  100% { opacity: 0; transform: translate(-620px, 170px) rotate(-2deg) scale(0.8); }
 }
 
 @keyframes xcdh-film-grain {
