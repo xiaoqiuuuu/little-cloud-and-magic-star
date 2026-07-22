@@ -295,55 +295,84 @@
 .xcdh-meteor {
   position: absolute;
   z-index: 8;
-  height: 1px;
+  height: 2px;
   opacity: 0;
   pointer-events: none;
-  transform: rotate(var(--meteor-angle));
-  transform-origin: left center;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.95), rgba(147, 197, 253, 0.65) 28%, transparent 100%);
-  filter: drop-shadow(0 0 5px rgba(191, 219, 254, 0.82));
+  transform: translate3d(0, 0, 0) rotate(var(--meteor-angle)) scaleX(0.45);
+  transform-origin: right center;
+  background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.12) 32%, rgba(147, 197, 253, 0.68) 78%, #fff 100%);
+  filter: drop-shadow(0 0 4px rgba(191, 219, 254, 0.9));
   animation: xcdh-meteor-flight var(--meteor-duration) linear var(--meteor-delay) infinite;
 }
 
 .xcdh-meteor::before {
   position: absolute;
-  top: -2px;
-  left: -2px;
-  width: 5px;
-  height: 5px;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 0 9px #fff, 0 0 18px #60a5fa;
+  box-shadow: 0 0 8px #fff, 0 0 17px #93c5fd, 0 0 28px #2563eb;
+  content: "";
+}
+
+.xcdh-meteor::after {
+  position: absolute;
+  top: -1px;
+  right: 0;
+  width: 54%;
+  height: 4px;
+  opacity: 0.75;
+  filter: blur(3px);
+  background: linear-gradient(90deg, transparent, rgba(191, 219, 254, 0.8));
   content: "";
 }
 
 .xcdh-spaceship {
   position: absolute;
-  top: 710px;
-  left: 390px;
-  z-index: 11;
-  width: 156px;
+  top: 670px;
+  left: 120px;
+  z-index: 12;
+  width: 430px;
+  opacity: 0;
   pointer-events: none;
-  filter: drop-shadow(0 10px 16px rgba(2, 6, 23, 0.7)) drop-shadow(0 0 12px rgba(103, 232, 249, 0.16));
-  animation: xcdh-spaceship-flight 38s ease-in-out infinite;
+  transform-origin: center;
+  filter: drop-shadow(0 22px 28px rgba(2, 6, 23, 0.86)) drop-shadow(0 0 20px rgba(34, 211, 238, 0.16));
+  animation: xcdh-spaceship-flight 56s cubic-bezier(0.42, 0, 0.58, 1) -8s infinite;
 }
 
 .xcdh-spaceship svg {
+  position: relative;
+  z-index: 2;
+  display: block;
   width: 100%;
   height: auto;
+  overflow: visible;
 }
 
-.xcdh-spaceship__beam {
+.xcdh-spaceship__wake {
   position: absolute;
-  top: 57px;
-  left: 2px;
-  width: 65px;
-  height: 14px;
-  opacity: 0.72;
-  filter: blur(5px);
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.58), rgba(255, 255, 255, 0.85));
-  transform: translateX(-74%);
-  animation: xcdh-engine-pulse 1.2s ease-in-out infinite;
+  top: 42%;
+  right: 75%;
+  z-index: 1;
+  width: 260px;
+  height: 84px;
+  opacity: 0.28;
+  border-radius: 50%;
+  filter: blur(24px);
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.35), rgba(103, 232, 249, 0.6));
+  transform: translateY(-50%);
+  animation: xcdh-engine-pulse 1.15s ease-in-out infinite;
+}
+
+.xcdh-ship-thrusters {
+  transform-origin: 170px 150px;
+  animation: xcdh-thruster-flare 900ms ease-in-out infinite;
+}
+
+.xcdh-ship-navigation-lights {
+  animation: xcdh-navigation-blink 2.4s steps(2, end) infinite;
 }
 
 .xcdh-wish-star {
@@ -781,23 +810,40 @@
 }
 
 @keyframes xcdh-meteor-flight {
-  0%, 72% { opacity: 0; translate: -120px -90px; }
-  75% { opacity: 1; }
-  94% { opacity: 0.88; }
-  100% { opacity: 0; translate: 430px 320px; }
+  0%, 76% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(var(--meteor-angle)) scaleX(0.45);
+  }
+  78% { opacity: 1; }
+  96% { opacity: 0.96; }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--meteor-dx), var(--meteor-dy), 0) rotate(var(--meteor-angle)) scaleX(1);
+  }
 }
 
 @keyframes xcdh-spaceship-flight {
-  0% { transform: translate(0, 0) rotate(-5deg) scale(0.86); }
-  22% { transform: translate(440px, -190px) rotate(4deg) scale(0.94); }
-  49% { transform: translate(990px, 80px) rotate(-2deg) scale(1); }
-  72% { transform: translate(1420px, -300px) rotate(6deg) scale(0.92); }
-  100% { transform: translate(1880px, 60px) rotate(-4deg) scale(0.82); }
+  0% { opacity: 0; transform: translate(-560px, 130px) rotate(-2deg) scale(0.72); }
+  7% { opacity: 0.92; }
+  34% { opacity: 0.96; transform: translate(430px, -115px) rotate(0deg) scale(0.9); }
+  65% { opacity: 1; transform: translate(1050px, 70px) rotate(1deg) scale(1.04); }
+  92% { opacity: 0.92; }
+  100% { opacity: 0; transform: translate(1810px, -150px) rotate(-1deg) scale(0.78); }
 }
 
 @keyframes xcdh-engine-pulse {
-  0%, 100% { opacity: 0.35; scale: 0.74 0.8; }
-  50% { opacity: 0.95; scale: 1.15 1; }
+  0%, 100% { opacity: 0.2; scale: 0.8 0.82; }
+  50% { opacity: 0.52; scale: 1.15 1; }
+}
+
+@keyframes xcdh-thruster-flare {
+  0%, 100% { opacity: 0.72; transform: scaleX(0.82); }
+  50% { opacity: 1; transform: scaleX(1.08); }
+}
+
+@keyframes xcdh-navigation-blink {
+  0%, 42% { opacity: 0.38; }
+  50%, 100% { opacity: 1; }
 }
 
 @keyframes xcdh-popup-arrive {
