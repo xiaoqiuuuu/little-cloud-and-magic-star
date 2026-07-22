@@ -210,7 +210,8 @@
   transform-style: preserve-3d;
 }
 
-.xcdh-flagship-canvas {
+.xcdh-flagship-canvas,
+.xcdh-flagship-fallback {
   position: relative;
   z-index: 2;
   display: block;
@@ -218,6 +219,10 @@
   height: 100%;
   pointer-events: none;
   filter: contrast(1.08) saturate(0.92);
+}
+
+.xcdh-flagship-fallback {
+  object-fit: contain;
 }
 
 .xcdh-spaceship__wake {
