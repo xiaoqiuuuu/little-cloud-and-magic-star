@@ -15,6 +15,8 @@
   inset: 0;
   overflow: hidden;
   cursor: grab;
+  perspective: 1300px;
+  perspective-origin: 50% 45%;
   touch-action: none;
   user-select: none;
 }
@@ -27,7 +29,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  overflow: hidden;
+  overflow: visible;
+  transform-style: preserve-3d;
   will-change: transform;
   background:
     radial-gradient(circle at 18% 24%, rgba(37, 99, 235, 0.18), transparent 20%),
@@ -288,6 +291,7 @@
   display: block;
   border-radius: 50%;
   pointer-events: none;
+  transform-style: preserve-3d;
   box-shadow: 0 0 4px currentColor;
   animation: xcdh-background-twinkle var(--twinkle-duration) ease-in-out var(--twinkle-delay) infinite;
 }
@@ -385,7 +389,8 @@
   outline: none;
   background: transparent;
   cursor: pointer;
-  transform: translate(-50%, -50%);
+  transform: translate3d(-50%, -50%, var(--wish-depth, 0));
+  transform-style: preserve-3d;
 }
 
 .xcdh-wish-star:focus-visible {
@@ -789,9 +794,9 @@
 }
 
 @keyframes xcdh-background-twinkle {
-  0%, 100% { filter: brightness(0.7); transform: scale(0.7); }
-  45% { filter: brightness(1.4); transform: scale(1.35); }
-  70% { filter: brightness(0.9); transform: scale(0.95); }
+  0%, 100% { filter: brightness(0.7); transform: translateZ(var(--star-depth, 0)) scale(0.7); }
+  45% { filter: brightness(1.4); transform: translateZ(var(--star-depth, 0)) scale(1.35); }
+  70% { filter: brightness(0.9); transform: translateZ(var(--star-depth, 0)) scale(0.95); }
 }
 
 @keyframes xcdh-wish-twinkle {
@@ -812,13 +817,13 @@
 @keyframes xcdh-meteor-flight {
   0%, 76% {
     opacity: 0;
-    transform: translate3d(0, 0, 0) rotate(var(--meteor-angle)) scaleX(0.45);
+    transform: translate3d(0, 0, var(--meteor-depth, 0)) rotate(var(--meteor-angle)) scaleX(0.45);
   }
   78% { opacity: 1; }
   96% { opacity: 0.96; }
   100% {
     opacity: 0;
-    transform: translate3d(var(--meteor-dx), var(--meteor-dy), 0) rotate(var(--meteor-angle)) scaleX(1);
+    transform: translate3d(var(--meteor-dx), var(--meteor-dy), var(--meteor-depth, 0)) rotate(var(--meteor-angle)) scaleX(1);
   }
 }
 
