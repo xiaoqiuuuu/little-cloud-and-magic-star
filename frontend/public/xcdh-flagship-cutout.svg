@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1672 941" role="img" aria-label="">
+  <defs>
+    <filter id="soft-edge" x="-4%" y="-6%" width="108%" height="112%">
+      <feGaussianBlur stdDeviation="3.5" />
+    </filter>
+    <mask id="flagship-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1672" height="941">
+      <rect width="1672" height="941" fill="black" />
+      <path
+        fill="white"
+        filter="url(#soft-edge)"
+        d="M47 846 99 777 169 692 243 604 7 505 6 482 151 425 315 350 487 277 616 228 744 203 839 190 861 71 887 55 907 102 954 120 994 141 1090 168 1168 211 1221 272 1288 306 1347 361 1435 400 1510 523 1664 824 1610 870 1535 865 1450 793 1374 721 1306 657 1232 608 1166 576 1096 572 1015 608 928 651 841 690 748 727 652 761 540 780 421 792 297 817 180 838Z"
+      />
+      <path fill="white" filter="url(#soft-edge)" d="M836 192 850 106 878 43 904 62 918 126 955 140 1002 172 904 212Z" />
+      <path fill="white" filter="url(#soft-edge)" d="M1203 275 1272 269 1305 291 1302 333 1266 349 1219 325Z" />
+    </mask>
+  </defs>
+  <image
+    href="xcdh-flagship-source.png"
+    width="1672"
+    height="941"
+    preserveAspectRatio="xMidYMid slice"
+    mask="url(#flagship-mask)"
+  />
+</svg>
