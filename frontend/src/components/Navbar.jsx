@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import api, { clearAuthSession } from '../api';
 import { showSuccess } from '../utils/message';
-import { CharacterButton, useCloudUI } from '../ui';
+import { Button as CloudButton, useCloudUI } from '../ui';
 import './Navbar.css';
 
 
@@ -22,13 +22,9 @@ function Navbar({
   characterActions = false,
 }) {
   const navigate = useNavigate();
-  const { characterPack, theme } = useCloudUI();
+  const { characterPack } = useCloudUI();
   const [logoutLoading, setLogoutLoading] = useState(false);
   const isQuizOperator = isAdminLoggedIn && userRole === 'quiz_operator';
-  const currentCharacterIndex = Math.max(0, theme.characterPackIds.indexOf(characterPack.id));
-  const navbarCharacterFor = (offset) => theme.characterPackIds[
-    (currentCharacterIndex + offset) % theme.characterPackIds.length
-  ];
 
   const handleLogout = async () => {
     setLogoutLoading(true);
@@ -69,31 +65,31 @@ function Navbar({
           <div className="cloud-navbar__actions flex items-center space-x-3">
             {characterActions ? (
               <>
-                <CharacterButton
-                  character={navbarCharacterFor(1)}
+                <CloudButton
+                  variant="ghost"
                   size="small"
-                  showSparkle={false}
+                  prefix={<HomeOutlined />}
                   onClick={() => navigate('/')}
                 >
                   <span className="hidden sm:inline">回到主页</span>
                   <span className="sm:hidden">主页</span>
-                </CharacterButton>
+                </CloudButton>
                 {isQuizOperator ? (
-                  <CharacterButton
-                    character={navbarCharacterFor(2)}
+                  <CloudButton
+                    variant="ghost"
                     size="small"
-                    showSparkle={false}
+                    prefix={<LogoutOutlined />}
                     loading={logoutLoading}
                     onClick={handleLogout}
                   >
                     <span className="hidden sm:inline">退出答题账号</span>
                     <span className="sm:hidden">退出</span>
-                  </CharacterButton>
+                  </CloudButton>
                 ) : (
-                  <CharacterButton
-                    character={navbarCharacterFor(2)}
+                  <CloudButton
+                    variant="secondary"
                     size="small"
-                    showSparkle={false}
+                    prefix={isAdminLoggedIn ? <DashboardOutlined /> : <LoginOutlined />}
                     onClick={() => navigate(isAdminLoggedIn ? '/admin/questions' : '/admin/login')}
                   >
                     {isAdminLoggedIn ? (
@@ -107,7 +103,7 @@ function Navbar({
                         <span className="sm:hidden">登录</span>
                       </>
                     )}
-                  </CharacterButton>
+                  </CloudButton>
                 )}
               </>
             ) : (
