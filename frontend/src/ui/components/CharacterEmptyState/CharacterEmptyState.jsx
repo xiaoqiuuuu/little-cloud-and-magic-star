@@ -5,8 +5,8 @@ import './CharacterEmptyState.css';
 
 function CharacterEmptyState({
   character,
-  title = '还没有内容',
-  description = '创建第一条内容后，我会在这里陪你一起整理。',
+  title = '暂无数据',
+  description,
   style,
   ...emptyProps
 }) {

@@ -9,9 +9,7 @@ import xiaoyunArtwork from '../assets/characters/xiaoyun.png';
 export const themePresets = {
   aurora: {
     id: 'aurora',
-    name: '星海舞台',
-    tagline: '清透冷色 · 梦幻都市',
-    description: '以云蓝、雾紫和深海青为主，适合答题现场、规则说明和日常产品界面。',
+    name: '主题 A',
     defaultCharacterPack: 'xiaoyun',
     characterPackIds: ['xiaoyun', 'jiujiang', 'ningbo'],
     tokens: {
@@ -67,9 +65,7 @@ export const themePresets = {
   },
   celebration: {
     id: 'celebration',
-    name: '糖果庆典',
-    tagline: '粉橙暖色 · 甜蜜派对',
-    description: '以草莓粉、奶油白和杏子橙为主，适合生日、纪念日、活动物料和轻松互动。',
+    name: '主题 B',
     defaultCharacterPack: 'birthday',
     characterPackIds: ['birthday', 'beijing', 'chengdu'],
     tokens: {
@@ -130,7 +126,6 @@ function createCharacterPack({
   id,
   themeId,
   name,
-  description,
   artwork,
   accent,
   accentDeep,
@@ -142,7 +137,6 @@ function createCharacterPack({
     id,
     themeId,
     name,
-    description,
     accent,
     accentDeep,
     accentSoft,
@@ -162,8 +156,7 @@ export const characterPacks = {
   xiaoyun: createCharacterPack({
     id: 'xiaoyun',
     themeId: 'aurora',
-    name: '小云公主',
-    description: '云蓝礼服与舞台气泡，是星海舞台的默认角色。',
+    name: '小云',
     artwork: xiaoyunArtwork,
     accent: '#72b8dc',
     accentDeep: '#3e7fa7',
@@ -173,8 +166,7 @@ export const characterPacks = {
   jiujiang: createCharacterPack({
     id: 'jiujiang',
     themeId: 'aurora',
-    name: '九江女孩',
-    description: '雾蓝长发与深海礼服，适合沉静、精致的内容场景。',
+    name: '九江',
     artwork: jiujiangArtwork,
     accent: '#7697bd',
     accentDeep: '#3f5f86',
@@ -184,8 +176,7 @@ export const characterPacks = {
   ningbo: createCharacterPack({
     id: 'ningbo',
     themeId: 'aurora',
-    name: '宁波女孩',
-    description: '灰白发与青灰贝雷帽，适合轻快、现代的工具界面。',
+    name: '宁波',
     artwork: ningboArtwork,
     accent: '#7d9ba3',
     accentDeep: '#48666f',
@@ -195,8 +186,7 @@ export const characterPacks = {
   birthday: createCharacterPack({
     id: 'birthday',
     themeId: 'celebration',
-    name: '生日女孩',
-    description: '粉色秋千与礼服，是糖果庆典的默认角色。',
+    name: '生日',
     artwork: birthdayArtwork,
     accent: '#e294b4',
     accentDeep: '#a55577',
@@ -207,8 +197,7 @@ export const characterPacks = {
   beijing: createCharacterPack({
     id: 'beijing',
     themeId: 'celebration',
-    name: '北京女孩',
-    description: '草莓粉发与闪光帽，适合甜美、醒目的活动入口。',
+    name: '北京',
     artwork: beijingArtwork,
     accent: '#ed91b0',
     accentDeep: '#a84f72',
@@ -218,8 +207,7 @@ export const characterPacks = {
   chengdu: createCharacterPack({
     id: 'chengdu',
     themeId: 'celebration',
-    name: '成都女孩',
-    description: '暖橙熊熊套装，适合亲切、活泼的提示与奖励场景。',
+    name: '成都',
     artwork: chengduArtwork,
     accent: '#e7a142',
     accentDeep: '#99631f',

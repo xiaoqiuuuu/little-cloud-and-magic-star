@@ -21,10 +21,7 @@ function ComponentLibraryOverview() {
       <section className="cl-overview-hero">
         <div className="cl-overview-copy">
           <span className="cl-kicker">LITTLE CLOUD DESIGN SYSTEM</span>
-          <h1>把可爱的视觉语言，整理成可复用的系统组件。</h1>
-          <p>
-            Cloud UI 现在包含两套主题、六个角色，以及覆盖操作、录入、展示和反馈场景的基础组件。
-          </p>
+          <h1>组件库预览</h1>
           <div className="cl-overview-actions">
             <Link className="cl-primary-link" to="/components/theme-system">
               查看主题系统

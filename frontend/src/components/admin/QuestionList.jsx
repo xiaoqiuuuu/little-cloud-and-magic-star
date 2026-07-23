@@ -358,10 +358,7 @@ const QuestionList = ({
           emptyText: (
             <CharacterEmptyState
               size="small"
-              title={hasActiveFilters ? '没有找到匹配的题目' : '还没有题目'}
-              description={hasActiveFilters
-                ? '换一个关键词或减少筛选条件，我再帮你找找。'
-                : '创建第一道题目后，当前角色会陪你一起整理题库。'}
+              title={hasActiveFilters ? '没有找到匹配的题目' : '暂无题目，请添加题目'}
               action={!hasActiveFilters && onCreate ? (
                 <CharacterButton size="small" onClick={onCreate}>新建题目</CharacterButton>
               ) : undefined}

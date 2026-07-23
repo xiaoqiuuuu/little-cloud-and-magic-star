@@ -16,14 +16,14 @@ function SelectionControlsDocs() {
       <section className="cl-section">
         <div className="cl-section-heading"><div><span className="cl-section-index">01</span><h2>活动设置示例</h2></div><p>对应项目里常见的活动主题、状态和公开开关。</p></div>
         <div className="cl-settings-demo">
-          <Input label="活动名称" defaultValue="2026 夏日现场答题" helperText="最多 100 个字符" />
+          <Input label="活动名称" placeholder="请输入活动名称" helperText="最多 100 个字符" />
           <Select
             label="视觉主题"
             value={theme}
             onChange={(event) => setTheme(event.target.value)}
             options={[
-              { value: 'aurora', label: '星海舞台' },
-              { value: 'celebration', label: '糖果庆典' },
+              { value: 'aurora', label: '主题 A' },
+              { value: 'celebration', label: '主题 B' },
             ]}
           />
           <Switch checked={published} onChange={setPublished} label="公开活动" description="允许访问者在首页看到这个活动" />

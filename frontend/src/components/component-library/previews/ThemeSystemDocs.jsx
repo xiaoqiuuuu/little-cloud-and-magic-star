@@ -26,9 +26,7 @@ function ThemeKit({ preset, mode, active, onSelectTheme, onSelectCharacter }) {
     <section className={`cl-theme-kit ${active ? 'is-active' : ''}`} style={previewStyle}>
       <header className="cl-theme-kit__header">
         <div>
-          <span>{preset.tagline}</span>
           <h3>{preset.name}</h3>
-          <p>{preset.description}</p>
         </div>
         <Button size="small" variant={active ? 'primary' : 'secondary'} onClick={() => onSelectTheme(preset.id)}>
           {active ? '当前主题' : '应用主题'}
@@ -46,7 +44,7 @@ function ThemeKit({ preset, mode, active, onSelectTheme, onSelectCharacter }) {
 
       <div className="cl-theme-kit__components">
         <div className="cl-theme-kit__form">
-          <Input label="活动名称" placeholder="输入活动名称" defaultValue={preset.name} />
+          <Input label="名称" placeholder="请输入名称" />
           <Select
             label="内容状态"
             defaultValue="published"
@@ -55,7 +53,7 @@ function ThemeKit({ preset, mode, active, onSelectTheme, onSelectCharacter }) {
               { value: 'published', label: '已发布' },
             ]}
           />
-          <Switch defaultChecked label="公开展示" description="同步到活动页面" />
+          <Switch defaultChecked label="启用" />
         </div>
         <div className="cl-theme-kit__display">
           <div className="cl-theme-kit__tags">
@@ -63,9 +61,9 @@ function ThemeKit({ preset, mode, active, onSelectTheme, onSelectCharacter }) {
             <Tag tone="success">已启用</Tag>
             <Tag tone="warning">待确认</Tag>
           </div>
-          <Statistic label="今日参与" value="1,286" suffix="人" trend="较昨日 +18%" trendDirection="up" emphasis />
-          <Alert type="info" title="主题组件已同步" description="Button、表单、反馈组件和 Ant Design 会读取同一套 Token。" />
-          <CharacterButton character={defaultCharacter.id}>进入主题活动</CharacterButton>
+          <Statistic label="示例数值" value="128" emphasis />
+          <Alert type="info" title="提示信息" />
+          <CharacterButton character={defaultCharacter.id}>操作按钮</CharacterButton>
         </div>
       </div>
     </section>
@@ -92,7 +90,6 @@ function ThemeSystemDocs() {
         <div>
           <div className="cl-kicker">FOUNDATION · THEME</div>
           <h1>两套主题，六个角色</h1>
-          <p>角色按视觉气质归入主题；业务组件只使用语义 Token 和角色资源位，不绑定具体图片。</p>
         </div>
         <div className="cl-docs-meta"><span className="cl-status-badge">● {theme.name}</span><span>{mode}</span></div>
       </header>
@@ -138,7 +135,7 @@ function ThemeSystemDocs() {
       <section className="cl-section">
         <div className="cl-section-heading">
           <div><span className="cl-section-index">03</span><h2>接入方式</h2></div>
-          <p>选择角色时会自动切换到它所属的主题，避免出现角色和视觉体系不匹配。</p>
+          <p>选择人物时会同步切换其所属主题。</p>
         </div>
         <div className="cl-code-block"><pre><code>{`<CloudUIProvider>\n  <App />\n</CloudUIProvider>\n\nconst {\n  selectTheme,\n  selectCharacterPack,\n  toggleMode,\n} = useCloudUI();`}</code></pre></div>
       </section>

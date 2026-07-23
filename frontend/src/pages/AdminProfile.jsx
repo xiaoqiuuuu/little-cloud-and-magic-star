@@ -15,7 +15,7 @@ function AdminProfile() {
   const { currentUser, onCurrentUserChange } = useOutletContext();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
-  const displayName = currentUser?.display_name || currentUser?.username || '内容创作者';
+  const displayName = currentUser?.display_name || currentUser?.username || '—';
   const roleLabel = currentUser?.role === 'super_admin' ? '超级管理员' : '题目管理员';
 
   useEffect(() => {
@@ -51,9 +51,7 @@ function AdminProfile() {
   return (
     <div className="admin-profile-page">
       <CharacterCard layout="watermark" className="admin-profile-character-card">
-        <span className="admin-profile-character-card__kicker">当前角色陪伴</span>
         <h2>{displayName}</h2>
-        <p>修改署名和主页信息时，当前主题角色会陪你一起完成设置。</p>
         <div className="admin-profile-character-card__meta">
           <Tag tone="primary">{roleLabel}</Tag>
           <Tag>{currentUser?.username || '—'}</Tag>

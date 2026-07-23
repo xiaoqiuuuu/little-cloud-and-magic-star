@@ -51,7 +51,6 @@ function AdminThemePanel({ compact = false }) {
               />
               <span>
                 <strong>{preset.name}</strong>
-                <small>{preset.tagline}</small>
               </span>
               {themeId === preset.id && <CheckOutlined />}
             </button>
