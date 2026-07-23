@@ -277,6 +277,12 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
   }, [questionIds]);
 
   const currentTagMeta = getQuestionTagMeta(currentQuestion?.tag);
+  const questionTextLength = currentQuestion?.question?.trim().length || 0;
+  const questionLengthClass = questionTextLength > 140
+    ? 'is-very-long'
+    : questionTextLength > 80
+      ? 'is-long'
+      : '';
   const currentCharacterIndex = Math.max(
     0,
     theme.characterPackIds.indexOf(characterPack.id),
@@ -686,7 +692,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
 
               <div className="quiz-character-question-copy">
                 <Tag tone="primary" variant="solid">#{currentQuestion.id}</Tag>
-                <h2>{currentQuestion.question}</h2>
+                <h2 className={questionLengthClass}>{currentQuestion.question}</h2>
               </div>
 
               {currentQuestion.resources && currentQuestion.resources.length > 0 && (
