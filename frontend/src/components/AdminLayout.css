@@ -136,10 +136,17 @@
   margin: 0 2px 0 5px;
 }
 
-.cloud-admin-user__name {
+.cloud-admin-user__profile.ant-btn {
+  height: 34px;
+  padding-inline: 9px;
   color: var(--cui-color-text);
   font-size: 13px;
   font-weight: 700;
+}
+
+.cloud-admin-user__profile.ant-btn:hover {
+  color: var(--cui-color-primary);
+  background: var(--cui-color-primary-soft);
 }
 
 .admin-role-badge {
@@ -211,8 +218,22 @@
   font-size: 13px;
 }
 
+.cloud-admin-drawer-profile__username {
+  display: block;
+  margin-top: 3px;
+  color: var(--cui-color-text-muted);
+  font-size: 10px;
+}
+
 .cloud-admin-drawer-profile__role {
   margin-top: 5px;
+}
+
+.cloud-admin-drawer-profile__edit.ant-btn {
+  margin-top: 12px;
+  border-color: var(--cui-color-border);
+  color: var(--cui-color-text);
+  background: var(--cui-color-surface-raised);
 }
 
 .cloud-admin-drawer-links {
