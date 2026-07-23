@@ -706,6 +706,22 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(root_questions.json()["total"], 0)
         self.assertEqual(editor_materials.json()["total"], 1)
 
+        super_question = await self.client.post(
+            "/api/admin/questions",
+            headers=super_headers,
+            json={
+                "question": "超级管理员本人创建的题目",
+                "answer": "answer",
+                "tag": "common",
+                "contributor_ids": [self.question_admin["id"]],
+            },
+        )
+        self.assertEqual(super_question.status_code, 200, super_question.text)
+        self.assertEqual(
+            [item["id"] for item in super_question.json()["contributors"]],
+            [self.super_admin["id"]],
+        )
+
         delete_bound_account = await self.client.delete(
             f"/api/admin/users/{self.question_admin['id']}",
             headers=super_headers,

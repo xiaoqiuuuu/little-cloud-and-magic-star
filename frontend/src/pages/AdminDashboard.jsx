@@ -420,7 +420,6 @@ function AdminDashboard() {
         }}
         editingQuestion={editingQuestion}
         contributors={contributors}
-        currentUser={currentUser}
         isSuperAdmin={isSuperAdmin}
         tagOptions={questionTagOptions}
       />

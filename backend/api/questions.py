@@ -383,16 +383,11 @@ def admin_get_question(question_id: str, user_info: dict = Depends(require_conte
 @router.post("/api/admin/questions", response_model=Question)
 def admin_create_question(question_data: QuestionCreate, user_info: dict = Depends(require_content_admin)):
     """管理员创建题目"""
-    role = user_info["role"]
-
     # 生成自增ID
     question_id = get_next_question_id()
 
-    requested_ids = (
-        [user_info["id"]]
-        if role == "question_admin"
-        else (question_data.contributor_ids or [user_info["id"]])
-    )
+    # 新建题目始终归属当前登录账号；贡献账号仅能在编辑已有题目时调整。
+    requested_ids = [user_info["id"]]
     contributors = _get_requested_contributors(requested_ids)
     author = [contributor.display_name for contributor in contributors]
 

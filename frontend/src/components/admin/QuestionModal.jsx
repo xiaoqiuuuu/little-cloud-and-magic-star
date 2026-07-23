@@ -12,7 +12,6 @@ const QuestionModal = ({
   onSuccess, 
   editingQuestion, 
   contributors,
-  currentUser,
   isSuperAdmin,
   tagOptions = [],
 }) => {
@@ -42,11 +41,11 @@ const QuestionModal = ({
           answer: '',
           resources: '',
           tag: DEFAULT_QUESTION_TAG,
-          contributor_ids: currentUser?.id ? [currentUser.id] : [],
+          contributor_ids: [],
         });
       }
     }
-  }, [isOpen, editingQuestion, currentUser]);
+  }, [isOpen, editingQuestion]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,8 +58,11 @@ const QuestionModal = ({
         .map((url) => url.trim())
         .filter((url) => url),
       tag: formData.tag,
-      contributor_ids: formData.contributor_ids || [],
     };
+
+    if (editingQuestion) {
+      data.contributor_ids = formData.contributor_ids || [];
+    }
 
     try {
       if (editingQuestion) {
@@ -136,7 +138,7 @@ const QuestionModal = ({
               </p>
             </div>
 
-            {isSuperAdmin && (
+            {isSuperAdmin && editingQuestion && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   贡献账号（可多选）
@@ -190,7 +192,7 @@ const QuestionModal = ({
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  按住 Ctrl/Cmd 可选择多个账号；新题默认绑定当前账号。
+                  按住 Ctrl/Cmd 可选择多个账号。
                 </p>
               </div>
             )}
