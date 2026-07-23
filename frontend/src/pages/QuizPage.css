@@ -98,7 +98,7 @@
 }
 
 .quiz-character-ready-card.cui-character-card {
-  max-width: 920px;
+  max-width: none;
   min-height: 338px;
   margin: 0 auto;
   border-color: color-mix(in srgb, var(--cui-character-accent) 38%, var(--cui-color-border));
