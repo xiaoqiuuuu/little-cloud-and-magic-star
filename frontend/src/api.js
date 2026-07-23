@@ -68,6 +68,8 @@ export const clearAuthSession = () => {
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('username');
   localStorage.removeItem('userRole');
+  localStorage.removeItem('userRoleName');
+  localStorage.removeItem('userPermissions');
   localStorage.removeItem('currentUserId');
   window.dispatchEvent(new CustomEvent('authChange', { detail: { token: null } }));
 };

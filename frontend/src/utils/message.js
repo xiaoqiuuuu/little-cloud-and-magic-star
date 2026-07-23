@@ -111,6 +111,8 @@ export const handleApiError = (error, defaultMessage = '操作失败') => {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('username');
         localStorage.removeItem('userRole');
+        localStorage.removeItem('userRoleName');
+        localStorage.removeItem('userPermissions');
         localStorage.removeItem('currentUserId');
         window.dispatchEvent(new Event('authChange'));
         window.location.href = '/admin/login';

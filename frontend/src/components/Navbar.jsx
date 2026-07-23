@@ -15,7 +15,8 @@ import './Navbar.css';
 
 function Navbar({
   isAdminLoggedIn,
-  userRole = '',
+  quizOnlyAccount = false,
+  adminPath = '/admin',
   brandText = '肥音卤果答题活动',
   mobileBrandText = '',
   homePath = '/quiz',
@@ -24,7 +25,7 @@ function Navbar({
   const navigate = useNavigate();
   const { characterPack } = useCloudUI();
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const isQuizOperator = isAdminLoggedIn && userRole === 'quiz_operator';
+  const isQuizOperator = isAdminLoggedIn && quizOnlyAccount;
 
   const handleLogout = async () => {
     setLogoutLoading(true);
@@ -90,7 +91,7 @@ function Navbar({
                     variant="secondary"
                     size="small"
                     prefix={isAdminLoggedIn ? <DashboardOutlined /> : <LoginOutlined />}
-                    onClick={() => navigate(isAdminLoggedIn ? '/admin/questions' : '/admin/login')}
+                    onClick={() => navigate(isAdminLoggedIn ? adminPath : '/admin/login')}
                   >
                     {isAdminLoggedIn ? (
                       <>
@@ -124,7 +125,7 @@ function Navbar({
                     <span className="sm:hidden">退出</span>
                   </Button>
                 ) : (
-                  <Link to={isAdminLoggedIn ? '/admin/questions' : '/admin/login'}>
+                  <Link to={isAdminLoggedIn ? adminPath : '/admin/login'}>
                     <Button
                       type={isAdminLoggedIn ? 'primary' : 'default'}
                       icon={isAdminLoggedIn ? <DashboardOutlined /> : <LoginOutlined />}

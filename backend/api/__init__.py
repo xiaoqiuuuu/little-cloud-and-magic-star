@@ -5,6 +5,7 @@ from .questions import router as questions_router
 from .materials import router as materials_router
 from .users import router as users_router
 from .activities import router as activities_router
+from .access import router as access_router
 from .site_events import admin_router as site_events_admin_router
 from .site_events import public_router as site_events_public_router
 
@@ -14,6 +15,7 @@ __all__ = [
     'materials_router',
     'users_router',
     'activities_router',
+    'access_router',
     'site_events_admin_router',
     'site_events_public_router',
 ]

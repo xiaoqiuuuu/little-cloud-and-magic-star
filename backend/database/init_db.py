@@ -7,6 +7,7 @@ from .config import get_connection
 from .stats import backfill_page_visit_dimensions
 from .site_events import DEFAULT_SITE_EVENT
 from passwords import hash_password, is_password_hash
+from .rbac import QUESTIONS_MANAGE, initialize_rbac
 
 
 DEFAULT_EMPTY_QUESTION_OWNER = "fylgcyzlm"
@@ -30,10 +31,14 @@ def _backfill_account_contributors(cursor):
     """
     admin_rows = cursor.execute(
         """
-        SELECT id, username
-        FROM admins
-        WHERE role IN ('super_admin', 'question_admin')
-        """
+        SELECT a.id, a.username
+        FROM admins a
+        WHERE EXISTS (
+            SELECT 1 FROM access_role_permissions rp
+            WHERE rp.role_key = a.role AND rp.permission_key = ?
+        )
+        """,
+        (QUESTIONS_MANAGE,),
     ).fetchall()
     admin_matches = {}
     for admin_id, username in admin_rows:
@@ -288,20 +293,20 @@ def init_db():
                 (hash_password(stored_password), admin_id),
             )
 
-    # SQLite 不能直接修改 CHECK 约束；重建上一版本的双角色表以加入答题人员。
+    # SQLite 不能直接修改 CHECK 约束；RBAC 需要允许自定义角色标识。
     cursor.execute(
         "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'admins'"
     )
     admins_sql = (cursor.fetchone() or [""])[0] or ""
-    if "CHECK" in admins_sql.upper() and "quiz_operator" not in admins_sql:
+    normalized_admins_sql = "".join(admins_sql.upper().split())
+    if "CHECK(ROLEIN(" in normalized_admins_sql:
         cursor.execute('ALTER TABLE admins RENAME TO admins_legacy_roles')
         cursor.execute('''
             CREATE TABLE admins (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'question_admin'
-                    CHECK(role IN ('super_admin', 'question_admin', 'quiz_operator')),
+                role TEXT NOT NULL DEFAULT 'question_admin',
                 is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
                 token_version INTEGER NOT NULL DEFAULT 0,
                 display_name TEXT,
@@ -323,6 +328,8 @@ def init_db():
             FROM admins_legacy_roles
         ''')
         cursor.execute('DROP TABLE admins_legacy_roles')
+
+    initialize_rbac(cursor)
 
     # 题目和物料直接绑定账号。旧的 author/creator 字段保留作为回滚兼容数据。
     cursor.execute('''

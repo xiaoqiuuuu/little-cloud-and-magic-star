@@ -18,7 +18,12 @@ import {
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession, getDeduplicated } from '../api';
-import { hasContentAdminAccess } from '../utils/adminAccess';
+import {
+  PERMISSIONS,
+  canAccessBackend,
+  hasPermission,
+  storeUserAccess,
+} from '../utils/adminAccess';
 import { useCloudUI } from '../ui';
 import AdminThemeSwitcher from './admin/AdminThemeSwitcher';
 import './AdminLayout.css';
@@ -62,8 +67,9 @@ function AdminLayout() {
         if (cancelled) return;
         setCurrentUser(response.data);
         localStorage.setItem('username', response.data.username);
-        localStorage.setItem('userRole', response.data.role);
+        storeUserAccess(response.data);
         localStorage.setItem('currentUserId', String(response.data.id));
+        window.dispatchEvent(new Event('accessChange'));
       })
       .catch(() => {
         if (!cancelled) {
@@ -102,19 +108,23 @@ function AdminLayout() {
   const displayName = currentUser?.display_name || username;
   const userRole = currentUser?.role || '';
   const isSuperAdmin = userRole === 'super_admin';
-  const roleLabel = isSuperAdmin ? '超级管理员' : '题目管理员';
+  const roleLabel = currentUser?.role_name || userRole || '未分配角色';
   const roleBadgeClassName = `admin-role-badge ${isSuperAdmin ? 'is-super' : 'is-admin'}`;
+  const canManageQuestions = hasPermission(currentUser, PERMISSIONS.QUESTIONS_MANAGE);
+  const canManageHomepage = hasPermission(currentUser, PERMISSIONS.HOMEPAGE_MANAGE);
+  const canManageAccounts = hasPermission(currentUser, PERMISSIONS.ACCOUNTS_MANAGE);
+  const canOperateQuiz = hasPermission(currentUser, PERMISSIONS.QUIZ_OPERATE);
 
   if (!authLoading && !currentUser) {
     return <Navigate to="/admin/login" replace />;
   }
 
-  if (!authLoading && !hasContentAdminAccess(currentUser)) {
-    return <Navigate to="/quiz" replace />;
+  if (!authLoading && !canAccessBackend(currentUser)) {
+    return <Navigate to={canOperateQuiz ? '/quiz' : '/admin/login'} replace />;
   }
 
   const menuItems = [
-    {
+    ...(canManageQuestions ? [{
       type: 'group',
       key: 'content-group',
       label: '内容中心',
@@ -135,25 +145,25 @@ function AdminLayout() {
           label: <Link to="/admin/roles">内容角色</Link>,
         },
       ],
-    },
-    ...(isSuperAdmin ? [{
+    }] : []),
+    ...(canManageHomepage || canManageQuestions ? [{
       type: 'group',
       key: 'activity-group',
       label: '活动运营',
       children: [
-        {
+        ...(canManageHomepage ? [{
           key: '/admin/site-events',
           icon: <GlobalOutlined />,
           label: <Link to="/admin/site-events">官网活动</Link>,
-        },
-        {
+        }] : []),
+        ...(canManageQuestions ? [{
           key: '/admin/activities',
           icon: <CalendarOutlined />,
           label: <Link to="/admin/activities">答题活动</Link>,
-        },
+        }] : []),
       ],
     }] : []),
-    {
+    ...(canManageQuestions ? [{
       type: 'group',
       key: 'analytics-group',
       label: '数据分析',
@@ -164,8 +174,8 @@ function AdminLayout() {
           label: <Link to="/admin/stats">访问分析</Link>,
         },
       ],
-    },
-    ...(isSuperAdmin ? [{
+    }] : []),
+    ...(canManageAccounts ? [{
       type: 'group',
       key: 'system-group',
       label: '系统设置',
@@ -253,7 +263,7 @@ function AdminLayout() {
             >
               预览官网
             </Button>
-            {isSuperAdmin && (
+            {canOperateQuiz && (
               <Button
                 className="hidden lg:inline-flex"
                 type="text"
@@ -348,9 +358,9 @@ function AdminLayout() {
           >
             编辑个人资料
           </Button>
-          <div className={`cloud-admin-drawer-links ${isSuperAdmin ? 'is-double' : ''}`}>
+          <div className={`cloud-admin-drawer-links ${canOperateQuiz ? 'is-double' : ''}`}>
             <Button icon={<GlobalOutlined />} href="/" target="_blank" rel="noreferrer">预览官网</Button>
-            {isSuperAdmin && (
+            {canOperateQuiz && (
               <Button icon={<PlayCircleOutlined />} href="/quiz" target="_blank" rel="noreferrer">现场答题</Button>
             )}
           </div>

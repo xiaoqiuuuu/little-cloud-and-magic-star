@@ -73,6 +73,22 @@ from .materials import (
     delete_material
 )
 from .init_db import init_db
+from .rbac import (
+    ACCOUNTS_MANAGE,
+    HOMEPAGE_MANAGE,
+    QUESTIONS_MANAGE,
+    QUIZ_OPERATE,
+    create_access_role,
+    delete_access_role,
+    get_access_role,
+    get_role_permission_keys,
+    invalidate_role_sessions,
+    list_access_roles,
+    list_permissions,
+    role_has_bound_content,
+    role_has_permission,
+    update_access_role,
+)
 from .site_events import (
     activate_site_event,
     archive_site_event,
@@ -117,6 +133,21 @@ __all__ = [
     'increment_admin_token_version',
     'delete_admin',
     'count_active_super_admins',
+    # RBAC 角色与权限
+    'QUESTIONS_MANAGE',
+    'ACCOUNTS_MANAGE',
+    'HOMEPAGE_MANAGE',
+    'QUIZ_OPERATE',
+    'list_permissions',
+    'list_access_roles',
+    'get_access_role',
+    'get_role_permission_keys',
+    'role_has_permission',
+    'create_access_role',
+    'update_access_role',
+    'delete_access_role',
+    'role_has_bound_content',
+    'invalidate_role_sessions',
     # 内容贡献账号相关
     'list_content_contributors',
     'get_content_contributor',

@@ -16,7 +16,7 @@ function AdminProfile() {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const displayName = currentUser?.display_name || currentUser?.username || '—';
-  const roleLabel = currentUser?.role === 'super_admin' ? '超级管理员' : '题目管理员';
+  const roleLabel = currentUser?.role_name || currentUser?.role || '未分配角色';
 
   useEffect(() => {
     if (!currentUser) return;

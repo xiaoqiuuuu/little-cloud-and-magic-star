@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useOutletContext } from 'react-router-dom';
 import { ConfigProvider, App as AntApp, theme as antdTheme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import HomePage from './pages/HomePage';
@@ -14,22 +14,35 @@ import QuizActivityManager from './pages/QuizActivityManager';
 import AdminQuizPage from './pages/AdminQuizPage';
 import SiteEventManager from './pages/SiteEventManager';
 import AdminLayout from './components/AdminLayout';
-import RequireSuperAdmin from './components/RequireSuperAdmin';
+import RequirePermission from './components/RequirePermission';
 import Navbar from './components/Navbar';
 import RouterProgressBar from './components/RouterProgressBar';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import { CloudUIProvider, useCloudUI } from './ui';
 import { lazy, Suspense, useEffect, useState } from 'react';
+import {
+  PERMISSIONS,
+  canAccessBackend,
+  getDefaultAccessPath,
+  readStoredPermissions,
+} from './utils/adminAccess';
 import 'antd/dist/reset.css'; // Ant Design 样式
 
 
 const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
 const ComponentLibraryPage = lazy(() => import('./pages/ComponentLibraryPage'));
 
+
+function AdminIndexRedirect() {
+  const { currentUser } = useOutletContext();
+  return <Navigate to={getDefaultAccessPath(currentUser)} replace />;
+}
+
 function AppContent() {
   const { mode, tokens } = useCloudUI();
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || '');
+  const [userPermissions, setUserPermissions] = useState(readStoredPermissions);
 
   useEffect(() => {
     const onStorage = (e) => {
@@ -39,20 +52,38 @@ function AppContent() {
       if (e.key === 'userRole') {
         setUserRole(e.newValue || '');
       }
+      if (e.key === 'userPermissions') {
+        setUserPermissions(readStoredPermissions());
+      }
     };
     window.addEventListener('storage', onStorage);
     // 监听自定义事件，处理当前窗口内的登录/登出变更
     const onAuthChange = (e) => {
       setIsAdminLoggedIn(!!localStorage.getItem('token'));
       setUserRole(localStorage.getItem('userRole') || '');
+      setUserPermissions(readStoredPermissions());
+    };
+    const onAccessChange = () => {
+      setUserRole(localStorage.getItem('userRole') || '');
+      setUserPermissions(readStoredPermissions());
     };
     window.addEventListener('authChange', onAuthChange);
+    window.addEventListener('accessChange', onAccessChange);
     return () => {
       window.removeEventListener('storage', onStorage);
       // 清理自定义事件监听
       window.removeEventListener('authChange', onAuthChange);
+      window.removeEventListener('accessChange', onAccessChange);
     };
   }, []);
+
+  const storedUser = { role: userRole, permissions: userPermissions };
+  const canOperateQuiz = userPermissions.includes(PERMISSIONS.QUIZ_OPERATE);
+  const hasBackendAccess = canAccessBackend(storedUser);
+  const quizOnlyAccount = canOperateQuiz && !hasBackendAccess;
+  const defaultAccessPath = userPermissions.length > 0
+    ? getDefaultAccessPath(storedUser)
+    : '/admin';
 
   return (
     <ConfigProvider
@@ -153,15 +184,16 @@ function AppContent() {
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               
-              {/* 活动现场答题页面，仅允许超级管理员和答题人员进入。 */}
+              {/* 活动现场答题页面，仅允许拥有现场答题权限的账号进入。 */}
               <Route path="/quiz" element={
-                isAdminLoggedIn && !['super_admin', 'quiz_operator'].includes(userRole) ? (
-                  <Navigate to="/admin/quiz" replace />
+                isAdminLoggedIn && !canOperateQuiz ? (
+                  <Navigate to={defaultAccessPath} replace />
                 ) : (
                   <>
                     <Navbar
                       isAdminLoggedIn={isAdminLoggedIn}
-                      userRole={userRole}
+                      quizOnlyAccount={quizOnlyAccount}
+                      adminPath={defaultAccessPath}
                       brandText="肥音卤果现场答题"
                       mobileBrandText="现场答题"
                       homePath="/quiz"
@@ -178,13 +210,10 @@ function AppContent() {
               {/* 管理员登录 */}
               <Route path="/admin/login" element={
                 isAdminLoggedIn ? (
-                  <Navigate
-                    to={userRole === 'quiz_operator' ? '/quiz' : '/admin/questions'}
-                    replace
-                  />
+                  <Navigate to={defaultAccessPath} replace />
                 ) : (
                   <>
-                    <Navbar isAdminLoggedIn={isAdminLoggedIn} userRole={userRole} />
+                    <Navbar isAdminLoggedIn={isAdminLoggedIn} />
                     <AdminLogin />
                   </>
                 )
@@ -192,32 +221,54 @@ function AppContent() {
 
               {/* 后台管理区域，使用 AdminLayout */}
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<Navigate to="questions" replace />} />
-                <Route path="questions" element={<AdminDashboard />} />
-                <Route path="quiz" element={<AdminQuizPage />} />
-                <Route path="quiz/:questionId" element={<AdminQuizPage />} />
+                <Route index element={<AdminIndexRedirect />} />
+                <Route path="questions" element={(
+                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                    <AdminDashboard />
+                  </RequirePermission>
+                )} />
+                <Route path="quiz" element={(
+                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                    <AdminQuizPage />
+                  </RequirePermission>
+                )} />
+                <Route path="quiz/:questionId" element={(
+                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                    <AdminQuizPage />
+                  </RequirePermission>
+                )} />
                 <Route path="stats" element={
-                  <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载统计图表...</div>}>
-                    <VisitStatsPage />
-                  </Suspense>
+                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                    <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载统计图表...</div>}>
+                      <VisitStatsPage />
+                    </Suspense>
+                  </RequirePermission>
                 } />
-                <Route path="materials" element={<MaterialManager />} />
+                <Route path="materials" element={(
+                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                    <MaterialManager />
+                  </RequirePermission>
+                )} />
                 <Route path="profile" element={<AdminProfile />} />
-                <Route path="roles" element={<RoleManager />} />
+                <Route path="roles" element={(
+                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                    <RoleManager />
+                  </RequirePermission>
+                )} />
                 <Route path="users" element={
-                  <RequireSuperAdmin>
+                  <RequirePermission permission={PERMISSIONS.ACCOUNTS_MANAGE}>
                     <AdminUserManager />
-                  </RequireSuperAdmin>
+                  </RequirePermission>
                 } />
                 <Route path="activities" element={
-                  <RequireSuperAdmin>
+                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
                     <QuizActivityManager />
-                  </RequireSuperAdmin>
+                  </RequirePermission>
                 } />
                 <Route path="site-events" element={
-                  <RequireSuperAdmin>
+                  <RequirePermission permission={PERMISSIONS.HOMEPAGE_MANAGE}>
                     <SiteEventManager />
-                  </RequireSuperAdmin>
+                  </RequirePermission>
                 } />
                 {/* 兼容旧路由 */}
                 <Route path="dashboard" element={<Navigate to="questions" replace />} />

@@ -7,7 +7,7 @@ class ContentContributor(BaseModel):
     username: str
     display_name: str
     profile_url: Optional[str] = None
-    role: Literal["super_admin", "question_admin"]
+    role: str
     is_active: bool
 
 
@@ -119,7 +119,9 @@ class Token(BaseModel):
 class AdminUser(BaseModel):
     id: int
     username: str
-    role: Literal["super_admin", "question_admin", "quiz_operator"]
+    role: str
+    role_name: str
+    permissions: List[str] = Field(default_factory=list)
     is_active: bool
     display_name: str
     profile_url: Optional[str] = None
@@ -130,14 +132,14 @@ class AdminUser(BaseModel):
 class AdminUserCreate(BaseModel):
     username: str = Field(min_length=2, max_length=50)
     password: str = Field(min_length=8, max_length=128)
-    role: Literal["super_admin", "question_admin", "quiz_operator"] = "question_admin"
+    role: str = Field(default="question_admin", min_length=1, max_length=50)
     display_name: Optional[str] = Field(default=None, max_length=100)
     profile_url: Optional[str] = Field(default=None, max_length=500)
 
 
 class AdminUserUpdate(BaseModel):
     username: Optional[str] = Field(default=None, min_length=2, max_length=50)
-    role: Optional[Literal["super_admin", "question_admin", "quiz_operator"]] = None
+    role: Optional[str] = Field(default=None, min_length=1, max_length=50)
     is_active: Optional[bool] = None
     display_name: Optional[str] = Field(default=None, max_length=100)
     profile_url: Optional[str] = Field(default=None, max_length=500)
@@ -150,6 +152,36 @@ class AdminProfileUpdate(BaseModel):
 
 class AdminPasswordReset(BaseModel):
     password: str = Field(min_length=8, max_length=128)
+
+
+class AccessPermission(BaseModel):
+    key: str
+    name: str
+    description: str = ""
+    category: str = ""
+    position: int = 0
+
+
+class AccessRole(BaseModel):
+    key: str
+    name: str
+    description: str = ""
+    is_system: bool = False
+    is_locked: bool = False
+    permissions: List[str] = Field(default_factory=list)
+    user_count: int = 0
+
+
+class AccessRoleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    description: str = Field(default="", max_length=300)
+    permissions: List[str] = Field(default_factory=list)
+
+
+class AccessRoleUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    description: str = Field(default="", max_length=300)
+    permissions: List[str] = Field(default_factory=list)
 
 
 # 答题活动

@@ -146,6 +146,8 @@ def get_current_user_info_from_token(token: str) -> Dict[str, Any]:
         "id": admin["id"],
         "username": admin["username"],
         "role": admin["role"],
+        "role_name": admin["role_name"],
+        "permissions": admin["permissions"],
         "is_active": admin["is_active"],
         "display_name": admin["display_name"],
         "profile_url": admin["profile_url"],

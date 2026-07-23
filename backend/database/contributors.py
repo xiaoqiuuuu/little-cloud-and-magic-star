@@ -10,9 +10,9 @@ from typing import Dict, Iterable, List, Optional, Sequence
 from models import ContentContributor
 
 from .config import get_connection
+from .rbac import QUESTIONS_MANAGE
 
 
-CONTENT_ADMIN_ROLES = ("super_admin", "question_admin")
 CONTRIBUTOR_COLUMNS = """
     a.id, a.username, COALESCE(NULLIF(a.display_name, ''), a.username),
     a.profile_url, a.role, a.is_active
@@ -47,9 +47,12 @@ def list_content_contributors(include_inactive: bool = True) -> List[ContentCont
         query = f"""
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
-            WHERE a.role IN (?, ?)
+            WHERE EXISTS (
+                SELECT 1 FROM access_role_permissions rp
+                WHERE rp.role_key = a.role AND rp.permission_key = ?
+            )
         """
-        params: List[object] = list(CONTENT_ADMIN_ROLES)
+        params: List[object] = [QUESTIONS_MANAGE]
         if not include_inactive:
             query += " AND a.is_active = 1"
         query += " ORDER BY a.is_active DESC, a.username COLLATE NOCASE"
@@ -66,9 +69,12 @@ def get_content_contributor(admin_id: int) -> Optional[ContentContributor]:
             f"""
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
-            WHERE a.id = ? AND a.role IN (?, ?)
+            WHERE a.id = ? AND EXISTS (
+                SELECT 1 FROM access_role_permissions rp
+                WHERE rp.role_key = a.role AND rp.permission_key = ?
+            )
             """,
-            (admin_id, *CONTENT_ADMIN_ROLES),
+            (admin_id, QUESTIONS_MANAGE),
         ).fetchone()
         return _row_to_contributor(row) if row else None
     finally:
@@ -86,9 +92,12 @@ def get_content_contributors(admin_ids: Sequence[int]) -> List[ContentContributo
             f"""
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
-            WHERE a.id IN ({placeholders}) AND a.role IN (?, ?)
+            WHERE a.id IN ({placeholders}) AND EXISTS (
+                SELECT 1 FROM access_role_permissions rp
+                WHERE rp.role_key = a.role AND rp.permission_key = ?
+            )
             """,
-            [*ordered_ids, *CONTENT_ADMIN_ROLES],
+            [*ordered_ids, QUESTIONS_MANAGE],
         ).fetchall()
     finally:
         conn.close()
@@ -130,9 +139,12 @@ def resolve_contributors_by_names(names: Iterable[str]) -> List[ContentContribut
             f"""
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
-            WHERE a.role IN (?, ?)
+            WHERE EXISTS (
+                SELECT 1 FROM access_role_permissions rp
+                WHERE rp.role_key = a.role AND rp.permission_key = ?
+            )
             """,
-            CONTENT_ADMIN_ROLES,
+            (QUESTIONS_MANAGE,),
         ).fetchall()
     finally:
         conn.close()
@@ -165,10 +177,13 @@ def _get_relation_contributors(table: str, content_column: str, content_id: str)
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM {table} c
             JOIN admins a ON a.id = c.admin_id
-            WHERE c.{content_column} = ? AND a.role IN (?, ?)
+            WHERE c.{content_column} = ? AND EXISTS (
+                SELECT 1 FROM access_role_permissions rp
+                WHERE rp.role_key = a.role AND rp.permission_key = ?
+            )
             ORDER BY c.position ASC, a.id ASC
             """,
-            (content_id, *CONTENT_ADMIN_ROLES),
+            (content_id, QUESTIONS_MANAGE),
         ).fetchall()
         return [_row_to_contributor(row) for row in rows]
     finally:
@@ -196,7 +211,7 @@ def _set_relations(
     contributors = get_content_contributors(admin_ids)
     requested_ids = list(dict.fromkeys(int(admin_id) for admin_id in admin_ids))
     if len(contributors) != len(requested_ids):
-        raise ValueError("只能绑定超级管理员或题目管理员账号")
+        raise ValueError("只能绑定拥有题目管理权限的账号")
 
     conn = get_connection()
     try:

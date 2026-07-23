@@ -507,7 +507,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
             <div className="quiz-character-status-card__content">
               <strong>题目调试：</strong>
               <span>
-                {userRole === 'question_admin'
+                {userRole !== 'super_admin'
                   ? '这里仅展示你创建的题目，可按标签筛选、随机查看或按题号跳转。'
                   : '这里可调试全部题目；现场答题请从“答题活动”进入。'}
               </span>

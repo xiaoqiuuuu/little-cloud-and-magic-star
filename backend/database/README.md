@@ -9,6 +9,7 @@ database/
 ├── init_db.py           # 数据库初始化（创建所有表）
 ├── questions.py         # 题目表相关操作
 ├── admins.py            # 管理员表相关操作
+├── rbac.py              # 后台角色、权限和角色权限关系
 ├── contributors.py     # 题目/物料与账号的贡献关系
 ├── activities.py        # 答题活动、活动题目与独立统计
 ├── tokens.py            # Refresh Token 轮换与撤销状态
