@@ -1,15 +1,28 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { App } from 'antd';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
 import Countdown from '../components/Countdown';
 import api from '../api';
 import { getQuestionTagMeta, mergeQuestionTagOptions } from '../constants/questionTags';
+import {
+  CharacterButton,
+  CharacterCard,
+  CharacterEmptyState,
+  Input,
+  Modal,
+  Select,
+  Tag,
+  useCloudUI,
+} from '../ui';
+import './QuizPage.css';
 
 function QuizPage({ activityMode = false, initialQuestionId = null }) {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
+  const navigate = useNavigate();
+  const { theme, characterPack, characterPacks } = useCloudUI();
   const userRole = localStorage.getItem('userRole') || '';
   const usesActiveActivity = activityMode || userRole === 'quiz_operator';
   const activeActivityIdRef = useRef(undefined);
@@ -37,6 +50,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
     }
   });
   const [showHiddenManager, setShowHiddenManager] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
   const [hiddenQuestionsCache, setHiddenQuestionsCache] = useState({}); // 缓存隐藏管理器中的题目
   // 新增：debugMode 控制题号跳转输入框
   const [debugMode, setDebugMode] = useState(
@@ -261,6 +275,26 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
   }, [questionIds]);
 
   const currentTagMeta = getQuestionTagMeta(currentQuestion?.tag);
+  const currentCharacterIndex = Math.max(
+    0,
+    theme.characterPackIds.indexOf(characterPack.id),
+  );
+  const characterFor = (offset = 0) => theme.characterPackIds[
+    (currentCharacterIndex + offset) % theme.characterPackIds.length
+  ];
+  const characterPackFor = (offset = 0) => characterPacks[characterFor(offset)];
+  const filterOptions = [
+    {
+      value: 'all',
+      label: `全部题目 (${questionIds.filter((question) => !hiddenQuestions.includes(question.id)).length})`,
+    },
+    ...questionTagOptions.map((option) => ({
+      value: option.value,
+      label: `${option.shortLabel} (${questionIds.filter(
+        (question) => question.tag === option.value && !hiddenQuestions.includes(question.id),
+      ).length})`,
+    })),
+  ];
 
 
   const handleRandomQuestion = async () => {
@@ -303,42 +337,8 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
     }
   };
 
-  const handleHideQuestion = async () => {
-    modal.confirm({
-      title: '确定要隐藏这道题目吗？',
-      content: '隐藏后将不会再随机到此题。',
-      okText: '确定',
-      cancelText: '取消',
-      onOk: async () => {
-        // 记录隐藏点击
-        try {
-          await api.post(`/track/hide/${currentQuestion.id}`, null, {
-            params: usesActiveActivity && activeActivity
-              ? { activity_id: activeActivity.id }
-              : undefined,
-          });
-        } catch (error) {
-          console.error('记录隐藏点击失败:', error);
-        }
-        
-        setHiddenQuestions([...hiddenQuestions, currentQuestion.id]);
-        // 如果还有题目，随机跳到另一题
-        if (filteredQuestionIds.length > 1) {
-          handleRandomQuestion();
-        } else {
-          setCurrentIndex(0);
-          // 也要重置状态
-          setIsTimeUp(false);
-          if (debugMode || !usesActiveActivity) {
-            setQuizStarted(true);
-            setShowCountdown(false);
-          } else {
-            setQuizStarted(false);
-            setShowCountdown(false);
-          }
-        }
-      }
-    });
+  const handleHideQuestion = () => {
+    setConfirmAction('hide');
   };
 
   const handleRestoreQuestion = (questionId) => {
@@ -346,15 +346,45 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
   };
 
   const handleRestoreAll = () => {
-    modal.confirm({
-      title: '确定要恢复所有隐藏的题目吗？',
-      okText: '确定',
-      cancelText: '取消',
-      onOk: () => {
-        setHiddenQuestions([]);
-        setCurrentIndex(0);
-      }
-    });
+    setConfirmAction('restore-all');
+  };
+
+  const handleConfirmAction = async () => {
+    if (confirmAction === 'restore-all') {
+      setHiddenQuestions([]);
+      setCurrentIndex(0);
+      setConfirmAction(null);
+      return;
+    }
+
+    if (confirmAction !== 'hide' || !currentQuestion) return;
+
+    try {
+      await api.post(`/track/hide/${currentQuestion.id}`, null, {
+        params: usesActiveActivity && activeActivity
+          ? { activity_id: activeActivity.id }
+          : undefined,
+      });
+    } catch (error) {
+      console.error('记录隐藏点击失败:', error);
+    }
+
+    setHiddenQuestions([...hiddenQuestions, currentQuestion.id]);
+    setConfirmAction(null);
+    if (filteredQuestionIds.length > 1) {
+      handleRandomQuestion();
+      return;
+    }
+
+    setCurrentIndex(0);
+    setIsTimeUp(false);
+    if (debugMode || !usesActiveActivity) {
+      setQuizStarted(true);
+      setShowCountdown(false);
+    } else {
+      setQuizStarted(false);
+      setShowCountdown(false);
+    }
   };
 
   // 开始答题
@@ -400,408 +430,306 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
     }
   };
 
+  useEffect(() => {
+    if (showHiddenManager) {
+      loadHiddenQuestions();
+    }
+  }, [showHiddenManager, hiddenQuestions]);
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-xl text-gray-600">加载中...</div>
+      <div className="quiz-character-page quiz-character-page--centered">
+        <CharacterEmptyState
+          character={characterFor(0)}
+          className="quiz-character-state"
+          title="加载中..."
+        />
       </div>
     );
   }
 
   if (usesActiveActivity && !activeActivity) {
     return (
-      <div className="flex justify-center items-center min-h-screen px-4">
-        <div className="bg-white rounded-2xl shadow-xl p-10 text-center max-w-xl">
-          <div className="text-5xl mb-5">⏳</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-3">等待活动开始</h1>
-          <p className="text-gray-500">
-            当前没有进行中的答题活动。管理员开始或切换活动后，本页面会自动更新。
-          </p>
-        </div>
+      <div className="quiz-character-page quiz-character-page--centered">
+        <CharacterEmptyState
+          character={characterFor(1)}
+          className="quiz-character-state"
+          title="等待活动开始"
+          description="当前没有进行中的答题活动。管理员开始或切换活动后，本页面会自动更新。"
+        />
       </div>
     );
   }
 
   if (questionIds.length === 0) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-xl text-gray-600">
-          {usesActiveActivity ? '当前活动暂无题目' : '暂无可调试题目'}
-        </div>
+      <div className="quiz-character-page quiz-character-page--centered">
+        <CharacterEmptyState
+          character={characterFor(2)}
+          className="quiz-character-state"
+          title={usesActiveActivity ? '当前活动暂无题目' : '暂无可调试题目'}
+        />
       </div>
     );
   }
 
   if (requestedQuestionMissing) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="max-w-lg rounded-xl border border-amber-200 bg-white p-8 text-center shadow-lg">
-          <div className="mb-4 text-4xl">🔎</div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-800">无法调试该题目</h1>
-          <p className="mb-6 text-gray-500">
-            题目 #{initialQuestionId} 不存在，或当前账号没有查看权限。
-          </p>
-          <Link
-            to="/admin/quiz"
-            className="inline-flex rounded-md bg-indigo-600 px-5 py-2 text-white hover:bg-indigo-700"
-          >
-            返回全部题目调试
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (filteredQuestionIds.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-6 flex justify-between items-center">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              筛选题目类型:
-            </label>
-            <select
-              value={selectedTag}
-              onChange={(e) => {
-                setSelectedTag(e.target.value);
-                setCurrentIndex(0);
-              }}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">全部题目 ({questionIds.filter(q => !hiddenQuestions.includes(q.id)).length})</option>
-              {questionTagOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.shortLabel} ({questionIds.filter(
-                    (q) => q.tag === option.value && !hiddenQuestions.includes(q.id),
-                  ).length})
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={() => setShowHiddenManager(true)}
-            className="ml-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-          >
-            管理隐藏题目 ({hiddenQuestions.length})
-          </button>
-        </div>
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center text-gray-600">
-          {hiddenQuestions.length > 0 ? (
-            <div>
-              <p className="mb-4">该类型暂无可见题目</p>
-              <button
-                onClick={() => setShowHiddenManager(true)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                查看隐藏的题目
-              </button>
-            </div>
-          ) : (
-            '该类型暂无题目'
+      <div className="quiz-character-page quiz-character-page--centered">
+        <CharacterEmptyState
+          character={characterFor(1)}
+          className="quiz-character-state"
+          title="无法调试该题目"
+          description={`题目 #${initialQuestionId} 不存在，或当前账号没有查看权限。`}
+          action={(
+            <CharacterButton character={characterFor(2)} onClick={() => navigate('/admin/quiz')}>
+              返回全部题目调试
+            </CharacterButton>
           )}
-        </div>
+        />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
-      {!usesActiveActivity && (
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-800">
-          <span className="font-semibold">题目调试：</span>
-          {userRole === 'question_admin'
-            ? '这里仅展示你创建的题目，可按标签筛选、随机查看或按题号跳转。'
-            : '这里可调试全部题目；现场答题请从“答题活动”进入。'}
-        </div>
-      )}
-      {usesActiveActivity && activeActivity && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800">
-          <span className="font-semibold">当前活动：</span>{activeActivity.name}
-          <span className="ml-2 text-sm text-green-600">({activeActivity.question_count} 道题)</span>
-        </div>
-      )}
-      {/* 如果还未开始答题，显示准备界面 */}
-      {!quizStarted ? (
-        <div className="min-h-screen flex items-center justify-center -mt-20">
-          <div className="bg-white rounded-2xl shadow-2xl p-12 text-center max-w-2xl">
-            <div className="mb-8">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-                🎯 准备答题
-              </h1>
-              <p className="text-lg text-gray-600 mb-2">
-                答题时间：<span className="font-bold text-blue-600">{Math.floor(countdownSeconds / 60)}分{countdownSeconds % 60}秒</span>
-              </p>
-              <p className="text-sm text-gray-500">
-                点击下方按钮开始答题，系统将随机抽取一道题目
-              </p>
-            </div>
-            
-            <button
-              onClick={handleStartQuiz}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-12 py-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-bold text-xl shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              开始答题 🚀
-            </button>
-            
-            <div className="mt-8 text-xs text-gray-400">
-              请确保网络连接稳定，答题过程中倒计时将持续进行
-            </div>
-          </div>
-        </div>
-      ) : (
-      <>
-      {/* 题目类型筛选和管理按钮 */}
-      <div className="mb-4 sm:mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          筛选题目类型:
-        </label>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <select
-            value={selectedTag}
-            onChange={(e) => {
-              setSelectedTag(e.target.value);
-              setCurrentIndex(0);
-            }}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+    <div className="quiz-character-page">
+      <div className="quiz-character-page__inner">
+        {!usesActiveActivity && (
+          <CharacterCard
+            character={characterFor(1)}
+            layout="corner"
+            size="small"
+            className="quiz-character-status-card"
           >
-            <option value="all">全部题目 ({questionIds.filter(q => !hiddenQuestions.includes(q.id)).length})</option>
-            {questionTagOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.shortLabel} ({questionIds.filter(
-                  (q) => q.tag === option.value && !hiddenQuestions.includes(q.id),
-                ).length})
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-2 sm:gap-3">
-            {!usesActiveActivity && (
-              <select
-                value={currentIndex}
-                onChange={(event) => setCurrentIndex(Number(event.target.value))}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                aria-label="快速选择预览题目"
-              >
-                {filteredQuestionIds.map((question, index) => (
-                  <option key={question.id} value={index}>#{question.id}</option>
-                ))}
-              </select>
-            )}
-            <button
-              onClick={handleRandomQuestion}
-              className="flex-1 sm:flex-none px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
-            >
-              🎲 随机抽题
-            </button>
-            <button
-              onClick={() => setShowHiddenManager(true)}
-              className="px-3 sm:px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm sm:text-base whitespace-nowrap"
-            >
-              隐藏 ({hiddenQuestions.length})
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 题号跳转功能，仅 debugMode 下显示 */}
-      {debugMode && (
-        <div className="mb-4 flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="输入题号（如 0, 1, 2...）"
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm w-40"
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                const idx = filteredQuestionIds.findIndex(q => q.id.toString() === e.target.value.trim());
-                if (idx !== -1) {
-                  setCurrentIndex(idx);
-                } else {
-                  message.warning('未找到该题号');
-                }
-              }
-            }}
-          />
-          <span className="text-xs text-gray-500">回车跳转</span>
-        </div>
-      )}
-
-      {/* 题目卡片 */}
-      {!currentQuestion ? (
-        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8 flex justify-center items-center min-h-[200px]">
-          <div className="text-xl text-gray-600">加载中...</div>
-        </div>
-      ) : (
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8 relative overflow-hidden">
-        
-        {/* 时间到遮罩层 */}
-        {isTimeUp && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 bg-opacity-95 text-white p-8 animate-fade-in">
-             <div className="text-6xl mb-8 animate-bounce">⏰</div>
-             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-center leading-tight">
-               时间到！<br/>说出你的答案
-             </h2>
-             <p className="text-xl text-gray-300 mb-12">请大声回答，争取正确！</p>
-             <button 
-               onClick={() => setIsTimeUp(false)}
-               className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-full transition-all hover:scale-105 shadow-lg border-2 border-blue-400"
-             >
-               继续答题 / 查看题目
-             </button>
-          </div>
-        )}
-
-        <div className="mb-3 sm:mb-4 flex justify-between items-center">
-          <span className="text-xs sm:text-sm text-gray-500">
-            题目 {currentIndex + 1} / {filteredQuestionIds.length}
-          </span>
-          <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-gray-100 text-gray-800">
-            {currentTagMeta.shortLabel}
-          </span>
-        </div>
-
-        {/* 题目编号和内容 */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <span className="inline-block bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-md font-bold text-sm sm:text-lg min-w-[50px] sm:min-w-[60px] text-center">
-              #{currentQuestion.id}
+            <strong>题目调试：</strong>
+            <span>
+              {userRole === 'question_admin'
+                ? '这里仅展示你创建的题目，可按标签筛选、随机查看或按题号跳转。'
+                : '这里可调试全部题目；现场答题请从“答题活动”进入。'}
             </span>
-          </div>
-          <h2 className="text-lg sm:text-2xl font-bold text-gray-800 leading-tight">
-            {currentQuestion.question}
-          </h2>
-        </div>
-
-        {/* 资源预览区：图片/视频/音频自动识别 */}
-        {currentQuestion.resources && currentQuestion.resources.length > 0 && (
-          <div className="mb-4 sm:mb-6">
-            <h3 className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">题目资源：</h3>
-            <div className="flex flex-wrap gap-4">
-              {currentQuestion.resources.map((url, idx) => {
-                const ext = url.split('.').pop().toLowerCase();
-                return (
-                  <div key={idx} className="relative w-64 min-h-[80px] flex flex-col items-center justify-center border rounded bg-white shadow-sm p-2">
-                    {/(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(ext) ? (
-                      <ImagePreview src={url} alt="图片资源" className="object-contain w-full h-40" />
-                    ) : /(mp4|webm|ogg|mov|avi|mkv)$/.test(ext) ? (
-                      <VideoPreview src={url} className="object-contain w-full h-40" />
-                    ) : /(mp3|wav|aac|flac|m4a|ogg)$/.test(ext) ? (
-                      <AudioPreview src={url} className="w-full h-16" />
-                    ) : (
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs">资源链接</a>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          </CharacterCard>
         )}
 
-        {/* 倒计时显示 */}
-        {showCountdown && (
-          <div className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 shadow-md border-2 border-blue-200">
-            <Countdown 
-              initialSeconds={countdownSeconds} 
-              onComplete={handleCountdownComplete}
+        {usesActiveActivity && activeActivity && (
+          <CharacterCard
+            character={characterFor(1)}
+            layout="corner"
+            size="small"
+            className="quiz-character-status-card"
+          >
+            <strong>当前活动：</strong>
+            <span>{activeActivity.name}</span>
+            <Tag tone="success">{activeActivity.question_count} 道题</Tag>
+          </CharacterCard>
+        )}
+
+        {filteredQuestionIds.length === 0 ? (
+          <div className="quiz-character-empty-layout">
+            <CharacterCard
+              character={characterFor(0)}
+              layout="watermark"
+              size="small"
+              className="quiz-character-control-card"
+            >
+              <div className="quiz-character-filter-row">
+                <Select
+                  label="筛选题目类型:"
+                  value={selectedTag}
+                  onChange={(event) => {
+                    setSelectedTag(event.target.value);
+                    setCurrentIndex(0);
+                  }}
+                  options={filterOptions}
+                />
+                <CharacterButton
+                  character={characterFor(2)}
+                  onClick={() => setShowHiddenManager(true)}
+                >
+                  管理隐藏题目 ({hiddenQuestions.length})
+                </CharacterButton>
+              </div>
+            </CharacterCard>
+            <CharacterEmptyState
+              character={characterFor(1)}
+              title={hiddenQuestions.length > 0 ? '该类型暂无可见题目' : '该类型暂无题目'}
+              action={hiddenQuestions.length > 0 ? (
+                <CharacterButton
+                  character={characterFor(2)}
+                  size="small"
+                  onClick={() => setShowHiddenManager(true)}
+                >
+                  查看隐藏的题目
+                </CharacterButton>
+              ) : undefined}
             />
           </div>
-        )}
-
-        {/* 操作按钮区 */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-24">
-          <button
-            onClick={handleRandomQuestion}
-            className="bg-purple-600 text-white py-2 sm:py-3 px-3 sm:px-4 rounded-md hover:bg-purple-700 transition-colors font-medium text-sm sm:text-lg"
+        ) : !quizStarted ? (
+          <div className="quiz-character-ready-wrap">
+            <CharacterCard
+              character={characterFor(0)}
+              layout="side"
+              size="large"
+              className="quiz-character-ready-card"
+            >
+              <h1>准备答题</h1>
+              <p>
+                答题时间：<strong>{Math.floor(countdownSeconds / 60)}分{countdownSeconds % 60}秒</strong>
+              </p>
+              <p>点击下方按钮开始答题，系统将随机抽取一道题目</p>
+              <CharacterButton
+                character={characterFor(1)}
+                size="large"
+                onClick={handleStartQuiz}
+              >
+                开始答题
+              </CharacterButton>
+              <small>请确保网络连接稳定，答题过程中倒计时将持续进行</small>
+            </CharacterCard>
+          </div>
+      ) : (
+        <>
+          <CharacterCard
+            character={characterFor(1)}
+            layout="watermark"
+            size="small"
+            className="quiz-character-control-card"
           >
-            🎲 随机抽题
-          </button>
-          
-          <button
-            onClick={handleHideQuestion}
-            className="bg-orange-500 text-white py-2 sm:py-3 px-3 sm:px-4 rounded-md hover:bg-orange-600 transition-colors font-medium text-sm sm:text-lg"
-          >
-            🗑️ 隐藏此题
-          </button>
-        </div>
-      </div>
-      )}
-      </>
-      )}
-
-      {/* 隐藏题目管理模态框 */}
-      {showHiddenManager && (() => {
-        // 当模态框打开时，立即加载隐藏的题目
-        loadHiddenQuestions();
-        return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white mb-10">
-            <div className="mt-3">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  隐藏题目管理
-                </h3>
-                <button
-                  onClick={() => setShowHiddenManager(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ×
-                </button>
+            <div className="quiz-character-filter-row">
+              <Select
+                label="筛选题目类型:"
+                value={selectedTag}
+                onChange={(event) => {
+                  setSelectedTag(event.target.value);
+                  setCurrentIndex(0);
+                }}
+                options={filterOptions}
+              />
+              {!usesActiveActivity && (
+                <Select
+                  block={false}
+                  label="题号"
+                  value={currentIndex}
+                  onChange={(event) => setCurrentIndex(Number(event.target.value))}
+                  aria-label="快速选择预览题目"
+                  options={filteredQuestionIds.map((question, index) => ({
+                    value: index,
+                    label: `#${question.id}`,
+                  }))}
+                />
+              )}
+              <div className="quiz-character-control-actions">
+                <CharacterButton character={characterFor(0)} onClick={handleRandomQuestion}>
+                  随机抽题
+                </CharacterButton>
+                <CharacterButton character={characterFor(2)} onClick={() => setShowHiddenManager(true)}>
+                  隐藏 ({hiddenQuestions.length})
+                </CharacterButton>
               </div>
+            </div>
+          </CharacterCard>
 
-              <div className="mb-4 flex justify-between items-center">
-                <p className="text-gray-600">
-                  已隐藏 <span className="font-bold text-blue-600">{hiddenQuestions.length}</span> 道题目
-                </p>
-                {hiddenQuestions.length > 0 && (
-                  <button
-                    onClick={handleRestoreAll}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+          {debugMode && (
+            <CharacterCard
+              character={characterFor(2)}
+              layout="corner"
+              size="small"
+              className="quiz-character-debug-card"
+            >
+              <Input
+                label="按题号跳转"
+                type="text"
+                placeholder="输入题号（如 0, 1, 2...）"
+                helperText="回车跳转"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    const index = filteredQuestionIds.findIndex(
+                      (question) => question.id.toString() === event.target.value.trim(),
+                    );
+                    if (index !== -1) {
+                      setCurrentIndex(index);
+                    } else {
+                      message.warning('未找到该题号');
+                    }
+                  }
+                }}
+              />
+            </CharacterCard>
+          )}
+
+          {!currentQuestion ? (
+            <CharacterEmptyState
+              character={characterFor(0)}
+              className="quiz-character-state"
+              title="加载中..."
+            />
+          ) : (
+            <CharacterCard
+              character={characterFor(0)}
+              layout="watermark"
+              size="large"
+              className="quiz-character-question-card"
+            >
+              {isTimeUp && (
+                <div className="quiz-character-time-up">
+                  <img src={characterPackFor(1).assets.cardCorner} alt="" draggable="false" />
+                  <h2>时间到！<br />说出你的答案</h2>
+                  <p>请大声回答，争取正确！</p>
+                  <CharacterButton
+                    character={characterFor(2)}
+                    size="large"
+                    onClick={() => setIsTimeUp(false)}
                   >
-                    恢复全部
-                  </button>
-                )}
+                    继续答题 / 查看题目
+                  </CharacterButton>
+                </div>
+              )}
+
+              <div className="quiz-character-question-meta">
+                <span>题目 {currentIndex + 1} / {filteredQuestionIds.length}</span>
+                <span className="quiz-character-question-avatar" aria-hidden="true">
+                  <img src={characterPackFor(1).assets.buttonAvatar} alt="" draggable="false" />
+                </span>
+                <Tag tone="primary">{currentTagMeta.shortLabel}</Tag>
               </div>
 
-              {hiddenQuestions.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  暂无隐藏的题目
-                </div>
-              ) : (
-                <div className="max-h-96 overflow-y-auto">
-                  <div className="space-y-3">
-                    {hiddenQuestions.map((questionId) => {
-                      const question = hiddenQuestionsCache[questionId];
-                      if (!question) {
-                        // 按需加载
-                        if (!loading) {
-                          loadHiddenQuestions();
-                        }
-                        return (
-                          <div key={questionId} className="p-4 border border-gray-200 rounded-lg">
-                            <p className="text-gray-500">加载中...</p>
-                          </div>
-                        );
-                      }
+              <div className="quiz-character-question-copy">
+                <Tag tone="primary" variant="solid">#{currentQuestion.id}</Tag>
+                <h2>{currentQuestion.question}</h2>
+              </div>
+
+              {currentQuestion.resources && currentQuestion.resources.length > 0 && (
+                <div className="quiz-character-resources">
+                  <h3>题目资源：</h3>
+                  <div className="quiz-character-resource-grid">
+                    {currentQuestion.resources.map((url, index) => {
+                      const extension = url.split('.').pop().toLowerCase();
                       return (
-                        <div
-                          key={questionId}
-                          className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                                  {getQuestionTagMeta(question.tag).shortLabel}
-                                </span>
-                              </div>
-                              <p className="text-gray-800 font-medium mb-1">{question.question}</p>
-                              <p className="text-sm text-gray-600">答案: {question.answer}</p>
-                            </div>
-                            <button
-                              onClick={() => handleRestoreQuestion(questionId)}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors whitespace-nowrap"
-                            >
-                              恢复
-                            </button>
-                          </div>
+                        <div className="quiz-character-resource" key={url}>
+                          <span className="quiz-character-resource__avatar" aria-hidden="true">
+                            <img src={characterPackFor(index + 1).assets.buttonAvatar} alt="" draggable="false" />
+                          </span>
+                          {/(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(extension) ? (
+                            <ImagePreview
+                              src={url}
+                              alt="图片资源"
+                              className="quiz-character-resource__visual"
+                              character={characterFor(index + 1)}
+                            />
+                          ) : /(mp4|webm|ogg|mov|avi|mkv)$/.test(extension) ? (
+                            <VideoPreview
+                              src={url}
+                              className="quiz-character-resource__visual"
+                              character={characterFor(index + 1)}
+                            />
+                          ) : /(mp3|wav|aac|flac|m4a|ogg)$/.test(extension) ? (
+                            <AudioPreview
+                              src={url}
+                              className="quiz-character-resource__audio"
+                              character={characterFor(index + 1)}
+                            />
+                          ) : (
+                            <a href={url} target="_blank" rel="noopener noreferrer">资源链接</a>
+                          )}
                         </div>
                       );
                     })}
@@ -809,19 +737,152 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                 </div>
               )}
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={() => setShowHiddenManager(false)}
-                  className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              {showCountdown && (
+                <CharacterCard
+                  character={characterFor(2)}
+                  layout="side"
+                  size="small"
+                  className="quiz-character-countdown-card"
                 >
-                  关闭
-                </button>
+                  <Countdown
+                    initialSeconds={countdownSeconds}
+                    onComplete={handleCountdownComplete}
+                  />
+                </CharacterCard>
+              )}
+
+              <div className="quiz-character-question-actions">
+                <CharacterButton
+                  character={characterFor(1)}
+                  size="large"
+                  block
+                  onClick={handleRandomQuestion}
+                >
+                  随机抽题
+                </CharacterButton>
+                <CharacterButton
+                  character={characterFor(2)}
+                  size="large"
+                  block
+                  onClick={handleHideQuestion}
+                >
+                  隐藏此题
+                </CharacterButton>
               </div>
-            </div>
+            </CharacterCard>
+          )}
+        </>
+      )}
+
+      </div>
+
+      <Modal
+        open={showHiddenManager}
+        onClose={() => setShowHiddenManager(false)}
+        title="隐藏题目管理"
+        width="large"
+        showClose={false}
+        className="quiz-character-modal"
+        footer={(
+          <CharacterButton character={characterFor(0)} onClick={() => setShowHiddenManager(false)}>
+            关闭
+          </CharacterButton>
+        )}
+      >
+        <CharacterCard
+          character={characterFor(1)}
+          layout="corner"
+          size="small"
+          className="quiz-character-hidden-summary"
+        >
+          <p>已隐藏 <strong>{hiddenQuestions.length}</strong> 道题目</p>
+          {hiddenQuestions.length > 0 && (
+            <CharacterButton character={characterFor(2)} size="small" onClick={handleRestoreAll}>
+              恢复全部
+            </CharacterButton>
+          )}
+        </CharacterCard>
+
+        {hiddenQuestions.length === 0 ? (
+          <CharacterEmptyState character={characterFor(2)} size="small" title="暂无隐藏的题目" />
+        ) : (
+          <div className="quiz-character-hidden-list">
+            {hiddenQuestions.map((questionId, index) => {
+              const question = hiddenQuestionsCache[questionId];
+              if (!question) {
+                return (
+                  <CharacterCard
+                    key={questionId}
+                    character={characterFor(index)}
+                    layout="watermark"
+                    size="small"
+                    className="quiz-character-hidden-card"
+                  >
+                    <p>加载中...</p>
+                  </CharacterCard>
+                );
+              }
+              return (
+                <CharacterCard
+                  key={questionId}
+                  character={characterFor(index)}
+                  layout="watermark"
+                  size="small"
+                  className="quiz-character-hidden-card"
+                >
+                  <div className="quiz-character-hidden-card__copy">
+                    <Tag>{getQuestionTagMeta(question.tag).shortLabel}</Tag>
+                    <strong>{question.question}</strong>
+                    <span>答案: {question.answer}</span>
+                  </div>
+                  <CharacterButton
+                    character={characterFor(index + 1)}
+                    size="small"
+                    onClick={() => handleRestoreQuestion(questionId)}
+                  >
+                    恢复
+                  </CharacterButton>
+                </CharacterCard>
+              );
+            })}
           </div>
-        </div>
-        );
-      })()}
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(confirmAction)}
+        onClose={() => setConfirmAction(null)}
+        title={confirmAction === 'hide' ? '确定要隐藏这道题目吗？' : '确定要恢复所有隐藏的题目吗？'}
+        width="small"
+        showClose={false}
+        className="quiz-character-modal"
+        footer={(
+          <>
+            <CharacterButton character={characterFor(0)} onClick={() => setConfirmAction(null)}>
+              取消
+            </CharacterButton>
+            <CharacterButton character={characterFor(1)} onClick={handleConfirmAction}>
+              确定
+            </CharacterButton>
+          </>
+        )}
+      >
+        <CharacterCard
+          character={characterFor(2)}
+          layout="watermark"
+          size="small"
+          className="quiz-character-confirm-card"
+        >
+          {confirmAction === 'hide' ? (
+            <>
+              <strong>{currentQuestion?.question}</strong>
+              <p>隐藏后将不会再随机到此题。</p>
+            </>
+          ) : (
+            <p>已隐藏 {hiddenQuestions.length} 道题目</p>
+          )}
+        </CharacterCard>
+      </Modal>
     </div>
   );
 }

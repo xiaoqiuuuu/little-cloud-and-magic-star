@@ -126,12 +126,6 @@ function HomePage() {
   return (
     <div className={`min-h-screen bg-gradient-to-b ${theme.page} relative overflow-hidden`}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 left-10 text-2xl animate-pulse">✨</div>
-        <div className="absolute top-20 right-20 text-xl animate-pulse delay-100">⭐</div>
-        <div className="absolute top-40 left-1/4 text-lg animate-pulse delay-200">💫</div>
-        <div className="absolute top-60 right-1/3 text-2xl animate-pulse delay-300">🌟</div>
-        <div className="absolute bottom-40 left-1/3 text-xl animate-pulse">✨</div>
-        <div className="absolute bottom-20 right-1/4 text-lg animate-pulse delay-100">⭐</div>
         <div className="absolute top-1/4 left-0 w-32 h-0.5 bg-gradient-to-r from-transparent via-white to-transparent opacity-60 rotate-45 animate-shooting-star" />
         <div className="absolute top-1/3 right-10 w-24 h-0.5 bg-gradient-to-r from-transparent via-white to-transparent opacity-60 rotate-45 animate-shooting-star delay-500" />
       </div>
@@ -152,8 +146,6 @@ function HomePage() {
             >
               {content.title}
             </h1>
-            <div className="absolute -top-8 right-1/4 text-4xl animate-bounce">✨</div>
-            <div className="absolute -bottom-4 left-1/4 text-3xl animate-bounce delay-200">⭐</div>
           </div>
 
           {(content.intro_title || content.intro) && (
