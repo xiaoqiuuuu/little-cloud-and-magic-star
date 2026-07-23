@@ -8,6 +8,25 @@
   backdrop-filter: blur(16px);
 }
 
+.cloud-navbar__container {
+  width: 100%;
+}
+
+.cloud-navbar__row {
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.cloud-navbar__brand-wrap,
+.cloud-navbar__brand {
+  min-width: 0;
+}
+
+.cloud-navbar__actions {
+  flex: 0 0 auto;
+}
+
 .cloud-navbar__brand {
   display: inline-flex;
   align-items: center;
@@ -38,12 +57,38 @@
 }
 
 @media (max-width: 520px) {
-  .cloud-navbar__brand > span:last-child {
-    max-width: 112px;
+  .cloud-navbar__container {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .cloud-navbar__row {
+    gap: 6px;
+  }
+
+  .cloud-navbar__brand {
+    gap: 5px;
+  }
+
+  .cloud-navbar__character {
+    width: 32px;
+    height: 32px;
+  }
+
+  .cloud-navbar__brand-text {
+    max-width: 104px;
     overflow: hidden;
     font-size: 13px;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .cloud-navbar__actions {
+    gap: 6px;
+  }
+
+  .cloud-navbar__actions > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0;
   }
 
   .cloud-navbar .cui-character-button.cui-button--small {

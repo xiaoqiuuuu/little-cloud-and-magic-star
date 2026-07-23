@@ -17,13 +17,18 @@ function Navbar({
   isAdminLoggedIn,
   userRole = '',
   brandText = '肥音卤果答题活动',
+  mobileBrandText = '',
   homePath = '/quiz',
   characterActions = false,
 }) {
   const navigate = useNavigate();
-  const { characterPack } = useCloudUI();
+  const { characterPack, theme } = useCloudUI();
   const [logoutLoading, setLogoutLoading] = useState(false);
   const isQuizOperator = isAdminLoggedIn && userRole === 'quiz_operator';
+  const currentCharacterIndex = Math.max(0, theme.characterPackIds.indexOf(characterPack.id));
+  const navbarCharacterFor = (offset) => theme.characterPackIds[
+    (currentCharacterIndex + offset) % theme.characterPackIds.length
+  ];
 
   const handleLogout = async () => {
     setLogoutLoading(true);
@@ -44,27 +49,38 @@ function Navbar({
 
   return (
     <nav className="cloud-navbar">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
+      <div className="cloud-navbar__container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="cloud-navbar__row flex justify-between h-16">
+          <div className="cloud-navbar__brand-wrap flex items-center">
             <Link to={homePath} className="cloud-navbar__brand text-xl font-bold transition-colors">
               {characterActions && (
                 <span className="cloud-navbar__character" aria-hidden="true">
                   <img src={characterPack.assets.buttonAvatar} alt="" draggable="false" />
                 </span>
               )}
-              <span>{brandText}</span>
+              <span className={mobileBrandText ? 'cloud-navbar__brand-text hidden sm:inline' : 'cloud-navbar__brand-text'}>
+                {brandText}
+              </span>
+              {mobileBrandText && (
+                <span className="cloud-navbar__brand-text sm:hidden">{mobileBrandText}</span>
+              )}
             </Link>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="cloud-navbar__actions flex items-center space-x-3">
             {characterActions ? (
               <>
-                <CharacterButton size="small" showSparkle={false} onClick={() => navigate('/')}>
+                <CharacterButton
+                  character={navbarCharacterFor(1)}
+                  size="small"
+                  showSparkle={false}
+                  onClick={() => navigate('/')}
+                >
                   <span className="hidden sm:inline">回到主页</span>
                   <span className="sm:hidden">主页</span>
                 </CharacterButton>
                 {isQuizOperator ? (
                   <CharacterButton
+                    character={navbarCharacterFor(2)}
                     size="small"
                     showSparkle={false}
                     loading={logoutLoading}
@@ -75,6 +91,7 @@ function Navbar({
                   </CharacterButton>
                 ) : (
                   <CharacterButton
+                    character={navbarCharacterFor(2)}
                     size="small"
                     showSparkle={false}
                     onClick={() => navigate(isAdminLoggedIn ? '/admin/questions' : '/admin/login')}
