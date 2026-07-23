@@ -91,8 +91,8 @@
     margin-left: 0;
   }
 
-  .cloud-navbar .cui-character-button.cui-button--small {
-    padding-right: 9px;
-    padding-left: 36px;
+  .cloud-navbar .cui-button--small {
+    padding-right: 10px;
+    padding-left: 10px;
   }
 }

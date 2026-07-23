@@ -8,6 +8,8 @@ import Countdown from '../components/Countdown';
 import api from '../api';
 import { getQuestionTagMeta, mergeQuestionTagOptions } from '../constants/questionTags';
 import {
+  Button,
+  Card,
   CharacterButton,
   CharacterCard,
   CharacterEmptyState,
@@ -482,9 +484,9 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
           title="无法调试该题目"
           description={`题目 #${initialQuestionId} 不存在，或当前账号没有查看权限。`}
           action={(
-            <CharacterButton character={characterFor(2)} onClick={() => navigate('/admin/quiz')}>
+            <Button variant="secondary" onClick={() => navigate('/admin/quiz')}>
               返回全部题目调试
-            </CharacterButton>
+            </Button>
           )}
         />
       </div>
@@ -495,42 +497,31 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
     <div className="quiz-character-page">
       <div className="quiz-character-page__inner">
         {!usesActiveActivity && (
-          <CharacterCard
-            character={characterFor(1)}
-            layout="corner"
-            size="small"
-            className="quiz-character-status-card"
-          >
-            <strong>题目调试：</strong>
-            <span>
-              {userRole === 'question_admin'
-                ? '这里仅展示你创建的题目，可按标签筛选、随机查看或按题号跳转。'
-                : '这里可调试全部题目；现场答题请从“答题活动”进入。'}
-            </span>
-          </CharacterCard>
+          <Card variant="soft" padding="small" className="quiz-character-status-card">
+            <div className="quiz-character-status-card__content">
+              <strong>题目调试：</strong>
+              <span>
+                {userRole === 'question_admin'
+                  ? '这里仅展示你创建的题目，可按标签筛选、随机查看或按题号跳转。'
+                  : '这里可调试全部题目；现场答题请从“答题活动”进入。'}
+              </span>
+            </div>
+          </Card>
         )}
 
         {usesActiveActivity && activeActivity && (
-          <CharacterCard
-            character={characterFor(1)}
-            layout="corner"
-            size="small"
-            className="quiz-character-status-card"
-          >
-            <strong>当前活动：</strong>
-            <span>{activeActivity.name}</span>
-            <Tag tone="success">{activeActivity.question_count} 道题</Tag>
-          </CharacterCard>
+          <Card variant="soft" padding="small" className="quiz-character-status-card">
+            <div className="quiz-character-status-card__content">
+              <strong>当前活动：</strong>
+              <span>{activeActivity.name}</span>
+              <Tag tone="success">{activeActivity.question_count} 道题</Tag>
+            </div>
+          </Card>
         )}
 
         {filteredQuestionIds.length === 0 ? (
           <div className="quiz-character-empty-layout">
-            <CharacterCard
-              character={characterFor(0)}
-              layout="watermark"
-              size="small"
-              className="quiz-character-control-card"
-            >
+            <Card variant="soft" padding="medium" className="quiz-character-control-card">
               <div className="quiz-character-filter-row quiz-character-filter-row--empty">
                 <Select
                   label="筛选题目类型:"
@@ -541,25 +532,25 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                   }}
                   options={filterOptions}
                 />
-                <CharacterButton
-                  character={characterFor(2)}
+                <Button
+                  variant="secondary"
                   onClick={() => setShowHiddenManager(true)}
                 >
                   管理隐藏题目 ({hiddenQuestions.length})
-                </CharacterButton>
+                </Button>
               </div>
-            </CharacterCard>
+            </Card>
             <CharacterEmptyState
               character={characterFor(1)}
               title={hiddenQuestions.length > 0 ? '该类型暂无可见题目' : '该类型暂无题目'}
               action={hiddenQuestions.length > 0 ? (
-                <CharacterButton
-                  character={characterFor(2)}
+                <Button
+                  variant="secondary"
                   size="small"
                   onClick={() => setShowHiddenManager(true)}
                 >
                   查看隐藏的题目
-                </CharacterButton>
+                </Button>
               ) : undefined}
             />
           </div>
@@ -567,7 +558,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
           <div className="quiz-character-ready-wrap">
             <CharacterCard
               character={characterFor(0)}
-              layout="side"
+              layout="corner"
               size="large"
               className="quiz-character-ready-card"
             >
@@ -588,12 +579,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
           </div>
       ) : (
         <>
-          <CharacterCard
-            character={characterFor(1)}
-            layout="watermark"
-            size="small"
-            className="quiz-character-control-card"
-          >
+          <Card variant="soft" padding="medium" className="quiz-character-control-card">
             <div className="quiz-character-filter-row">
               <Select
                 label="筛选题目类型:"
@@ -618,23 +604,18 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                 />
               )}
               <div className="quiz-character-control-actions">
-                <CharacterButton character={characterFor(0)} onClick={handleRandomQuestion}>
+                <Button variant="secondary" onClick={handleRandomQuestion}>
                   随机抽题
-                </CharacterButton>
-                <CharacterButton character={characterFor(2)} onClick={() => setShowHiddenManager(true)}>
+                </Button>
+                <Button variant="secondary" onClick={() => setShowHiddenManager(true)}>
                   隐藏 ({hiddenQuestions.length})
-                </CharacterButton>
+                </Button>
               </div>
             </div>
-          </CharacterCard>
+          </Card>
 
           {debugMode && (
-            <CharacterCard
-              character={characterFor(2)}
-              layout="corner"
-              size="small"
-              className="quiz-character-debug-card"
-            >
+            <Card variant="outlined" padding="medium" className="quiz-character-debug-card">
               <Input
                 label="按题号跳转"
                 type="text"
@@ -653,7 +634,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                   }
                 }}
               />
-            </CharacterCard>
+            </Card>
           )}
 
           {!currentQuestion ? (
@@ -705,27 +686,24 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                       const extension = url.split('.').pop().toLowerCase();
                       return (
                         <div className="quiz-character-resource" key={url}>
-                          <span className="quiz-character-resource__avatar" aria-hidden="true">
-                            <img src={characterPackFor(index + 1).assets.buttonAvatar} alt="" draggable="false" />
-                          </span>
                           {/(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(extension) ? (
                             <ImagePreview
                               src={url}
                               alt="图片资源"
                               className="quiz-character-resource__visual"
-                              character={characterFor(index + 1)}
+                              themedClose
                             />
                           ) : /(mp4|webm|ogg|mov|avi|mkv)$/.test(extension) ? (
                             <VideoPreview
                               src={url}
                               className="quiz-character-resource__visual"
-                              character={characterFor(index + 1)}
+                              themedClose
                             />
                           ) : /(mp3|wav|aac|flac|m4a|ogg)$/.test(extension) ? (
                             <AudioPreview
                               src={url}
                               className="quiz-character-resource__audio"
-                              character={characterFor(index + 1)}
+                              themedClose
                             />
                           ) : (
                             <a href={url} target="_blank" rel="noopener noreferrer">资源链接</a>
@@ -738,36 +716,31 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
               )}
 
               {showCountdown && (
-                <CharacterCard
-                  character={characterFor(2)}
-                  layout="side"
-                  size="small"
-                  className="quiz-character-countdown-card"
-                >
+                <Card variant="soft" padding="medium" className="quiz-character-countdown-card">
                   <Countdown
                     initialSeconds={countdownSeconds}
                     onComplete={handleCountdownComplete}
                   />
-                </CharacterCard>
+                </Card>
               )}
 
               <div className="quiz-character-question-actions">
-                <CharacterButton
-                  character={characterFor(1)}
+                <Button
+                  variant="primary"
                   size="large"
                   block
                   onClick={handleRandomQuestion}
                 >
                   随机抽题
-                </CharacterButton>
-                <CharacterButton
-                  character={characterFor(2)}
+                </Button>
+                <Button
+                  variant="secondary"
                   size="large"
                   block
                   onClick={handleHideQuestion}
                 >
                   隐藏此题
-                </CharacterButton>
+                </Button>
               </div>
             </CharacterCard>
           )}
@@ -784,50 +757,43 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
         showClose={false}
         className="quiz-character-modal"
         footer={(
-          <CharacterButton character={characterFor(0)} onClick={() => setShowHiddenManager(false)}>
+          <Button variant="secondary" onClick={() => setShowHiddenManager(false)}>
             关闭
-          </CharacterButton>
+          </Button>
         )}
       >
-        <CharacterCard
-          character={characterFor(1)}
-          layout="corner"
-          size="small"
-          className="quiz-character-hidden-summary"
-        >
+        <Card variant="soft" padding="medium" className="quiz-character-hidden-summary">
           <p>已隐藏 <strong>{hiddenQuestions.length}</strong> 道题目</p>
           {hiddenQuestions.length > 0 && (
-            <CharacterButton character={characterFor(2)} size="small" onClick={handleRestoreAll}>
+            <Button variant="secondary" size="small" onClick={handleRestoreAll}>
               恢复全部
-            </CharacterButton>
+            </Button>
           )}
-        </CharacterCard>
+        </Card>
 
         {hiddenQuestions.length === 0 ? (
           <CharacterEmptyState character={characterFor(2)} size="small" title="暂无隐藏的题目" />
         ) : (
           <div className="quiz-character-hidden-list">
-            {hiddenQuestions.map((questionId, index) => {
+            {hiddenQuestions.map((questionId) => {
               const question = hiddenQuestionsCache[questionId];
               if (!question) {
                 return (
-                  <CharacterCard
+                  <Card
                     key={questionId}
-                    character={characterFor(index)}
-                    layout="watermark"
-                    size="small"
+                    variant="outlined"
+                    padding="medium"
                     className="quiz-character-hidden-card"
                   >
                     <p>加载中...</p>
-                  </CharacterCard>
+                  </Card>
                 );
               }
               return (
-                <CharacterCard
+                <Card
                   key={questionId}
-                  character={characterFor(index)}
-                  layout="watermark"
-                  size="small"
+                  variant="outlined"
+                  padding="medium"
                   className="quiz-character-hidden-card"
                 >
                   <div className="quiz-character-hidden-card__copy">
@@ -835,14 +801,14 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                     <strong>{question.question}</strong>
                     <span>答案: {question.answer}</span>
                   </div>
-                  <CharacterButton
-                    character={characterFor(index + 1)}
+                  <Button
+                    variant="secondary"
                     size="small"
                     onClick={() => handleRestoreQuestion(questionId)}
                   >
                     恢复
-                  </CharacterButton>
-                </CharacterCard>
+                  </Button>
+                </Card>
               );
             })}
           </div>
@@ -858,21 +824,16 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
         className="quiz-character-modal"
         footer={(
           <>
-            <CharacterButton character={characterFor(0)} onClick={() => setConfirmAction(null)}>
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>
               取消
-            </CharacterButton>
-            <CharacterButton character={characterFor(1)} onClick={handleConfirmAction}>
+            </Button>
+            <Button variant="primary" onClick={handleConfirmAction}>
               确定
-            </CharacterButton>
+            </Button>
           </>
         )}
       >
-        <CharacterCard
-          character={characterFor(2)}
-          layout="watermark"
-          size="small"
-          className="quiz-character-confirm-card"
-        >
+        <Card variant="soft" padding="medium" className="quiz-character-confirm-card">
           {confirmAction === 'hide' ? (
             <>
               <strong>{currentQuestion?.question}</strong>
@@ -881,7 +842,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
           ) : (
             <p>已隐藏 {hiddenQuestions.length} 道题目</p>
           )}
-        </CharacterCard>
+        </Card>
       </Modal>
     </div>
   );
