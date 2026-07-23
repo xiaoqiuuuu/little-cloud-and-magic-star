@@ -29,8 +29,8 @@
 ### 管理员功能（需要登录）
 - ✅ 管理员登录认证
 - ✅ Access Token（1 天）+ Refresh Token（30 天）自动续期
-- ✅ 超级管理员专属人员管理（创建、编辑、停用、删除、重置密码）
-- ✅ 独立“答题人员”账号，只能进入现场答题页面
+- ✅ RBAC 角色权限管理（账号 → 角色 → 权限）
+- ✅ 可按角色分别授予题目管理、账号权限、主页活动管理和现场答题权限
 - ✅ 答题活动管理（草稿、开始、暂停切换、结束）
 - ✅ 官网活动管理（复制、编辑、预览、设为主页、归档）
 - ✅ 每场活动独立选择题目，并保存每道题的独立随机/隐藏统计
@@ -167,7 +167,7 @@ Body: {
 
 Refresh Token 每次使用后都会轮换，旧 Token 不能重复使用。
 
-#### 人员管理（仅超级管理员）
+#### 账号与权限管理（需要 `accounts.manage`）
 ```
 GET    /api/admin/users
 POST   /api/admin/users
@@ -176,9 +176,9 @@ PUT    /api/admin/users/{admin_id}/password
 DELETE /api/admin/users/{admin_id}
 ```
 
-人员角色包括：`super_admin`（超级管理员）、`question_admin`（题目管理员）和 `quiz_operator`（现场答题人员）。答题人员不能访问后台管理接口。
+默认角色包括 `super_admin`、`question_admin` 和 `quiz_operator`，也可以创建自定义角色。权限管理接口位于 `/api/admin/access/roles` 和 `/api/admin/access/permissions`。超级管理员角色作为系统恢复入口，始终拥有全部权限。
 
-#### 答题活动（仅超级管理员管理）
+#### 答题活动（需要 `questions.manage`）
 ```
 GET    /api/admin/activities
 POST   /api/admin/activities
@@ -192,7 +192,7 @@ POST   /api/admin/activities/{activity_id}/end
 
 同一时间只能有一个进行中的活动。开始另一个活动会自动暂停当前活动，切回时会继续使用原活动统计；活动结束后只读。现场答题页面通过 `GET /api/quiz/active-activity` 自动跟随当前活动，原有随机、隐藏、倒计时和答案判断逻辑保持不变。
 
-#### 官网活动（公开读取、仅超级管理员管理）
+#### 官网活动（公开读取；后台管理需要 `homepage.manage`）
 
 公开接口：
 

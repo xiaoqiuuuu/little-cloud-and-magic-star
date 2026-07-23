@@ -21,16 +21,10 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import api, { clearAuthSession } from '../api';
+import AccessRoleManager from '../components/admin/AccessRoleManager';
 
 
 const { Title, Text } = Typography;
-
-const roleOptions = [
-  { value: 'question_admin', label: '题目管理员' },
-  { value: 'quiz_operator', label: '答题人员' },
-  { value: 'super_admin', label: '超级管理员' },
-];
-
 
 function formatDateTime(value) {
   if (!value) return '-';
@@ -45,6 +39,8 @@ function AdminUserManager() {
   const { currentUser } = useOutletContext();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -53,29 +49,37 @@ function AdminUserManager() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [accountForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
-  const selectedRole = Form.useWatch('role', accountForm);
+  const roleOptions = roles.map((role) => ({ value: role.key, label: role.name }));
 
-  const fetchUsers = async () => {
+  const fetchAccessData = async () => {
     try {
       setLoading(true);
-      const usersResponse = await api.get('/admin/users');
+      const [usersResponse, rolesResponse, permissionsResponse] = await Promise.all([
+        api.get('/admin/users'),
+        api.get('/admin/access/roles'),
+        api.get('/admin/access/permissions'),
+      ]);
       setUsers(usersResponse.data);
+      setRoles(rolesResponse.data);
+      setPermissions(permissionsResponse.data);
     } catch (error) {
-      console.error('获取人员列表失败:', error);
+      console.error('获取账号与权限数据失败:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchAccessData();
   }, []);
 
   const openCreateModal = () => {
     setEditingUser(null);
     accountForm.resetFields();
     accountForm.setFieldsValue({
-      role: 'question_admin',
+      role: roles.some((role) => role.key === 'question_admin')
+        ? 'question_admin'
+        : roles[0]?.key,
       is_active: true,
       display_name: '',
       profile_url: '',
@@ -119,7 +123,7 @@ function AdminUserManager() {
         message.success('账号创建成功');
       }
       setAccountModalOpen(false);
-      await fetchUsers();
+      await fetchAccessData();
     } catch (error) {
       console.error('保存账号失败:', error);
     } finally {
@@ -167,7 +171,7 @@ function AdminUserManager() {
         try {
           await api.delete(`/admin/users/${user.id}`);
           message.success('账号已删除');
-          await fetchUsers();
+          await fetchAccessData();
         } catch (error) {
           console.error('删除账号失败:', error);
         }
@@ -191,16 +195,21 @@ function AdminUserManager() {
       title: '角色',
       dataIndex: 'role',
       key: 'role',
-      render: (role) => {
-        if (role === 'super_admin') return <Tag color="purple">超级管理员</Tag>;
-        if (role === 'quiz_operator') return <Tag color="green">答题人员</Tag>;
-        return <Tag color="cyan">题目管理员</Tag>;
-      },
+      render: (_, record) => (
+        <div>
+          <Tag color={record.role === 'super_admin' ? 'purple' : 'cyan'}>
+            {record.role_name || record.role}
+          </Tag>
+          <div className="mt-1 text-xs text-gray-500">
+            {(record.permissions || []).length} 项权限
+          </div>
+        </div>
+      ),
     },
     {
       title: '账号名片',
       key: 'profile',
-      render: (_, record) => record.role === 'quiz_operator' ? '-' : (
+      render: (_, record) => (
         <div>
           <div className="font-medium text-gray-800">{record.display_name}</div>
           {record.profile_url && (
@@ -214,6 +223,20 @@ function AdminUserManager() {
             </a>
           )}
         </div>
+      ),
+    },
+    {
+      title: '主要权限',
+      key: 'permissions',
+      responsive: ['lg'],
+      render: (_, record) => (
+        <Space wrap size={[2, 4]}>
+          {(record.permissions || []).map((permission) => (
+            <Tag key={permission}>
+              {permissions.find((item) => item.key === permission)?.name || permission}
+            </Tag>
+          ))}
+        </Space>
       ),
     },
     {
@@ -275,7 +298,7 @@ function AdminUserManager() {
         <div>
           <Title level={2} className="!mb-1">账号与权限</Title>
           <Text type="secondary">
-            管理登录账号及其署名资料。题目和物料直接绑定账号。
+            管理登录账号并为账号分配权限角色。只有拥有账号与权限管理权限的角色才能进入本页。
           </Text>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
@@ -331,21 +354,17 @@ function AdminUserManager() {
             <Select options={roleOptions} />
           </Form.Item>
 
-          {selectedRole !== 'quiz_operator' && (
-            <>
-              <Form.Item
-                name="display_name"
-                label="署名名称"
-                rules={[{ required: true, message: '请输入署名名称' }]}
-              >
-                <Input placeholder="题目和物料中对外显示的名称" />
-              </Form.Item>
+          <Form.Item
+            name="display_name"
+            label="显示名称"
+            rules={[{ required: true, message: '请输入显示名称' }]}
+          >
+            <Input placeholder="后台及内容署名中显示的名称" />
+          </Form.Item>
 
-              <Form.Item name="profile_url" label="个人主页">
-                <Input placeholder="https://..." />
-              </Form.Item>
-            </>
-          )}
+          <Form.Item name="profile_url" label="个人主页">
+            <Input placeholder="https://..." />
+          </Form.Item>
 
           {editingUser && (
             <Form.Item name="is_active" label="账号状态" valuePropName="checked">
@@ -396,6 +415,13 @@ function AdminUserManager() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <AccessRoleManager
+        roles={roles}
+        permissions={permissions}
+        loading={loading}
+        onRefresh={fetchAccessData}
+      />
     </Card>
   );
 }

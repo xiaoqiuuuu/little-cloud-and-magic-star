@@ -3,6 +3,12 @@
 from fastapi import Depends, HTTPException, status
 from typing import Tuple
 from auth import verify_token, get_current_user_info
+from database.rbac import (
+    ACCOUNTS_MANAGE,
+    HOMEPAGE_MANAGE,
+    QUESTIONS_MANAGE,
+    QUIZ_OPERATE,
+)
 
 
 # 公共依赖项 - 兼容旧的用法（返回单个用户名）
@@ -34,11 +40,40 @@ def require_super_admin(user_info: dict = Depends(get_current_user_info)) -> dic
     return user_info
 
 
-def require_content_admin(user_info: dict = Depends(get_current_user_info)) -> dict:
-    """允许超级管理员和题目管理员，拒绝仅用于现场答题的账号。"""
-    if user_info["role"] not in {"super_admin", "question_admin"}:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="答题人员不能访问后台管理功能",
-        )
-    return user_info
+def has_permission(user_info: dict, permission: str) -> bool:
+    return permission in set(user_info.get("permissions") or [])
+
+
+def require_permission(permission: str):
+    def dependency(user_info: dict = Depends(get_current_user_info)) -> dict:
+        if not has_permission(user_info, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="当前账号没有执行此操作所需的权限",
+            )
+        return user_info
+
+    return dependency
+
+
+def require_any_permission(*permissions: str):
+    required = set(permissions)
+
+    def dependency(user_info: dict = Depends(get_current_user_info)) -> dict:
+        if not required.intersection(user_info.get("permissions") or []):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="当前账号没有访问此功能所需的权限",
+            )
+        return user_info
+
+    return dependency
+
+
+require_questions_manage = require_permission(QUESTIONS_MANAGE)
+require_accounts_manage = require_permission(ACCOUNTS_MANAGE)
+require_homepage_manage = require_permission(HOMEPAGE_MANAGE)
+require_quiz_operate = require_permission(QUIZ_OPERATE)
+
+# 兼容旧模块名称，含义已升级为题目与答题活动管理权限。
+require_content_admin = require_questions_manage

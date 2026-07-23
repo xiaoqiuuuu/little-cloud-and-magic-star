@@ -4,6 +4,7 @@ import { Form, Typography, Space } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import api, { clearAuthSession, saveTokenPair } from '../api';
 import { showSuccess, showError } from '../utils/message';
+import { getDefaultAccessPath, storeUserAccess } from '../utils/adminAccess';
 import { Card, CharacterButton, Input, useCloudUI } from '../ui';
 import AdminThemeSwitcher from '../components/admin/AdminThemeSwitcher';
 import './AdminLogin.css';
@@ -33,7 +34,7 @@ function AdminLogin() {
 
       // 获取用户角色信息
       const userRes = await api.get('/admin/me', { hideLoading: true });
-      localStorage.setItem('userRole', userRes.data.role);
+      storeUserAccess(userRes.data);
       localStorage.setItem('username', userRes.data.username);
       localStorage.setItem('currentUserId', String(userRes.data.id));
 
@@ -43,10 +44,7 @@ function AdminLogin() {
       }));
 
       showSuccess('登录成功！');
-      navigate(
-        userRes.data.role === 'quiz_operator' ? '/quiz' : '/admin/questions',
-        { replace: true },
-      );
+      navigate(getDefaultAccessPath(userRes.data), { replace: true });
     } catch (error) {
       console.error('登录失败:', error);
       clearAuthSession();

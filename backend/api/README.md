@@ -7,6 +7,7 @@ api/
 ├── __init__.py         # 导出所有路由器
 ├── dependencies.py     # 公共依赖项（如认证依赖）
 ├── admin.py           # 双 Token 认证 API
+├── access.py          # RBAC 角色与权限管理 API
 ├── users.py           # 人员管理与个人资料 API
 ├── activities.py      # 答题活动、题目范围与活动状态 API
 ├── questions.py       # 题目相关的所有API
@@ -17,7 +18,8 @@ api/
 
 ### dependencies.py（公共依赖项）
 - `get_current_user()`: 获取当前登录用户的依赖项
-- `require_super_admin()`: 强制要求数据库实时角色为超级管理员
+- `require_permission()`: 按数据库实时角色权限校验单项权限
+- `require_any_permission()`: 校验多项权限中的任意一项
 
 ### auth.py（认证模块）
 **前缀**: `/api/admin`
@@ -25,7 +27,14 @@ api/
 - `POST /login`: 登录并签发 Access Token（1 天）和 Refresh Token（30 天）
 - `POST /refresh`: 轮换 Refresh Token 并签发新的双 Token
 - `POST /logout`: 注销账号当前全部 Token
-- `GET /me`: 获取数据库中的实时账号和角色信息
+- `GET /me`: 获取数据库中的实时账号、角色和权限列表
+
+### access.py（RBAC 权限管理模块）
+**前缀**: `/api/admin/access`
+
+- `GET /permissions`: 获取系统权限点
+- `GET/POST /roles`: 查询或创建权限角色
+- `PATCH/DELETE /roles/{role_key}`: 更新或删除权限角色
 
 ### users.py（人员管理模块）
 **前缀**: `/api/admin/users`
@@ -41,7 +50,7 @@ api/
 ### activities.py（答题活动模块）
 
 - `GET /api/quiz/active-activity`: 获取当前进行中的活动
-- `GET/POST /api/admin/activities`: 查询或创建活动（仅超级管理员）
+- `GET/POST /api/admin/activities`: 查询或创建活动（需要 `questions.manage`）
 - `GET/PUT/DELETE /api/admin/activities/{id}`: 活动详情、编辑或删除草稿
 - `POST /api/admin/activities/{id}/start`: 开始活动；自动暂停其他活动
 - `POST /api/admin/activities/{id}/pause`: 暂停并保留统计

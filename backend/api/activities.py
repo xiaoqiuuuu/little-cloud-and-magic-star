@@ -22,7 +22,7 @@ from models import (
     QuizActivityUpdate,
 )
 
-from .dependencies import get_current_user_info_dep, require_super_admin
+from .dependencies import get_current_user_info_dep, require_questions_manage
 
 
 router = APIRouter(tags=["答题活动"])
@@ -49,7 +49,7 @@ def get_quiz_active_activity(_: dict = Depends(get_current_user_info_dep)):
 
 
 @router.get("/api/admin/activities", response_model=List[QuizActivity])
-def get_quiz_activities(_: dict = Depends(require_super_admin)):
+def get_quiz_activities(_: dict = Depends(require_questions_manage)):
     return list_activities()
 
 
@@ -60,7 +60,7 @@ def get_quiz_activities(_: dict = Depends(require_super_admin)):
 )
 def create_quiz_activity(
     request: QuizActivityCreate,
-    current_user: dict = Depends(require_super_admin),
+    current_user: dict = Depends(require_questions_manage),
 ):
     try:
         return create_activity(
@@ -76,7 +76,7 @@ def create_quiz_activity(
 @router.get("/api/admin/activities/{activity_id}", response_model=QuizActivityDetail)
 def get_quiz_activity(
     activity_id: int,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_questions_manage),
 ):
     return _activity_or_404(activity_id)
 
@@ -85,7 +85,7 @@ def get_quiz_activity(
 def update_quiz_activity(
     activity_id: int,
     request: QuizActivityUpdate,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_questions_manage),
 ):
     _activity_or_404(activity_id)
     updates = request.model_dump(exclude_unset=True)
@@ -105,7 +105,7 @@ def update_quiz_activity(
 @router.post("/api/admin/activities/{activity_id}/start", response_model=QuizActivityDetail)
 def start_quiz_activity(
     activity_id: int,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_questions_manage),
 ):
     _activity_or_404(activity_id)
     try:
@@ -120,7 +120,7 @@ def start_quiz_activity(
 @router.post("/api/admin/activities/{activity_id}/pause", response_model=QuizActivityDetail)
 def pause_quiz_activity(
     activity_id: int,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_questions_manage),
 ):
     activity = _activity_or_404(activity_id)
     if activity["status"] != "active":
@@ -134,7 +134,7 @@ def pause_quiz_activity(
 @router.post("/api/admin/activities/{activity_id}/end", response_model=QuizActivityDetail)
 def end_quiz_activity(
     activity_id: int,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_questions_manage),
 ):
     activity = _activity_or_404(activity_id)
     if activity["status"] not in {"active", "paused"}:
@@ -148,7 +148,7 @@ def end_quiz_activity(
 @router.delete("/api/admin/activities/{activity_id}")
 def delete_quiz_activity(
     activity_id: int,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_questions_manage),
 ):
     _activity_or_404(activity_id)
     try:

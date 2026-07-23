@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from passwords import hash_password, is_password_hash, verify_password
 
 from .config import get_connection
+from .rbac import get_access_role
 
 
 ADMIN_COLUMNS = """
@@ -17,10 +18,13 @@ _UNSET = object()
 
 
 def _row_to_admin(row: sqlite3.Row) -> Dict[str, Any]:
+    access_role = get_access_role(row["role"])
     return {
         "id": int(row["id"]),
         "username": row["username"],
         "role": row["role"],
+        "role_name": access_role["name"] if access_role else row["role"],
+        "permissions": access_role["permissions"] if access_role else [],
         "is_active": bool(row["is_active"]),
         "token_version": int(row["token_version"]),
         "display_name": row["display_name"] or row["username"],
@@ -116,6 +120,8 @@ def create_admin(
     display_name: Optional[str] = None,
     profile_url: Optional[str] = None,
 ) -> Dict[str, Any]:
+    if not get_access_role(role):
+        raise ValueError("账号角色不存在")
     conn = get_connection()
     try:
         cursor = conn.execute(
@@ -160,6 +166,8 @@ def update_admin(
     if username is not None and username != current["username"]:
         updates["username"] = username
     if role is not None and role != current["role"]:
+        if not get_access_role(role):
+            raise ValueError("账号角色不存在")
         updates["role"] = role
     if is_active is not None and is_active != current["is_active"]:
         updates["is_active"] = int(is_active)

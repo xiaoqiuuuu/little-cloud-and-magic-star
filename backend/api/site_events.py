@@ -23,7 +23,7 @@ from models import (
     SiteEventSummary,
     SiteEventUpdate,
 )
-from .dependencies import require_super_admin
+from .dependencies import require_homepage_manage
 
 
 public_router = APIRouter(prefix="/api/site-events", tags=["官网活动"])
@@ -59,14 +59,14 @@ def public_site_event(slug: str):
 
 
 @admin_router.get("", response_model=List[SiteEvent])
-def admin_site_events(_: dict = Depends(require_super_admin)):
+def admin_site_events(_: dict = Depends(require_homepage_manage)):
     return list_site_events()
 
 
 @admin_router.post("", response_model=SiteEvent, status_code=status.HTTP_201_CREATED)
 def admin_create_site_event(
     payload: SiteEventCreate,
-    user: dict = Depends(require_super_admin),
+    user: dict = Depends(require_homepage_manage),
 ):
     try:
         return create_site_event(payload.model_dump(mode="json"), user["username"])
@@ -75,7 +75,7 @@ def admin_create_site_event(
 
 
 @admin_router.get("/{event_id}", response_model=SiteEvent)
-def admin_site_event(event_id: int, _: dict = Depends(require_super_admin)):
+def admin_site_event(event_id: int, _: dict = Depends(require_homepage_manage)):
     event = get_site_event(event_id)
     if not event:
         raise HTTPException(status_code=404, detail="官网活动不存在")
@@ -86,7 +86,7 @@ def admin_site_event(event_id: int, _: dict = Depends(require_super_admin)):
 def admin_update_site_event(
     event_id: int,
     payload: SiteEventUpdate,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_homepage_manage),
 ):
     try:
         event = update_site_event(
@@ -105,7 +105,7 @@ def admin_update_site_event(
 @admin_router.post("/{event_id}/duplicate", response_model=SiteEvent, status_code=201)
 def admin_duplicate_site_event(
     event_id: int,
-    user: dict = Depends(require_super_admin),
+    user: dict = Depends(require_homepage_manage),
 ):
     event = duplicate_site_event(event_id, user["username"])
     if not event:
@@ -114,7 +114,7 @@ def admin_duplicate_site_event(
 
 
 @admin_router.post("/{event_id}/activate", response_model=SiteEvent)
-def admin_activate_site_event(event_id: int, _: dict = Depends(require_super_admin)):
+def admin_activate_site_event(event_id: int, _: dict = Depends(require_homepage_manage)):
     event = activate_site_event(event_id)
     if not event:
         raise HTTPException(status_code=404, detail="官网活动不存在")
@@ -122,7 +122,7 @@ def admin_activate_site_event(event_id: int, _: dict = Depends(require_super_adm
 
 
 @admin_router.post("/{event_id}/archive", response_model=SiteEvent)
-def admin_archive_site_event(event_id: int, _: dict = Depends(require_super_admin)):
+def admin_archive_site_event(event_id: int, _: dict = Depends(require_homepage_manage)):
     try:
         event = archive_site_event(event_id)
     except ValueError as error:
@@ -133,7 +133,7 @@ def admin_archive_site_event(event_id: int, _: dict = Depends(require_super_admi
 
 
 @admin_router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
-def admin_delete_site_event(event_id: int, _: dict = Depends(require_super_admin)):
+def admin_delete_site_event(event_id: int, _: dict = Depends(require_homepage_manage)):
     if not delete_site_event(event_id):
         existing = get_site_event(event_id)
         if not existing:

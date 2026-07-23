@@ -5,17 +5,21 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from .dependencies import require_content_admin, require_super_admin
+from auth import get_current_user_info
+from .dependencies import require_accounts_manage, require_questions_manage
 from database import (
+    QUESTIONS_MANAGE,
     count_active_super_admins,
     count_content_for_admin,
     create_admin,
     delete_admin,
+    get_access_role,
     get_admin_by_id,
     get_admin_by_username,
     list_content_contributors,
     list_admins,
     reset_admin_password,
+    role_has_permission,
     update_admin,
 )
 from database.tokens import revoke_all_refresh_tokens
@@ -67,12 +71,12 @@ def _ensure_not_last_active_super_admin(target: dict) -> None:
 
 
 @router.get("", response_model=List[AdminUser])
-def get_admin_users(_: dict = Depends(require_super_admin)):
+def get_admin_users(_: dict = Depends(require_accounts_manage)):
     return list_admins()
 
 
 @router.get("/contributors", response_model=List[ContentContributor])
-def get_content_accounts(_: dict = Depends(require_content_admin)):
+def get_content_accounts(_: dict = Depends(require_questions_manage)):
     """题目和物料可绑定的账号，包含已停用账号以便查看历史内容。"""
     return list_content_contributors(include_inactive=True)
 
@@ -80,7 +84,7 @@ def get_content_accounts(_: dict = Depends(require_content_admin)):
 @router.patch("/me/profile", response_model=AdminUser)
 def update_current_admin_profile(
     request: AdminProfileUpdate,
-    current_user: dict = Depends(require_content_admin),
+    current_user: dict = Depends(get_current_user_info),
 ):
     """当前内容账号编辑自己的署名资料，不改变权限或登录身份。"""
     display_name = _normalize_optional_text(request.display_name)
@@ -99,7 +103,7 @@ def update_current_admin_profile(
 @router.post("", response_model=AdminUser, status_code=status.HTTP_201_CREATED)
 def create_admin_user(
     request: AdminUserCreate,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_accounts_manage),
 ):
     username = _validate_username(request.username)
     if get_admin_by_username(username):
@@ -116,6 +120,8 @@ def create_admin_user(
         )
     except sqlite3.IntegrityError as exc:
         raise HTTPException(status_code=409, detail="用户名已存在") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return created
 
 
@@ -123,7 +129,7 @@ def create_admin_user(
 def update_admin_user(
     admin_id: int,
     request: AdminUserUpdate,
-    current_user: dict = Depends(require_super_admin),
+    current_user: dict = Depends(require_accounts_manage),
 ):
     target = _get_admin_or_404(admin_id)
     updates = request.model_dump(exclude_unset=True)
@@ -165,12 +171,15 @@ def update_admin_user(
     if removes_active_super:
         _ensure_not_last_active_super_admin(target)
 
-    if changed.get("role") == "quiz_operator":
+    next_role = changed.get("role", target["role"])
+    if not get_access_role(next_role):
+        raise HTTPException(status_code=422, detail="账号角色不存在")
+    if not role_has_permission(next_role, QUESTIONS_MANAGE):
         content_counts = count_content_for_admin(admin_id)
         if content_counts["questions"] or content_counts["materials"]:
             raise HTTPException(
                 status_code=409,
-                detail="该账号已绑定题目或物料，不能改为答题人员",
+                detail="该账号已绑定题目或物料，不能改为没有题目管理权限的角色",
             )
 
     if "username" in changed:
@@ -182,6 +191,8 @@ def update_admin_user(
         updated = update_admin(admin_id, **changed)
     except sqlite3.IntegrityError as exc:
         raise HTTPException(status_code=409, detail="用户名已存在") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not updated:
         raise HTTPException(status_code=404, detail="管理员账号不存在")
 
@@ -194,7 +205,7 @@ def update_admin_user(
 def reset_admin_user_password(
     admin_id: int,
     request: AdminPasswordReset,
-    _: dict = Depends(require_super_admin),
+    _: dict = Depends(require_accounts_manage),
 ):
     _get_admin_or_404(admin_id)
     updated = reset_admin_password(admin_id, request.password)
@@ -207,7 +218,7 @@ def reset_admin_user_password(
 @router.delete("/{admin_id}")
 def delete_admin_user(
     admin_id: int,
-    current_user: dict = Depends(require_super_admin),
+    current_user: dict = Depends(require_accounts_manage),
 ):
     target = _get_admin_or_404(admin_id)
     if current_user["id"] == admin_id:

@@ -27,7 +27,7 @@ def _get_requested_contributors(admin_ids):
     if len(contributors) != len(unique_ids):
         raise HTTPException(
             status_code=422,
-            detail="物料只能绑定超级管理员或题目管理员账号",
+            detail="物料只能绑定拥有题目管理权限的账号",
         )
     return contributors
 
@@ -74,9 +74,9 @@ def admin_create_material(
     """管理员创建物料"""
     material_id = get_next_material_id()
     requested_ids = (
-        [user_info["id"]]
-        if user_info["role"] == "question_admin"
-        else (material_data.contributor_ids or [user_info["id"]])
+        material_data.contributor_ids or [user_info["id"]]
+        if user_info["role"] == "super_admin"
+        else [user_info["id"]]
     )
     contributors = _get_requested_contributors(requested_ids)
     material = Material(

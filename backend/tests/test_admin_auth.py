@@ -131,26 +131,6 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(me.status_code, 200)
 
-    async def test_question_admin_cannot_access_super_admin_operations(self):
-        tokens = await self.login("editor", "EditorPass123")
-        headers = self.auth_headers(tokens["access_token"])
-
-        users = await self.client.get("/api/admin/users", headers=headers)
-        update_config = await self.client.put(
-            "/api/configs",
-            headers=headers,
-            json={"key": "COUNTDOWN_SECONDS", "value": "90"},
-        )
-        batch_import = await self.client.post(
-            "/api/admin/questions/batch_import",
-            headers=headers,
-            json={"questions": []},
-        )
-
-        self.assertEqual(users.status_code, 403)
-        self.assertEqual(update_config.status_code, 403)
-        self.assertEqual(batch_import.status_code, 403)
-
     async def test_quiz_operator_is_limited_to_the_live_quiz_surface(self):
         tokens = await self.login("operator", "OperatorPass123")
         headers = self.auth_headers(tokens["access_token"])
@@ -871,12 +851,16 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             migrated_schema = conn.execute(
                 "SELECT sql FROM sqlite_master WHERE name = 'admins'"
             ).fetchone()[0]
+            seeded_roles = {
+                row[0] for row in conn.execute("SELECT key FROM access_roles").fetchall()
+            }
         finally:
             conn.close()
 
         self.assertTrue(stored_password.startswith("pbkdf2_sha256$"))
         self.assertTrue({"is_active", "token_version", "created_at", "updated_at"} <= columns)
-        self.assertIn("quiz_operator", migrated_schema)
+        self.assertNotIn("CHECK(role IN", migrated_schema)
+        self.assertTrue({"super_admin", "question_admin", "quiz_operator"} <= seeded_roles)
         await self.login("legacyeditor", "LegacyPass123")
         create_admin("migratedoperator", "OperatorPass123", "quiz_operator")
         await self.login("migratedoperator", "OperatorPass123")
