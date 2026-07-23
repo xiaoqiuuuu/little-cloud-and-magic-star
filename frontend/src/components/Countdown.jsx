@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import './Countdown.css';
 
-function Countdown({ initialSeconds, onComplete }) {
+function Countdown({ initialSeconds, onComplete, compact = false }) {
   const [timeLeft, setTimeLeft] = useState(initialSeconds);
   const [isExpired, setIsExpired] = useState(false);
 
@@ -35,18 +36,18 @@ function Countdown({ initialSeconds, onComplete }) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getColorClass = () => {
-    if (timeLeft <= 10) return 'text-red-600 animate-pulse';
-    if (timeLeft <= 30) return 'text-orange-600';
-    return 'text-blue-600';
+  const getTone = () => {
+    if (timeLeft <= 10) return 'danger';
+    if (timeLeft <= 30) return 'warning';
+    return 'primary';
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className={`text-2xl md:text-4xl font-bold ${getColorClass()} transition-colors duration-300`}>
+    <div className={`quiz-countdown ${compact ? 'is-compact' : ''}`}>
+      <div className={`quiz-countdown__value is-${getTone()}`}>
         {formatTime(timeLeft)}
       </div>
-      <div className="text-xs text-gray-500 mt-1">
+      <div className="quiz-countdown__label">
         {isExpired ? '时间到！' : '剩余时间'}
       </div>
     </div>
