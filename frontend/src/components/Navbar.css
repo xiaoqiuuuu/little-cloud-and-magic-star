@@ -9,9 +9,45 @@
 }
 
 .cloud-navbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--cui-color-text);
 }
 
 .cloud-navbar__brand:hover {
   color: var(--cui-color-primary);
+}
+
+.cloud-navbar__character {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  place-items: end center;
+  border: 1px solid color-mix(in srgb, var(--cui-character-accent) 38%, var(--cui-color-border));
+  border-radius: 50%;
+  background: var(--cui-character-accent-soft);
+}
+
+.cloud-navbar__character img {
+  width: 100%;
+  height: 100% !important;
+  object-fit: cover;
+  object-position: var(--cui-character-avatar-position, center 20%);
+}
+
+@media (max-width: 520px) {
+  .cloud-navbar__brand > span:last-child {
+    max-width: 112px;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cloud-navbar .cui-character-button.cui-button--small {
+    padding-right: 9px;
+    padding-left: 36px;
+  }
 }

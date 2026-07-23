@@ -164,6 +164,7 @@ function AppContent() {
                       userRole={userRole}
                       brandText="肥音卤果现场答题"
                       homePath="/quiz"
+                      characterActions
                     />
                     <QuizPage activityMode />
                   </>
