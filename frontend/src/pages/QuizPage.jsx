@@ -665,12 +665,23 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                 </div>
               )}
 
-              <div className="quiz-character-question-meta">
-                <span>题目 {currentIndex + 1} / {filteredQuestionIds.length}</span>
-                <span className="quiz-character-question-avatar" aria-hidden="true">
-                  <img src={characterPackFor(1).assets.buttonAvatar} alt="" draggable="false" />
-                </span>
-                <Tag tone="primary">{currentTagMeta.shortLabel}</Tag>
+              <div className="quiz-character-question-head">
+                <div className="quiz-character-question-meta">
+                  <span>题目 {currentIndex + 1} / {filteredQuestionIds.length}</span>
+                  <span className="quiz-character-question-avatar" aria-hidden="true">
+                    <img src={characterPackFor(1).assets.buttonAvatar} alt="" draggable="false" />
+                  </span>
+                  <Tag tone="primary">{currentTagMeta.shortLabel}</Tag>
+                </div>
+                {showCountdown && (
+                  <Card variant="soft" padding="small" className="quiz-character-countdown-card">
+                    <Countdown
+                      compact
+                      initialSeconds={countdownSeconds}
+                      onComplete={handleCountdownComplete}
+                    />
+                  </Card>
+                )}
               </div>
 
               <div className="quiz-character-question-copy">
@@ -713,15 +724,6 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                     })}
                   </div>
                 </div>
-              )}
-
-              {showCountdown && (
-                <Card variant="soft" padding="medium" className="quiz-character-countdown-card">
-                  <Countdown
-                    initialSeconds={countdownSeconds}
-                    onComplete={handleCountdownComplete}
-                  />
-                </Card>
               )}
 
               <div className="quiz-character-question-actions">
