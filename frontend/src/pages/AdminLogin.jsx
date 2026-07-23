@@ -14,7 +14,7 @@ function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const { theme, characterPack } = useCloudUI();
+  const { characterPack } = useCloudUI();
 
   const handleSubmit = async (values) => {
     try {
@@ -72,7 +72,6 @@ function AdminLogin() {
         <Card className="cloud-admin-login__card" variant="elevated" padding="large">
         <Space direction="vertical" size="large" className="w-full">
           <div className="cloud-admin-login__heading">
-            <span className="cloud-admin-login__kicker">{theme.name} · {characterPack.name}</span>
             <Title level={2} className="!mb-2">
               账号登录
             </Title>

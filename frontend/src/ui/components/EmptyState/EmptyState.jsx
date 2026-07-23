@@ -4,7 +4,7 @@ import './EmptyState.css';
 function EmptyState({
   illustration,
   icon = '☁',
-  title = '这里还是空的',
+  title = '暂无数据',
   description,
   action,
   size = 'medium',
