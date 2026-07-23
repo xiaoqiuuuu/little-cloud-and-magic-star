@@ -531,7 +531,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
               size="small"
               className="quiz-character-control-card"
             >
-              <div className="quiz-character-filter-row">
+              <div className="quiz-character-filter-row quiz-character-filter-row--empty">
                 <Select
                   label="筛选题目类型:"
                   value={selectedTag}

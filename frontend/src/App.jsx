@@ -163,6 +163,7 @@ function AppContent() {
                       isAdminLoggedIn={isAdminLoggedIn}
                       userRole={userRole}
                       brandText="肥音卤果现场答题"
+                      mobileBrandText="现场答题"
                       homePath="/quiz"
                       characterActions
                     />
