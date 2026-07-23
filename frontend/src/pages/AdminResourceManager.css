@@ -29,78 +29,15 @@
   color: var(--cui-color-text-muted);
 }
 
+.admin-resource-filter-card {
+  max-width: 420px;
+  margin-bottom: 18px;
+}
+
 .admin-resource-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-}
-
-.admin-resource-grid--producers {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.admin-entity-card .cui-card__body {
-  height: 100%;
-}
-
-.admin-entity-card__main {
-  display: flex;
-  height: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.admin-entity-card__identity {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 11px;
-}
-
-.admin-entity-card__avatar {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--cui-color-primary) 22%, var(--cui-color-border));
-  border-radius: 14px;
-  color: var(--cui-color-primary);
-  background: var(--cui-color-primary-soft);
-  font-size: 17px;
-  font-weight: 850;
-}
-
-.admin-entity-card__copy {
-  min-width: 0;
-}
-
-.admin-entity-card__copy h3 {
-  margin: 0 0 5px;
-  color: var(--cui-color-text);
-  font-size: 15px;
-}
-
-.admin-entity-card__copy a,
-.admin-entity-card__copy span {
-  display: block;
-  overflow: hidden;
-  max-width: 250px;
-  color: var(--cui-color-text-muted);
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.admin-entity-card__copy a:hover {
-  color: var(--cui-color-primary);
-}
-
-.admin-entity-card__actions {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 6px;
 }
 
 .admin-danger-ghost.cui-button {
@@ -295,10 +232,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-resource-grid--producers {
-    grid-template-columns: 1fr;
-  }
-
   .admin-pagination-card .cui-card__body {
     align-items: flex-start;
     flex-direction: column;
@@ -317,15 +250,6 @@
 
   .admin-resource-grid {
     grid-template-columns: 1fr;
-  }
-
-  .admin-entity-card__main {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .admin-entity-card__actions .cui-button {
-    flex: 1;
   }
 
   .admin-pagination-card__actions {
