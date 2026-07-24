@@ -8,8 +8,8 @@ import Countdown from '../components/Countdown';
 import api from '../api';
 import {
   PERMISSIONS,
+  canManageAllQuestions,
   readStoredPermissions,
-  readStoredRoles,
 } from '../utils/adminAccess';
 import { getQuestionTagMeta, mergeQuestionTagOptions } from '../constants/questionTags';
 import {
@@ -31,12 +31,13 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
   const navigate = useNavigate();
   const { theme, characterPack, characterPacks } = useCloudUI();
   const storedPermissions = readStoredPermissions();
-  const storedRoles = readStoredRoles();
   const usesActiveActivity = activityMode || (
     storedPermissions.includes(PERMISSIONS.QUIZ_OPERATE)
     && !storedPermissions.includes(PERMISSIONS.QUESTIONS_MANAGE)
   );
-  const isSuperAdmin = storedRoles.includes('super_admin');
+  const managesAllQuestions = canManageAllQuestions({
+    permissions: storedPermissions,
+  });
   const activeActivityIdRef = useRef(undefined);
   const activityGenerationRef = useRef(0);
   const [questionIds, setQuestionIds] = useState([]); // 只存储ID列表
@@ -517,7 +518,7 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
             <div className="quiz-character-status-card__content">
               <strong>题目调试：</strong>
               <span>
-                {!isSuperAdmin
+                {!managesAllQuestions
                   ? '这里仅展示你创建的题目，可按标签筛选、随机查看或按题号跳转。'
                   : '这里可调试全部题目；现场答题请从“答题活动”进入。'}
               </span>

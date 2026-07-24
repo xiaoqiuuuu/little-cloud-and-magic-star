@@ -79,6 +79,7 @@ from .rbac import (
     HOMEPAGE_MANAGE,
     MATERIALS_MANAGE,
     QUESTIONS_MANAGE,
+    QUESTIONS_MANAGE_ALL,
     QUIZ_ACTIVITIES_MANAGE,
     QUIZ_OPERATE,
     VISIT_STATS_VIEW,
@@ -142,6 +143,7 @@ __all__ = [
     'count_active_super_admins',
     # RBAC 角色与权限
     'QUESTIONS_MANAGE',
+    'QUESTIONS_MANAGE_ALL',
     'MATERIALS_MANAGE',
     'CONTENT_ROLES_MANAGE',
     'QUIZ_ACTIVITIES_MANAGE',

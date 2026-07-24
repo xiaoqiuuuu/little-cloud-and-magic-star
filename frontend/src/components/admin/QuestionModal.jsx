@@ -12,7 +12,7 @@ const QuestionModal = ({
   onSuccess, 
   editingQuestion, 
   contributors,
-  isSuperAdmin,
+  canManageAllQuestions,
   tagOptions = [],
 }) => {
   const { message } = App.useApp();
@@ -138,7 +138,7 @@ const QuestionModal = ({
               </p>
             </div>
 
-            {isSuperAdmin && editingQuestion && (
+            {canManageAllQuestions && editingQuestion && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   贡献账号（可多选）

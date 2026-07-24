@@ -10,7 +10,7 @@ const QuestionFilter = ({
   total,
   loading,
   contributors,
-  isSuperAdmin = true,
+  canManageAllQuestions = false,
   tagOptions = [],
 }) => {
   const [inputValue, setInputValue] = useState(searchKeyword);
@@ -64,8 +64,8 @@ const QuestionFilter = ({
           </select>
         </div>
 
-        {/* 账号筛选 - 仅超级管理员可见 */}
-        {isSuperAdmin && (
+        {/* 账号筛选 - 管理全部题目的账号可见 */}
+        {canManageAllQuestions && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               贡献账号
