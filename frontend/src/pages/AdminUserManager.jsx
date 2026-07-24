@@ -235,20 +235,6 @@ function AdminUserManager() {
       ),
     },
     {
-      title: '主要权限',
-      key: 'permissions',
-      responsive: ['lg'],
-      render: (_, record) => (
-        <Space wrap size={[2, 4]}>
-          {(record.permissions || []).map((permission) => (
-            <Tag key={permission}>
-              {permissions.find((item) => item.key === permission)?.name || permission}
-            </Tag>
-          ))}
-        </Space>
-      ),
-    },
-    {
       title: '状态',
       dataIndex: 'is_active',
       key: 'is_active',
