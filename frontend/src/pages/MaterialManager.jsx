@@ -3,6 +3,7 @@ import { App } from 'antd';
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useOutletContext } from 'react-router-dom';
 import api from '../api';
+import { hasRole } from '../utils/adminAccess';
 import ImagePreview from '../components/ImagePreview';
 import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
@@ -21,7 +22,7 @@ import './AdminResourceManager.css';
 function MaterialManager() {
   const { message, modal } = App.useApp();
   const { currentUser } = useOutletContext();
-  const isSuperAdmin = currentUser?.role === 'super_admin';
+  const isSuperAdmin = hasRole(currentUser, 'super_admin');
   
   const [materials, setMaterials] = useState([]);
   const [total, setTotal] = useState(0);
@@ -53,7 +54,9 @@ function MaterialManager() {
 
   const fetchContributors = async () => {
     try {
-      const response = await api.get('/admin/users/contributors');
+      const response = await api.get('/admin/users/contributors', {
+        params: { scope: 'materials' },
+      });
       setContributors(response.data);
     } catch (error) {
       console.error('获取贡献账号失败:', error);

@@ -854,6 +854,18 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
             seeded_roles = {
                 row[0] for row in conn.execute("SELECT key FROM access_roles").fetchall()
             }
+            migrated_role_keys = [
+                row[0]
+                for row in conn.execute(
+                    """
+                    SELECT ar.role_key
+                    FROM admin_access_roles ar
+                    JOIN admins a ON a.id = ar.admin_id
+                    WHERE a.username = 'legacyeditor'
+                    ORDER BY ar.position
+                    """
+                ).fetchall()
+            ]
         finally:
             conn.close()
 
@@ -861,6 +873,7 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue({"is_active", "token_version", "created_at", "updated_at"} <= columns)
         self.assertNotIn("CHECK(role IN", migrated_schema)
         self.assertTrue({"super_admin", "question_admin", "quiz_operator"} <= seeded_roles)
+        self.assertEqual(migrated_role_keys, ["question_admin"])
         await self.login("legacyeditor", "LegacyPass123")
         create_admin("migratedoperator", "OperatorPass123", "quiz_operator")
         await self.login("migratedoperator", "OperatorPass123")

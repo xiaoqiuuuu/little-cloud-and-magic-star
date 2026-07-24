@@ -9,6 +9,7 @@ from .contributors import (
     resolve_contributors_by_names,
     set_material_contributors,
 )
+from .rbac import MATERIALS_MANAGE
 
 
 def _parse_creator(raw_value: Optional[str]) -> List[str]:
@@ -29,7 +30,10 @@ def _row_to_material(row) -> Material:
         creator = [contributor.display_name for contributor in contributors]
     else:
         creator = legacy_creator
-        contributors = resolve_contributors_by_names(legacy_creator)
+        contributors = resolve_contributors_by_names(
+            legacy_creator,
+            MATERIALS_MANAGE,
+        )
     return Material(
         id=row[0],
         name=row[1],

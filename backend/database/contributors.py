@@ -10,7 +10,7 @@ from typing import Dict, Iterable, List, Optional, Sequence
 from models import ContentContributor
 
 from .config import get_connection
-from .rbac import QUESTIONS_MANAGE
+from .rbac import MATERIALS_MANAGE, QUESTIONS_MANAGE, get_admin_access_roles
 
 
 CONTRIBUTOR_COLUMNS = """
@@ -20,12 +20,14 @@ CONTRIBUTOR_COLUMNS = """
 
 
 def _row_to_contributor(row) -> ContentContributor:
+    roles = get_admin_access_roles(int(row[0]))
     return ContentContributor(
         id=int(row[0]),
         username=row[1],
         display_name=row[2],
         profile_url=row[3],
         role=row[4],
+        role_keys=[role["key"] for role in roles],
         is_active=bool(row[5]),
     )
 
@@ -41,18 +43,23 @@ def _parse_legacy_names(raw_value: Optional[str]) -> List[str]:
     return [str(value).strip() for value in values if str(value).strip()]
 
 
-def list_content_contributors(include_inactive: bool = True) -> List[ContentContributor]:
+def list_content_contributors(
+    include_inactive: bool = True,
+    permission_key: str = QUESTIONS_MANAGE,
+) -> List[ContentContributor]:
     conn = get_connection()
     try:
         query = f"""
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
             WHERE EXISTS (
-                SELECT 1 FROM access_role_permissions rp
-                WHERE rp.role_key = a.role AND rp.permission_key = ?
+                SELECT 1
+                FROM admin_access_roles ar
+                JOIN access_role_permissions rp ON rp.role_key = ar.role_key
+                WHERE ar.admin_id = a.id AND rp.permission_key = ?
             )
         """
-        params: List[object] = [QUESTIONS_MANAGE]
+        params: List[object] = [permission_key]
         if not include_inactive:
             query += " AND a.is_active = 1"
         query += " ORDER BY a.is_active DESC, a.username COLLATE NOCASE"
@@ -62,7 +69,10 @@ def list_content_contributors(include_inactive: bool = True) -> List[ContentCont
         conn.close()
 
 
-def get_content_contributor(admin_id: int) -> Optional[ContentContributor]:
+def get_content_contributor(
+    admin_id: int,
+    permission_key: str = QUESTIONS_MANAGE,
+) -> Optional[ContentContributor]:
     conn = get_connection()
     try:
         row = conn.execute(
@@ -70,18 +80,23 @@ def get_content_contributor(admin_id: int) -> Optional[ContentContributor]:
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
             WHERE a.id = ? AND EXISTS (
-                SELECT 1 FROM access_role_permissions rp
-                WHERE rp.role_key = a.role AND rp.permission_key = ?
+                SELECT 1
+                FROM admin_access_roles ar
+                JOIN access_role_permissions rp ON rp.role_key = ar.role_key
+                WHERE ar.admin_id = a.id AND rp.permission_key = ?
             )
             """,
-            (admin_id, QUESTIONS_MANAGE),
+            (admin_id, permission_key),
         ).fetchone()
         return _row_to_contributor(row) if row else None
     finally:
         conn.close()
 
 
-def get_content_contributors(admin_ids: Sequence[int]) -> List[ContentContributor]:
+def get_content_contributors(
+    admin_ids: Sequence[int],
+    permission_key: str = QUESTIONS_MANAGE,
+) -> List[ContentContributor]:
     ordered_ids = list(dict.fromkeys(int(admin_id) for admin_id in admin_ids))
     if not ordered_ids:
         return []
@@ -93,11 +108,13 @@ def get_content_contributors(admin_ids: Sequence[int]) -> List[ContentContributo
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
             WHERE a.id IN ({placeholders}) AND EXISTS (
-                SELECT 1 FROM access_role_permissions rp
-                WHERE rp.role_key = a.role AND rp.permission_key = ?
+                SELECT 1
+                FROM admin_access_roles ar
+                JOIN access_role_permissions rp ON rp.role_key = ar.role_key
+                WHERE ar.admin_id = a.id AND rp.permission_key = ?
             )
             """,
-            [*ordered_ids, QUESTIONS_MANAGE],
+            [*ordered_ids, permission_key],
         ).fetchall()
     finally:
         conn.close()
@@ -127,7 +144,10 @@ def get_admin_legacy_names(admin_id: int) -> List[str]:
     return list(dict.fromkeys(value.strip() for value in row if value and value.strip()))
 
 
-def resolve_contributors_by_names(names: Iterable[str]) -> List[ContentContributor]:
+def resolve_contributors_by_names(
+    names: Iterable[str],
+    permission_key: str = QUESTIONS_MANAGE,
+) -> List[ContentContributor]:
     """仅对唯一精确匹配的历史署名返回账号，避免同名误绑。"""
     normalized_names = [name.strip().casefold() for name in names if name and name.strip()]
     if not normalized_names:
@@ -140,11 +160,13 @@ def resolve_contributors_by_names(names: Iterable[str]) -> List[ContentContribut
             SELECT {CONTRIBUTOR_COLUMNS}
             FROM admins a
             WHERE EXISTS (
-                SELECT 1 FROM access_role_permissions rp
-                WHERE rp.role_key = a.role AND rp.permission_key = ?
+                SELECT 1
+                FROM admin_access_roles ar
+                JOIN access_role_permissions rp ON rp.role_key = ar.role_key
+                WHERE ar.admin_id = a.id AND rp.permission_key = ?
             )
             """,
-            (QUESTIONS_MANAGE,),
+            (permission_key,),
         ).fetchall()
     finally:
         conn.close()
@@ -169,7 +191,12 @@ def resolve_contributors_by_names(names: Iterable[str]) -> List[ContentContribut
     return resolved
 
 
-def _get_relation_contributors(table: str, content_column: str, content_id: str) -> List[ContentContributor]:
+def _get_relation_contributors(
+    table: str,
+    content_column: str,
+    content_id: str,
+    permission_key: str,
+) -> List[ContentContributor]:
     conn = get_connection()
     try:
         rows = conn.execute(
@@ -178,12 +205,14 @@ def _get_relation_contributors(table: str, content_column: str, content_id: str)
             FROM {table} c
             JOIN admins a ON a.id = c.admin_id
             WHERE c.{content_column} = ? AND EXISTS (
-                SELECT 1 FROM access_role_permissions rp
-                WHERE rp.role_key = a.role AND rp.permission_key = ?
+                SELECT 1
+                FROM admin_access_roles ar
+                JOIN access_role_permissions rp ON rp.role_key = ar.role_key
+                WHERE ar.admin_id = a.id AND rp.permission_key = ?
             )
             ORDER BY c.position ASC, a.id ASC
             """,
-            (content_id, QUESTIONS_MANAGE),
+            (content_id, permission_key),
         ).fetchall()
         return [_row_to_contributor(row) for row in rows]
     finally:
@@ -192,13 +221,13 @@ def _get_relation_contributors(table: str, content_column: str, content_id: str)
 
 def get_question_contributors(question_id: str) -> List[ContentContributor]:
     return _get_relation_contributors(
-        "question_contributors", "question_id", question_id
+        "question_contributors", "question_id", question_id, QUESTIONS_MANAGE
     )
 
 
 def get_material_contributors(material_id: str) -> List[ContentContributor]:
     return _get_relation_contributors(
-        "material_contributors", "material_id", material_id
+        "material_contributors", "material_id", material_id, MATERIALS_MANAGE
     )
 
 
@@ -207,11 +236,13 @@ def _set_relations(
     content_column: str,
     content_id: str,
     admin_ids: Sequence[int],
+    permission_key: str,
+    permission_label: str,
 ) -> List[ContentContributor]:
-    contributors = get_content_contributors(admin_ids)
+    contributors = get_content_contributors(admin_ids, permission_key)
     requested_ids = list(dict.fromkeys(int(admin_id) for admin_id in admin_ids))
     if len(contributors) != len(requested_ids):
-        raise ValueError("只能绑定拥有题目管理权限的账号")
+        raise ValueError(f"只能绑定拥有{permission_label}权限的账号")
 
     conn = get_connection()
     try:
@@ -242,7 +273,12 @@ def set_question_contributors(
     question_id: str, admin_ids: Sequence[int]
 ) -> List[ContentContributor]:
     return _set_relations(
-        "question_contributors", "question_id", question_id, admin_ids
+        "question_contributors",
+        "question_id",
+        question_id,
+        admin_ids,
+        QUESTIONS_MANAGE,
+        "题目管理",
     )
 
 
@@ -250,7 +286,12 @@ def set_material_contributors(
     material_id: str, admin_ids: Sequence[int]
 ) -> List[ContentContributor]:
     return _set_relations(
-        "material_contributors", "material_id", material_id, admin_ids
+        "material_contributors",
+        "material_id",
+        material_id,
+        admin_ids,
+        MATERIALS_MANAGE,
+        "物料管理",
     )
 
 

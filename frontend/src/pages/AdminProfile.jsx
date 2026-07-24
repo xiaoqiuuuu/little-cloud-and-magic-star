@@ -16,7 +16,9 @@ function AdminProfile() {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const displayName = currentUser?.display_name || currentUser?.username || '—';
-  const roleLabel = currentUser?.role_name || currentUser?.role || '未分配角色';
+  const roleLabel = currentUser?.role_names?.join('、')
+    || currentUser?.role_name
+    || '未分配角色';
 
   useEffect(() => {
     if (!currentUser) return;

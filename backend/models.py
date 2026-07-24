@@ -8,6 +8,7 @@ class ContentContributor(BaseModel):
     display_name: str
     profile_url: Optional[str] = None
     role: str
+    role_keys: List[str] = Field(default_factory=list)
     is_active: bool
 
 
@@ -116,11 +117,19 @@ class Token(BaseModel):
 # 管理员账号管理
 
 
+class AdminAssignedRole(BaseModel):
+    key: str
+    name: str
+
+
 class AdminUser(BaseModel):
     id: int
     username: str
     role: str
     role_name: str
+    roles: List[AdminAssignedRole] = Field(default_factory=list)
+    role_keys: List[str] = Field(default_factory=list)
+    role_names: List[str] = Field(default_factory=list)
     permissions: List[str] = Field(default_factory=list)
     is_active: bool
     display_name: str
@@ -132,13 +141,15 @@ class AdminUser(BaseModel):
 class AdminUserCreate(BaseModel):
     username: str = Field(min_length=2, max_length=50)
     password: str = Field(min_length=8, max_length=128)
-    role: str = Field(default="question_admin", min_length=1, max_length=50)
+    roles: Optional[List[str]] = None
+    role: Optional[str] = Field(default=None, min_length=1, max_length=50)
     display_name: Optional[str] = Field(default=None, max_length=100)
     profile_url: Optional[str] = Field(default=None, max_length=500)
 
 
 class AdminUserUpdate(BaseModel):
     username: Optional[str] = Field(default=None, min_length=2, max_length=50)
+    roles: Optional[List[str]] = None
     role: Optional[str] = Field(default=None, min_length=1, max_length=50)
     is_active: Optional[bool] = None
     display_name: Optional[str] = Field(default=None, max_length=100)

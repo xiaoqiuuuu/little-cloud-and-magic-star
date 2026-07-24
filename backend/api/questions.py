@@ -34,7 +34,8 @@ from database import (
 from .dependencies import (
     get_current_user_info_dep,
     has_permission,
-    require_content_admin,
+    has_role,
+    require_questions_manage,
     require_super_admin,
 )
 
@@ -115,7 +116,7 @@ def list_question_ids(user_info: dict = Depends(get_current_user_info_dep)):
         if not has_permission(user_info, QUIZ_OPERATE):
             raise HTTPException(status_code=403, detail="当前账号不能访问题目")
         return get_active_activity_question_ids() if get_active_activity() else []
-    if user_info["role"] == "super_admin":
+    if has_role(user_info, "super_admin"):
         return get_all_question_ids()
     return get_all_question_ids(
         contributor_id=user_info["id"],
@@ -136,7 +137,7 @@ def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
             for question_id in get_active_activity_questions()
             if (question := get_question_by_id(question_id)) is not None
         ]
-    if user_info["role"] == "super_admin":
+    if has_role(user_info, "super_admin"):
         return get_all_questions(page_size=0)
     return get_all_questions(
         page_size=0,
@@ -181,7 +182,9 @@ def get_question(question_id: str, user_info: dict = Depends(get_current_user_in
         raise HTTPException(status_code=404, detail="题目不存在")
 
     # 题目管理员只能查看自己创建的题目
-    if has_permission(user_info, QUESTIONS_MANAGE) and user_info["role"] != "super_admin":
+    if has_permission(user_info, QUESTIONS_MANAGE) and not has_role(
+        user_info, "super_admin"
+    ):
         if not _question_belongs_to_user(question, user_info):
             raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
 
@@ -276,12 +279,12 @@ def track_hide_click(
 # ============= 管理员接口 =============
 
 @router.get("/api/admin/stats")
-def get_stats(user_info: dict = Depends(require_content_admin)):
+def get_stats(user_info: dict = Depends(require_questions_manage)):
     """获取题目统计信息"""
-    role = user_info["role"]
+    is_super_admin = has_role(user_info, "super_admin")
 
-    contributor_id = None if role == "super_admin" else user_info["id"]
-    legacy_names = None if role == "super_admin" else get_admin_legacy_names(user_info["id"])
+    contributor_id = None if is_super_admin else user_info["id"]
+    legacy_names = None if is_super_admin else get_admin_legacy_names(user_info["id"])
 
     by_tag = get_question_tag_counts(contributor_id, legacy_names)
     return {
@@ -297,12 +300,10 @@ def get_stats(user_info: dict = Depends(require_content_admin)):
 
 
 @router.post("/api/admin/questions/{question_id}/reset_stats")
-def reset_stats_single(question_id: str, user_info: dict = Depends(require_content_admin)):
+def reset_stats_single(question_id: str, user_info: dict = Depends(require_questions_manage)):
     """单题归零"""
     # 题目管理员只能操作自己创建的题目
-    role = user_info["role"]
-
-    if role != "super_admin":
+    if not has_role(user_info, "super_admin"):
         question = get_question_by_id(question_id)
         if not question:
             raise HTTPException(status_code=404, detail="题目不存在")
@@ -331,12 +332,10 @@ def admin_list_questions(
     sort_order: str = 'asc',
     author: Optional[str] = None,
     contributor_id: Optional[int] = None,
-    user_info: dict = Depends(require_content_admin)
+    user_info: dict = Depends(require_questions_manage)
 ):
     """管理员获取题目（分页）- 题目管理员只能看到自己创建的题目"""
-    role = user_info["role"]
-
-    if role == "super_admin":
+    if has_role(user_info, "super_admin"):
         selected_contributor_id = contributor_id
         legacy_names = [author] if author and contributor_id is None else None
         if contributor_id is not None and not get_content_contributor(contributor_id):
@@ -371,16 +370,14 @@ def admin_list_questions(
 
 
 @router.get("/api/admin/questions/{question_id}", response_model=Question)
-def admin_get_question(question_id: str, user_info: dict = Depends(require_content_admin)):
+def admin_get_question(question_id: str, user_info: dict = Depends(require_questions_manage)):
     """管理员获取单个题目（包含答案）"""
-    role = user_info["role"]
-
     question = get_question_by_id(question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
 
     # 题目管理员只能查看自己创建的题目
-    if role != "super_admin":
+    if not has_role(user_info, "super_admin"):
         if not _question_belongs_to_user(question, user_info):
             raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
 
@@ -388,7 +385,7 @@ def admin_get_question(question_id: str, user_info: dict = Depends(require_conte
 
 
 @router.post("/api/admin/questions", response_model=Question)
-def admin_create_question(question_data: QuestionCreate, user_info: dict = Depends(require_content_admin)):
+def admin_create_question(question_data: QuestionCreate, user_info: dict = Depends(require_questions_manage)):
     """管理员创建题目"""
     # 生成自增ID
     question_id = get_next_question_id()
@@ -413,17 +410,17 @@ def admin_create_question(question_data: QuestionCreate, user_info: dict = Depen
 def admin_update_question(
     question_id: str,
     question_data: QuestionUpdate,
-    user_info: dict = Depends(require_content_admin)
+    user_info: dict = Depends(require_questions_manage)
 ):
     """管理员更新题目"""
-    role = user_info["role"]
+    is_super_admin = has_role(user_info, "super_admin")
 
     existing = get_question_by_id(question_id)
     if not existing:
         raise HTTPException(status_code=404, detail="题目不存在")
 
     # 题目管理员只能更新自己创建的题目
-    if role != "super_admin":
+    if not is_super_admin:
         if not _question_belongs_to_user(existing, user_info):
             raise HTTPException(status_code=403, detail="只能更新自己创建的题目")
 
@@ -436,7 +433,7 @@ def admin_update_question(
         updates["tag"] = _clean_tag(updates["tag"])
 
     contributors = None
-    if role == "super_admin":
+    if is_super_admin:
         if requested_contributor_ids is None and legacy_author_update is not None:
             resolved = resolve_contributors_by_names(legacy_author_update)
             if resolved:
@@ -462,12 +459,10 @@ def admin_update_question(
 
 
 @router.delete("/api/admin/questions/{question_id}")
-def admin_delete_question(question_id: str, user_info: dict = Depends(require_content_admin)):
+def admin_delete_question(question_id: str, user_info: dict = Depends(require_questions_manage)):
     """管理员删除题目"""
-    role = user_info["role"]
-
     # 题目管理员只能删除自己创建的题目
-    if role != "super_admin":
+    if not has_role(user_info, "super_admin"):
         question = get_question_by_id(question_id)
         if not question:
             raise HTTPException(status_code=404, detail="题目不存在")
@@ -484,19 +479,20 @@ def admin_delete_question(question_id: str, user_info: dict = Depends(require_co
 @router.post("/api/admin/questions/batch_import", response_model=QuestionBatchImportResult)
 def admin_batch_import_questions(
     batch_data: QuestionBatchImport,
-    user_info: dict = Depends(require_content_admin),
+    user_info: dict = Depends(require_questions_manage),
 ):
     """拥有题目管理权限的账号可以批量导入题目。"""
     success_count = 0
     fail_count = 0
     errors = []
+    is_super_admin = has_role(user_info, "super_admin")
 
     for index, item in enumerate(batch_data.questions):
         try:
             cleaned_tag = _clean_tag(item.tag)
             resolved_contributors = (
                 resolve_contributors_by_names(item.author)
-                if user_info["role"] == "super_admin"
+                if is_super_admin
                 else []
             )
             if not resolved_contributors:
@@ -506,7 +502,7 @@ def admin_batch_import_questions(
             ]
             author_names = (
                 item.author
-                if user_info["role"] == "super_admin" and item.author
+                if is_super_admin and item.author
                 else [
                     contributor.display_name for contributor in resolved_contributors
                 ]
@@ -525,7 +521,7 @@ def admin_batch_import_questions(
                     continue
 
                 if (
-                    user_info["role"] != "super_admin"
+                    not is_super_admin
                     and not _question_belongs_to_user(existing, user_info)
                 ):
                     errors.append({

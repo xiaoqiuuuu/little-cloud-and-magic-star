@@ -112,6 +112,7 @@ export const handleApiError = (error, defaultMessage = '操作失败') => {
         localStorage.removeItem('username');
         localStorage.removeItem('userRole');
         localStorage.removeItem('userRoleName');
+        localStorage.removeItem('userRoles');
         localStorage.removeItem('userPermissions');
         localStorage.removeItem('currentUserId');
         window.dispatchEvent(new Event('authChange'));

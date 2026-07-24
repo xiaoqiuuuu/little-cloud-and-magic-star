@@ -5,9 +5,13 @@ from typing import Tuple
 from auth import verify_token, get_current_user_info
 from database.rbac import (
     ACCOUNTS_MANAGE,
+    CONTENT_ROLES_MANAGE,
     HOMEPAGE_MANAGE,
+    MATERIALS_MANAGE,
     QUESTIONS_MANAGE,
+    QUIZ_ACTIVITIES_MANAGE,
     QUIZ_OPERATE,
+    VISIT_STATS_VIEW,
 )
 
 
@@ -32,7 +36,7 @@ def get_current_user_info_dep(user_info: dict = Depends(get_current_user_info)) 
 
 def require_super_admin(user_info: dict = Depends(get_current_user_info)) -> dict:
     """仅允许超级管理员访问。"""
-    if user_info["role"] != "super_admin":
+    if not has_role(user_info, "super_admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="只有超级管理员可以执行此操作",
@@ -42,6 +46,13 @@ def require_super_admin(user_info: dict = Depends(get_current_user_info)) -> dic
 
 def has_permission(user_info: dict, permission: str) -> bool:
     return permission in set(user_info.get("permissions") or [])
+
+
+def has_role(user_info: dict, role_key: str) -> bool:
+    role_keys = user_info.get("role_keys") or []
+    if role_keys:
+        return role_key in set(role_keys)
+    return user_info.get("role") == role_key
 
 
 def require_permission(permission: str):
@@ -71,6 +82,10 @@ def require_any_permission(*permissions: str):
 
 
 require_questions_manage = require_permission(QUESTIONS_MANAGE)
+require_materials_manage = require_permission(MATERIALS_MANAGE)
+require_content_roles_manage = require_permission(CONTENT_ROLES_MANAGE)
+require_quiz_activities_manage = require_permission(QUIZ_ACTIVITIES_MANAGE)
+require_visit_stats_view = require_permission(VISIT_STATS_VIEW)
 require_accounts_manage = require_permission(ACCOUNTS_MANAGE)
 require_homepage_manage = require_permission(HOMEPAGE_MANAGE)
 require_quiz_operate = require_permission(QUIZ_OPERATE)

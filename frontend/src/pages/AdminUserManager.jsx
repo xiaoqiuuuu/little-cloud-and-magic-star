@@ -77,9 +77,11 @@ function AdminUserManager() {
     setEditingUser(null);
     accountForm.resetFields();
     accountForm.setFieldsValue({
-      role: roles.some((role) => role.key === 'question_admin')
-        ? 'question_admin'
-        : roles[0]?.key,
+      roles: [
+        roles.some((role) => role.key === 'question_admin')
+          ? 'question_admin'
+          : roles[0]?.key,
+      ].filter(Boolean),
       is_active: true,
       display_name: '',
       profile_url: '',
@@ -91,7 +93,7 @@ function AdminUserManager() {
     setEditingUser(user);
     accountForm.setFieldsValue({
       username: user.username,
-      role: user.role,
+      roles: user.role_keys || user.roles?.map((role) => role.key) || [user.role],
       is_active: user.is_active,
       display_name: user.display_name,
       profile_url: user.profile_url || '',
@@ -106,7 +108,7 @@ function AdminUserManager() {
       if (editingUser) {
         await api.patch(`/admin/users/${editingUser.id}`, {
           username: values.username,
-          role: values.role,
+          roles: values.roles,
           is_active: values.is_active,
           display_name: values.display_name,
           profile_url: values.profile_url || null,
@@ -116,7 +118,7 @@ function AdminUserManager() {
         await api.post('/admin/users', {
           username: values.username,
           password: values.password,
-          role: values.role,
+          roles: values.roles,
           display_name: values.display_name,
           profile_url: values.profile_url || null,
         });
@@ -193,13 +195,20 @@ function AdminUserManager() {
     },
     {
       title: '角色',
-      dataIndex: 'role',
-      key: 'role',
+      dataIndex: 'roles',
+      key: 'roles',
       render: (_, record) => (
         <div>
-          <Tag color={record.role === 'super_admin' ? 'purple' : 'cyan'}>
-            {record.role_name || record.role}
-          </Tag>
+          <Space wrap size={[2, 4]}>
+            {(record.roles || []).map((role) => (
+              <Tag
+                key={role.key}
+                color={role.key === 'super_admin' ? 'purple' : 'cyan'}
+              >
+                {role.name}
+              </Tag>
+            ))}
+          </Space>
           <div className="mt-1 text-xs text-gray-500">
             {(record.permissions || []).length} 项权限
           </div>
@@ -350,8 +359,16 @@ function AdminUserManager() {
             </Form.Item>
           )}
 
-          <Form.Item name="role" label="角色" rules={[{ required: true }]}>
-            <Select options={roleOptions} />
+          <Form.Item
+            name="roles"
+            label="角色（可多选）"
+            rules={[{ required: true, message: '请至少选择一个角色' }]}
+          >
+            <Select
+              mode="multiple"
+              options={roleOptions}
+              placeholder="选择一个或多个角色"
+            />
           </Form.Item>
 
           <Form.Item

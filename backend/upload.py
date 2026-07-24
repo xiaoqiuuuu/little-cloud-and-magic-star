@@ -4,7 +4,12 @@ from fastapi.responses import JSONResponse
 from uuid import uuid4
 
 from api.dependencies import require_any_permission
-from database.rbac import HOMEPAGE_MANAGE, QUESTIONS_MANAGE
+from database.rbac import (
+    CONTENT_ROLES_MANAGE,
+    HOMEPAGE_MANAGE,
+    MATERIALS_MANAGE,
+    QUESTIONS_MANAGE,
+)
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -20,7 +25,12 @@ MAX_SIZE = 10 * 1024 * 1024  # 10MB
 async def upload_file(
     file: UploadFile = File(...),
     _: dict = Depends(
-        require_any_permission(QUESTIONS_MANAGE, HOMEPAGE_MANAGE)
+        require_any_permission(
+            QUESTIONS_MANAGE,
+            MATERIALS_MANAGE,
+            CONTENT_ROLES_MANAGE,
+            HOMEPAGE_MANAGE,
+        )
     ),
 ):
     if not file.filename:

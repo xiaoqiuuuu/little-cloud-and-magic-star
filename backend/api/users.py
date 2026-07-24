@@ -1,13 +1,14 @@
 """后台账号管理与当前账号资料 API。"""
 
 import sqlite3
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from auth import get_current_user_info
-from .dependencies import require_accounts_manage, require_questions_manage
+from .dependencies import has_permission, require_accounts_manage
 from database import (
+    MATERIALS_MANAGE,
     QUESTIONS_MANAGE,
     count_active_super_admins,
     count_content_for_admin,
@@ -19,7 +20,7 @@ from database import (
     list_content_contributors,
     list_admins,
     reset_admin_password,
-    role_has_permission,
+    role_keys_have_permission,
     update_admin,
 )
 from database.tokens import revoke_all_refresh_tokens
@@ -34,7 +35,7 @@ from models import (
 
 
 router = APIRouter(prefix="/api/admin/users", tags=["人员管理"])
-AUTH_ACCOUNT_FIELDS = {"username", "role", "is_active"}
+AUTH_ACCOUNT_FIELDS = {"username", "role", "roles", "is_active"}
 
 
 def _get_admin_or_404(admin_id: int) -> dict:
@@ -60,7 +61,7 @@ def _normalize_optional_text(value: Optional[str]) -> Optional[str]:
 
 def _ensure_not_last_active_super_admin(target: dict) -> None:
     if (
-        target["role"] == "super_admin"
+        "super_admin" in target["role_keys"]
         and target["is_active"]
         and count_active_super_admins() <= 1
     ):
@@ -70,15 +71,45 @@ def _ensure_not_last_active_super_admin(target: dict) -> None:
         )
 
 
+def _normalize_requested_roles(
+    roles: Optional[List[str]],
+    legacy_role: Optional[str],
+    *,
+    default: Optional[List[str]] = None,
+) -> Optional[List[str]]:
+    if roles is not None and legacy_role is not None:
+        raise HTTPException(status_code=422, detail="不能同时提交 role 和 roles")
+    requested = roles if roles is not None else ([legacy_role] if legacy_role else default)
+    if requested is None:
+        return None
+    normalized = list(
+        dict.fromkeys(str(role_key).strip() for role_key in requested if str(role_key).strip())
+    )
+    if not normalized:
+        raise HTTPException(status_code=422, detail="账号至少需要一个角色")
+    return normalized
+
+
 @router.get("", response_model=List[AdminUser])
 def get_admin_users(_: dict = Depends(require_accounts_manage)):
     return list_admins()
 
 
 @router.get("/contributors", response_model=List[ContentContributor])
-def get_content_accounts(_: dict = Depends(require_questions_manage)):
+def get_content_accounts(
+    scope: Literal["questions", "materials"] = "questions",
+    current_user: dict = Depends(get_current_user_info),
+):
     """题目和物料可绑定的账号，包含已停用账号以便查看历史内容。"""
-    return list_content_contributors(include_inactive=True)
+    permission_key = (
+        QUESTIONS_MANAGE if scope == "questions" else MATERIALS_MANAGE
+    )
+    if not has_permission(current_user, permission_key):
+        raise HTTPException(status_code=403, detail="当前账号不能查看该模块贡献账号")
+    return list_content_contributors(
+        include_inactive=True,
+        permission_key=permission_key,
+    )
 
 
 @router.patch("/me/profile", response_model=AdminUser)
@@ -110,11 +141,16 @@ def create_admin_user(
         raise HTTPException(status_code=409, detail="用户名已存在")
     display_name = _normalize_optional_text(request.display_name)
     profile_url = _normalize_optional_text(request.profile_url)
+    role_keys = _normalize_requested_roles(
+        request.roles,
+        request.role,
+        default=["question_admin"],
+    )
     try:
         created = create_admin(
             username,
             request.password,
-            request.role,
+            role_keys or ["question_admin"],
             display_name=display_name,
             profile_url=profile_url,
         )
@@ -133,6 +169,15 @@ def update_admin_user(
 ):
     target = _get_admin_or_404(admin_id)
     updates = request.model_dump(exclude_unset=True)
+    roles_were_submitted = "roles" in updates or "role" in updates
+    if roles_were_submitted:
+        role_keys = _normalize_requested_roles(
+            updates.pop("roles", None),
+            updates.pop("role", None),
+        )
+        if role_keys is None:
+            raise HTTPException(status_code=422, detail="账号至少需要一个角色")
+        updates["roles"] = role_keys
     if "username" in updates:
         if updates["username"] is None:
             raise HTTPException(status_code=422, detail="用户名不能为空")
@@ -149,7 +194,7 @@ def update_admin_user(
     changed = {
         key: value
         for key, value in updates.items()
-        if value != target.get(key)
+        if value != (target["role_keys"] if key == "roles" else target.get(key))
     }
     if not changed:
         return target
@@ -161,26 +206,40 @@ def update_admin_user(
         )
 
     removes_active_super = (
-        target["role"] == "super_admin"
+        "super_admin" in target["role_keys"]
         and target["is_active"]
         and (
-            changed.get("role", target["role"]) != "super_admin"
+            "super_admin" not in changed.get("roles", target["role_keys"])
             or changed.get("is_active", target["is_active"]) is False
         )
     )
     if removes_active_super:
         _ensure_not_last_active_super_admin(target)
 
-    next_role = changed.get("role", target["role"])
-    if not get_access_role(next_role):
-        raise HTTPException(status_code=422, detail="账号角色不存在")
-    if not role_has_permission(next_role, QUESTIONS_MANAGE):
-        content_counts = count_content_for_admin(admin_id)
-        if content_counts["questions"] or content_counts["materials"]:
-            raise HTTPException(
-                status_code=409,
-                detail="该账号已绑定题目或物料，不能改为没有题目管理权限的角色",
-            )
+    next_roles = changed.get("roles", target["role_keys"])
+    missing_roles = [role_key for role_key in next_roles if not get_access_role(role_key)]
+    if missing_roles:
+        raise HTTPException(
+            status_code=422,
+            detail=f"账号角色不存在：{', '.join(missing_roles)}",
+        )
+    content_counts = count_content_for_admin(admin_id)
+    if (
+        content_counts["questions"]
+        and not role_keys_have_permission(next_roles, QUESTIONS_MANAGE)
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="该账号已绑定题目，不能移除全部题目管理权限",
+        )
+    if (
+        content_counts["materials"]
+        and not role_keys_have_permission(next_roles, MATERIALS_MANAGE)
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="该账号已绑定物料，不能移除全部物料管理权限",
+        )
 
     if "username" in changed:
         existing = get_admin_by_username(changed["username"])

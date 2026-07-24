@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from database.stats import add_visit, get_visit_stats
-from .dependencies import require_content_admin
+from .dependencies import require_visit_stats_view
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ async def record_visit(request: Request, visit: VisitRequest):
 @router.get("/")
 async def get_stats(
     days: int = Query(default=30, ge=7, le=90),
-    _: dict = Depends(require_content_admin),
+    _: dict = Depends(require_visit_stats_view),
 ):
     try:
         return get_visit_stats(days)

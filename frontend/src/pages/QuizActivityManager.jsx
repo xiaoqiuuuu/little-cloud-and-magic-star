@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import {
   Alert,
   App,
@@ -29,6 +29,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import api from '../api';
+import { hasPermission, PERMISSIONS } from '../utils/adminAccess';
 import { getQuestionTagMeta, mergeQuestionTagOptions } from '../constants/questionTags';
 
 
@@ -58,6 +59,8 @@ function getDatePart(value) {
 
 function QuizActivityManager() {
   const { message, modal } = App.useApp();
+  const { currentUser } = useOutletContext();
+  const canOperateQuiz = hasPermission(currentUser, PERMISSIONS.QUIZ_OPERATE);
   const [activities, setActivities] = useState([]);
   const [questionOptions, setQuestionOptions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -131,10 +134,8 @@ function QuizActivityManager() {
     if (questionOptions.length > 0) return questionOptions;
     try {
       setQuestionsLoading(true);
-      const response = await api.get('/admin/questions', {
-        params: { page: 1, page_size: 0, sort_order: 'asc' },
-      });
-      const options = response.data.items.map((question) => ({
+      const response = await api.get('/admin/activities/question-options');
+      const options = response.data.map((question) => ({
         key: question.id,
         title: `#${question.id} ${question.question}`,
         tag: question.tag,
@@ -477,9 +478,11 @@ function QuizActivityManager() {
           </Text>
         </div>
         <Space wrap>
-          <Link to="/quiz">
-            <Button icon={<PlayCircleOutlined />}>进入现场答题</Button>
-          </Link>
+          {canOperateQuiz && (
+            <Link to="/quiz">
+              <Button icon={<PlayCircleOutlined />}>进入现场答题</Button>
+            </Link>
+          )}
           <Button
             icon={<ClockCircleOutlined />}
             onClick={() => {

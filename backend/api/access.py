@@ -5,6 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from database import (
+    MATERIALS_MANAGE,
     QUESTIONS_MANAGE,
     create_access_role,
     delete_access_role,
@@ -71,15 +72,23 @@ def update_role(
         raise HTTPException(status_code=404, detail="权限角色不存在")
 
     next_permissions = set(payload.permissions)
-    if (
-        QUESTIONS_MANAGE in current["permissions"]
-        and QUESTIONS_MANAGE not in next_permissions
-        and role_has_bound_content(role_key)
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail="该角色下仍有账号绑定题目或物料，不能移除题目管理权限",
-        )
+    protected_content_permissions = (
+        (QUESTIONS_MANAGE, "题目"),
+        (MATERIALS_MANAGE, "物料"),
+    )
+    for permission_key, content_name in protected_content_permissions:
+        if (
+            permission_key in current["permissions"]
+            and permission_key not in next_permissions
+            and role_has_bound_content(role_key, permission_key)
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"该角色下仍有账号绑定{content_name}，"
+                    f"不能移除{content_name}管理权限"
+                ),
+            )
 
     try:
         updated = update_access_role(
