@@ -6,7 +6,7 @@ import api, {
   getLatest,
   isRequestCanceled,
 } from '../api';
-import { hasContentAdminAccess } from '../utils/adminAccess';
+import { hasContentAdminAccess, hasRole } from '../utils/adminAccess';
 
 // Components
 import StatsOverview from '../components/admin/StatsOverview';
@@ -49,7 +49,7 @@ function AdminDashboard() {
   const questionsRefreshVersion = useRef(0);
 
   // 判断是否是超级管理员
-  const isSuperAdmin = currentUser?.role === 'super_admin';
+  const isSuperAdmin = hasRole(currentUser, 'super_admin');
   const canManageQuestions = hasContentAdminAccess(currentUser);
   const questionTagOptions = mergeQuestionTagOptions(Object.keys(stats.by_tag || {}));
 

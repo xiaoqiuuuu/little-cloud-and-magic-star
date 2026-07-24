@@ -25,6 +25,7 @@ import {
   canAccessBackend,
   getDefaultAccessPath,
   readStoredPermissions,
+  readStoredRoles,
 } from './utils/adminAccess';
 import 'antd/dist/reset.css'; // Ant Design 样式
 
@@ -41,7 +42,7 @@ function AdminIndexRedirect() {
 function AppContent() {
   const { mode, tokens } = useCloudUI();
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('token'));
-  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || '');
+  const [userRoles, setUserRoles] = useState(readStoredRoles);
   const [userPermissions, setUserPermissions] = useState(readStoredPermissions);
 
   useEffect(() => {
@@ -49,8 +50,8 @@ function AppContent() {
       if (e.key === 'token') {
         setIsAdminLoggedIn(!!e.newValue);
       }
-      if (e.key === 'userRole') {
-        setUserRole(e.newValue || '');
+      if (e.key === 'userRoles') {
+        setUserRoles(readStoredRoles());
       }
       if (e.key === 'userPermissions') {
         setUserPermissions(readStoredPermissions());
@@ -60,11 +61,11 @@ function AppContent() {
     // 监听自定义事件，处理当前窗口内的登录/登出变更
     const onAuthChange = (e) => {
       setIsAdminLoggedIn(!!localStorage.getItem('token'));
-      setUserRole(localStorage.getItem('userRole') || '');
+      setUserRoles(readStoredRoles());
       setUserPermissions(readStoredPermissions());
     };
     const onAccessChange = () => {
-      setUserRole(localStorage.getItem('userRole') || '');
+      setUserRoles(readStoredRoles());
       setUserPermissions(readStoredPermissions());
     };
     window.addEventListener('authChange', onAuthChange);
@@ -77,7 +78,7 @@ function AppContent() {
     };
   }, []);
 
-  const storedUser = { role: userRole, permissions: userPermissions };
+  const storedUser = { role_keys: userRoles, permissions: userPermissions };
   const canOperateQuiz = userPermissions.includes(PERMISSIONS.QUIZ_OPERATE);
   const hasBackendAccess = canAccessBackend(storedUser);
   const quizOnlyAccount = canOperateQuiz && !hasBackendAccess;
@@ -238,20 +239,20 @@ function AppContent() {
                   </RequirePermission>
                 )} />
                 <Route path="stats" element={
-                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                  <RequirePermission permission={PERMISSIONS.VISIT_STATS_VIEW}>
                     <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载统计图表...</div>}>
                       <VisitStatsPage />
                     </Suspense>
                   </RequirePermission>
                 } />
                 <Route path="materials" element={(
-                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                  <RequirePermission permission={PERMISSIONS.MATERIALS_MANAGE}>
                     <MaterialManager />
                   </RequirePermission>
                 )} />
                 <Route path="profile" element={<AdminProfile />} />
                 <Route path="roles" element={(
-                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                  <RequirePermission permission={PERMISSIONS.CONTENT_ROLES_MANAGE}>
                     <RoleManager />
                   </RequirePermission>
                 )} />
@@ -261,7 +262,7 @@ function AppContent() {
                   </RequirePermission>
                 } />
                 <Route path="activities" element={
-                  <RequirePermission permission={PERMISSIONS.QUESTIONS_MANAGE}>
+                  <RequirePermission permission={PERMISSIONS.QUIZ_ACTIVITIES_MANAGE}>
                     <QuizActivityManager />
                   </RequirePermission>
                 } />

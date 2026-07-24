@@ -22,6 +22,7 @@ import {
   PERMISSIONS,
   canAccessBackend,
   hasPermission,
+  hasRole,
   storeUserAccess,
 } from '../utils/adminAccess';
 import { useCloudUI } from '../ui';
@@ -106,12 +107,23 @@ function AdminLayout() {
 
   const username = currentUser?.username || '';
   const displayName = currentUser?.display_name || username;
-  const userRole = currentUser?.role || '';
-  const isSuperAdmin = userRole === 'super_admin';
-  const roleLabel = currentUser?.role_name || userRole || '未分配角色';
+  const isSuperAdmin = hasRole(currentUser, 'super_admin');
+  const roleLabel = currentUser?.role_names?.join('、')
+    || currentUser?.role_name
+    || '未分配角色';
   const roleBadgeClassName = `admin-role-badge ${isSuperAdmin ? 'is-super' : 'is-admin'}`;
   const canManageQuestions = hasPermission(currentUser, PERMISSIONS.QUESTIONS_MANAGE);
+  const canManageMaterials = hasPermission(currentUser, PERMISSIONS.MATERIALS_MANAGE);
+  const canManageContentRoles = hasPermission(
+    currentUser,
+    PERMISSIONS.CONTENT_ROLES_MANAGE,
+  );
+  const canManageQuizActivities = hasPermission(
+    currentUser,
+    PERMISSIONS.QUIZ_ACTIVITIES_MANAGE,
+  );
   const canManageHomepage = hasPermission(currentUser, PERMISSIONS.HOMEPAGE_MANAGE);
+  const canViewVisitStats = hasPermission(currentUser, PERMISSIONS.VISIT_STATS_VIEW);
   const canManageAccounts = hasPermission(currentUser, PERMISSIONS.ACCOUNTS_MANAGE);
   const canOperateQuiz = hasPermission(currentUser, PERMISSIONS.QUIZ_OPERATE);
 
@@ -124,29 +136,29 @@ function AdminLayout() {
   }
 
   const menuItems = [
-    ...(canManageQuestions ? [{
+    ...(canManageQuestions || canManageMaterials || canManageContentRoles ? [{
       type: 'group',
       key: 'content-group',
       label: '内容中心',
       children: [
-        {
+        ...(canManageQuestions ? [{
           key: '/admin/questions',
           icon: <QuestionCircleOutlined />,
           label: <Link to="/admin/questions">题目</Link>,
-        },
-        {
+        }] : []),
+        ...(canManageMaterials ? [{
           key: '/admin/materials',
           icon: <PictureOutlined />,
           label: <Link to="/admin/materials">物料</Link>,
-        },
-        {
+        }] : []),
+        ...(canManageContentRoles ? [{
           key: '/admin/roles',
           icon: <TeamOutlined />,
           label: <Link to="/admin/roles">内容角色</Link>,
-        },
+        }] : []),
       ],
     }] : []),
-    ...(canManageHomepage || canManageQuestions ? [{
+    ...(canManageHomepage || canManageQuizActivities ? [{
       type: 'group',
       key: 'activity-group',
       label: '活动运营',
@@ -156,14 +168,14 @@ function AdminLayout() {
           icon: <GlobalOutlined />,
           label: <Link to="/admin/site-events">官网活动</Link>,
         }] : []),
-        ...(canManageQuestions ? [{
+        ...(canManageQuizActivities ? [{
           key: '/admin/activities',
           icon: <CalendarOutlined />,
           label: <Link to="/admin/activities">答题活动</Link>,
         }] : []),
       ],
     }] : []),
-    ...(canManageQuestions ? [{
+    ...(canViewVisitStats ? [{
       type: 'group',
       key: 'analytics-group',
       label: '数据分析',

@@ -36,11 +36,24 @@ api/
 - `GET/POST /roles`: 查询或创建权限角色
 - `PATCH/DELETE /roles/{role_key}`: 更新或删除权限角色
 
+后台模块使用独立权限点：
+
+- `questions.manage`: 题目管理与题目统计
+- `materials.manage`: 物料管理
+- `content_roles.manage`: 内容角色管理
+- `quiz_activities.manage`: 答题活动与现场倒计时管理
+- `homepage.manage`: 官网活动管理
+- `visit_stats.view`: 访问分析查看
+- `accounts.manage`: 账号与权限管理
+- `quiz.operate`: 现场答题操作
+
+一个账号可以绑定多个角色，最终权限为所有角色权限的并集。
+
 ### users.py（人员管理模块）
 **前缀**: `/api/admin/users`
 
 - `GET /`: 获取后台账号列表
-- `GET /contributors`: 获取题目/物料可绑定的内容账号
+- `GET /contributors?scope=questions|materials`: 获取对应模块可绑定的贡献账号
 - `PATCH /me/profile`: 当前账号修改自己的署名名称和个人主页
 - `POST /`: 创建后台账号
 - `PATCH /{admin_id}`: 修改账号、名片、角色或启停状态
@@ -50,7 +63,8 @@ api/
 ### activities.py（答题活动模块）
 
 - `GET /api/quiz/active-activity`: 获取当前进行中的活动
-- `GET/POST /api/admin/activities`: 查询或创建活动（需要 `questions.manage`）
+- `GET/POST /api/admin/activities`: 查询或创建活动（需要 `quiz_activities.manage`）
+- `GET /api/admin/activities/question-options`: 获取活动可选题目
 - `GET/PUT/DELETE /api/admin/activities/{id}`: 活动详情、编辑或删除草稿
 - `POST /api/admin/activities/{id}/start`: 开始活动；自动暂停其他活动
 - `POST /api/admin/activities/{id}/pause`: 暂停并保留统计

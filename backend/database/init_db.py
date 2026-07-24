@@ -34,8 +34,10 @@ def _backfill_account_contributors(cursor):
         SELECT a.id, a.username
         FROM admins a
         WHERE EXISTS (
-            SELECT 1 FROM access_role_permissions rp
-            WHERE rp.role_key = a.role AND rp.permission_key = ?
+            SELECT 1
+            FROM admin_access_roles ar
+            JOIN access_role_permissions rp ON rp.role_key = ar.role_key
+            WHERE ar.admin_id = a.id AND rp.permission_key = ?
         )
         """,
         (QUESTIONS_MANAGE,),
@@ -328,6 +330,8 @@ def init_db():
             FROM admins_legacy_roles
         ''')
         cursor.execute('DROP TABLE admins_legacy_roles')
+        # 旧单角色表是唯一可信来源，清除可能残留的关联表后重新回填。
+        cursor.execute('DROP TABLE IF EXISTS admin_access_roles')
 
     initialize_rbac(cursor)
 
