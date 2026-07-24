@@ -11,7 +11,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
 import database.config as database_config  # noqa: E402
-from api.dependencies import require_content_admin  # noqa: E402
+from api.dependencies import require_visit_stats_view  # noqa: E402
 from api.stats import router as stats_router  # noqa: E402
 from database import init_db  # noqa: E402
 from database.stats import (  # noqa: E402
@@ -153,7 +153,7 @@ class VisitStatsApiTests(unittest.IsolatedAsyncioTestCase):
         self.previous_database = database_config.DATABASE_FILE
         database_config.DATABASE_FILE = str(Path(self.temp_dir.name) / "stats-api.db")
         init_db()
-        test_app.dependency_overrides[require_content_admin] = lambda: {
+        test_app.dependency_overrides[require_visit_stats_view] = lambda: {
             "username": "test-admin",
             "role": "super_admin",
         }
