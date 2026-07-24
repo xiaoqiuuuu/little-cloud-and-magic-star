@@ -1,5 +1,6 @@
 export const PERMISSIONS = Object.freeze({
   QUESTIONS_MANAGE: 'questions.manage',
+  QUESTIONS_MANAGE_ALL: 'questions.manage_all',
   MATERIALS_MANAGE: 'materials.manage',
   CONTENT_ROLES_MANAGE: 'content_roles.manage',
   QUIZ_ACTIVITIES_MANAGE: 'quiz_activities.manage',
@@ -48,6 +49,12 @@ export const hasAnyPermission = (user, permissions) => (
 
 export const hasContentAdminAccess = (user) => (
   hasPermission(user, PERMISSIONS.QUESTIONS_MANAGE)
+);
+
+
+export const canManageAllQuestions = (user) => (
+  hasContentAdminAccess(user)
+  && hasPermission(user, PERMISSIONS.QUESTIONS_MANAGE_ALL)
 );
 
 

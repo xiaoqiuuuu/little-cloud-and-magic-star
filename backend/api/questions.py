@@ -8,7 +8,7 @@ from models import (
     QuestionBatchImport, QuestionBatchImportResult
 )
 from database import (
-    QUESTIONS_MANAGE, QUIZ_OPERATE,
+    QUESTIONS_MANAGE, QUESTIONS_MANAGE_ALL, QUIZ_OPERATE,
     get_all_questions, get_question_by_id, get_all_question_ids,
     create_question, update_question, delete_question,
     get_next_question_id, get_questions_count,
@@ -36,10 +36,16 @@ from .dependencies import (
     has_permission,
     has_role,
     require_questions_manage,
-    require_super_admin,
 )
 
 router = APIRouter(tags=["题目"])
+
+
+def _can_manage_all_questions(user_info: dict) -> bool:
+    return (
+        has_role(user_info, "super_admin")
+        or has_permission(user_info, QUESTIONS_MANAGE_ALL)
+    )
 
 
 def _clean_tag(tag: str) -> str:
@@ -116,7 +122,7 @@ def list_question_ids(user_info: dict = Depends(get_current_user_info_dep)):
         if not has_permission(user_info, QUIZ_OPERATE):
             raise HTTPException(status_code=403, detail="当前账号不能访问题目")
         return get_active_activity_question_ids() if get_active_activity() else []
-    if has_role(user_info, "super_admin"):
+    if _can_manage_all_questions(user_info):
         return get_all_question_ids()
     return get_all_question_ids(
         contributor_id=user_info["id"],
@@ -137,7 +143,7 @@ def list_questions(user_info: dict = Depends(get_current_user_info_dep)):
             for question_id in get_active_activity_questions()
             if (question := get_question_by_id(question_id)) is not None
         ]
-    if has_role(user_info, "super_admin"):
+    if _can_manage_all_questions(user_info):
         return get_all_questions(page_size=0)
     return get_all_questions(
         page_size=0,
@@ -182,8 +188,9 @@ def get_question(question_id: str, user_info: dict = Depends(get_current_user_in
         raise HTTPException(status_code=404, detail="题目不存在")
 
     # 题目管理员只能查看自己创建的题目
-    if has_permission(user_info, QUESTIONS_MANAGE) and not has_role(
-        user_info, "super_admin"
+    if (
+        has_permission(user_info, QUESTIONS_MANAGE)
+        and not _can_manage_all_questions(user_info)
     ):
         if not _question_belongs_to_user(question, user_info):
             raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
@@ -281,10 +288,10 @@ def track_hide_click(
 @router.get("/api/admin/stats")
 def get_stats(user_info: dict = Depends(require_questions_manage)):
     """获取题目统计信息"""
-    is_super_admin = has_role(user_info, "super_admin")
+    can_manage_all = _can_manage_all_questions(user_info)
 
-    contributor_id = None if is_super_admin else user_info["id"]
-    legacy_names = None if is_super_admin else get_admin_legacy_names(user_info["id"])
+    contributor_id = None if can_manage_all else user_info["id"]
+    legacy_names = None if can_manage_all else get_admin_legacy_names(user_info["id"])
 
     by_tag = get_question_tag_counts(contributor_id, legacy_names)
     return {
@@ -303,7 +310,7 @@ def get_stats(user_info: dict = Depends(require_questions_manage)):
 def reset_stats_single(question_id: str, user_info: dict = Depends(require_questions_manage)):
     """单题归零"""
     # 题目管理员只能操作自己创建的题目
-    if not has_role(user_info, "super_admin"):
+    if not _can_manage_all_questions(user_info):
         question = get_question_by_id(question_id)
         if not question:
             raise HTTPException(status_code=404, detail="题目不存在")
@@ -317,8 +324,10 @@ def reset_stats_single(question_id: str, user_info: dict = Depends(require_quest
 
 
 @router.post("/api/admin/questions/reset_stats_all")
-def reset_stats_all(_: dict = Depends(require_super_admin)):
-    """全部归零 - 只有超级管理员可以使用"""
+def reset_stats_all(user_info: dict = Depends(require_questions_manage)):
+    """将全部题目的历史调试统计归零。"""
+    if not _can_manage_all_questions(user_info):
+        raise HTTPException(status_code=403, detail="当前账号不能管理全部题目")
     count = reset_all_questions_stats()
     return {"message": f"已归零 {count} 道题目的统计"}
 
@@ -335,7 +344,7 @@ def admin_list_questions(
     user_info: dict = Depends(require_questions_manage)
 ):
     """管理员获取题目（分页）- 题目管理员只能看到自己创建的题目"""
-    if has_role(user_info, "super_admin"):
+    if _can_manage_all_questions(user_info):
         selected_contributor_id = contributor_id
         legacy_names = [author] if author and contributor_id is None else None
         if contributor_id is not None and not get_content_contributor(contributor_id):
@@ -377,7 +386,7 @@ def admin_get_question(question_id: str, user_info: dict = Depends(require_quest
         raise HTTPException(status_code=404, detail="题目不存在")
 
     # 题目管理员只能查看自己创建的题目
-    if not has_role(user_info, "super_admin"):
+    if not _can_manage_all_questions(user_info):
         if not _question_belongs_to_user(question, user_info):
             raise HTTPException(status_code=403, detail="只能查看自己创建的题目")
 
@@ -413,14 +422,14 @@ def admin_update_question(
     user_info: dict = Depends(require_questions_manage)
 ):
     """管理员更新题目"""
-    is_super_admin = has_role(user_info, "super_admin")
+    can_manage_all = _can_manage_all_questions(user_info)
 
     existing = get_question_by_id(question_id)
     if not existing:
         raise HTTPException(status_code=404, detail="题目不存在")
 
     # 题目管理员只能更新自己创建的题目
-    if not is_super_admin:
+    if not can_manage_all:
         if not _question_belongs_to_user(existing, user_info):
             raise HTTPException(status_code=403, detail="只能更新自己创建的题目")
 
@@ -433,7 +442,7 @@ def admin_update_question(
         updates["tag"] = _clean_tag(updates["tag"])
 
     contributors = None
-    if is_super_admin:
+    if can_manage_all:
         if requested_contributor_ids is None and legacy_author_update is not None:
             resolved = resolve_contributors_by_names(legacy_author_update)
             if resolved:
@@ -462,7 +471,7 @@ def admin_update_question(
 def admin_delete_question(question_id: str, user_info: dict = Depends(require_questions_manage)):
     """管理员删除题目"""
     # 题目管理员只能删除自己创建的题目
-    if not has_role(user_info, "super_admin"):
+    if not _can_manage_all_questions(user_info):
         question = get_question_by_id(question_id)
         if not question:
             raise HTTPException(status_code=404, detail="题目不存在")
@@ -485,14 +494,14 @@ def admin_batch_import_questions(
     success_count = 0
     fail_count = 0
     errors = []
-    is_super_admin = has_role(user_info, "super_admin")
+    can_manage_all = _can_manage_all_questions(user_info)
 
     for index, item in enumerate(batch_data.questions):
         try:
             cleaned_tag = _clean_tag(item.tag)
             resolved_contributors = (
                 resolve_contributors_by_names(item.author)
-                if is_super_admin
+                if can_manage_all
                 else []
             )
             if not resolved_contributors:
@@ -502,7 +511,7 @@ def admin_batch_import_questions(
             ]
             author_names = (
                 item.author
-                if is_super_admin and item.author
+                if can_manage_all and item.author
                 else [
                     contributor.display_name for contributor in resolved_contributors
                 ]
@@ -521,7 +530,7 @@ def admin_batch_import_questions(
                     continue
 
                 if (
-                    not is_super_admin
+                    not can_manage_all
                     and not _question_belongs_to_user(existing, user_info)
                 ):
                     errors.append({

@@ -6,7 +6,11 @@ import api, {
   getLatest,
   isRequestCanceled,
 } from '../api';
-import { hasContentAdminAccess, hasRole } from '../utils/adminAccess';
+import {
+  canManageAllQuestions as userCanManageAllQuestions,
+  hasContentAdminAccess,
+  hasRole,
+} from '../utils/adminAccess';
 
 // Components
 import StatsOverview from '../components/admin/StatsOverview';
@@ -51,6 +55,7 @@ function AdminDashboard() {
   // 判断是否是超级管理员
   const isSuperAdmin = hasRole(currentUser, 'super_admin');
   const canManageQuestions = hasContentAdminAccess(currentUser);
+  const canManageAllQuestions = userCanManageAllQuestions(currentUser);
   const questionTagOptions = mergeQuestionTagOptions(Object.keys(stats.by_tag || {}));
 
   // Debug Mode Sync
@@ -267,6 +272,10 @@ function AdminDashboard() {
                 <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
                   超级管理员
                 </span>
+              ) : canManageAllQuestions ? (
+                <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs font-medium">
+                  全部题目管理员
+                </span>
               ) : (
                 <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
                   题目管理员
@@ -296,7 +305,7 @@ function AdminDashboard() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-        {isSuperAdmin && (
+        {canManageAllQuestions && (
           <Alert
             className="mb-4"
             type="info"
@@ -306,7 +315,7 @@ function AdminDashboard() {
           />
         )}
         {/* 题目管理员提示 */}
-        {!isSuperAdmin && (
+        {!canManageAllQuestions && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-700">
               您是题目管理员，只能查看和管理自己创建的题目。
@@ -317,8 +326,7 @@ function AdminDashboard() {
         {/* Header Actions */}
         <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
           <div className="flex flex-wrap gap-2">
-            {/* 批量导入导出仅超级管理员可用 */}
-            {isSuperAdmin && (
+            {canManageAllQuestions && (
               <ExcelImportExport
                 onImportSuccess={() => {
                   fetchQuestions();
@@ -332,10 +340,9 @@ function AdminDashboard() {
               onClick={() => navigate('/admin/quiz')}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
             >
-              {isSuperAdmin ? '调试全部题目' : '调试我的题目'}
+              {canManageAllQuestions ? '调试全部题目' : '调试我的题目'}
             </button>
-            {/* 全部归零仅超级管理员可用 */}
-            {isSuperAdmin && (
+            {canManageAllQuestions && (
               <button
                 onClick={() => {
                   modal.confirm({
@@ -383,7 +390,7 @@ function AdminDashboard() {
           total={total}
           loading={loading}
           contributors={contributors}
-          isSuperAdmin={isSuperAdmin}
+          canManageAllQuestions={canManageAllQuestions}
           tagOptions={questionTagOptions}
         />
 
@@ -420,7 +427,7 @@ function AdminDashboard() {
         }}
         editingQuestion={editingQuestion}
         contributors={contributors}
-        isSuperAdmin={isSuperAdmin}
+        canManageAllQuestions={canManageAllQuestions}
         tagOptions={questionTagOptions}
       />
     </div>
