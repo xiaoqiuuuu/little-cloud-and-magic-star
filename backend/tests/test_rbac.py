@@ -16,6 +16,7 @@ from database import (  # noqa: E402
     HOMEPAGE_MANAGE,
     MATERIALS_MANAGE,
     QUESTIONS_MANAGE,
+    QUESTIONS_MANAGE_ALL,
     QUIZ_ACTIVITIES_MANAGE,
     QUIZ_OPERATE,
     VISIT_STATS_VIEW,
@@ -119,6 +120,7 @@ class RbacPermissionTests(unittest.IsolatedAsyncioTestCase):
                 *QUESTION_ADMIN_PERMISSIONS,
                 ACCOUNTS_MANAGE,
                 HOMEPAGE_MANAGE,
+                QUESTIONS_MANAGE_ALL,
                 QUIZ_OPERATE,
             },
             "editor": QUESTION_ADMIN_PERMISSIONS,
@@ -320,6 +322,131 @@ class RbacPermissionTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(stats.status_code, 200, stats.text)
         self.assertEqual(stats_activities.status_code, 403)
+
+    async def test_manage_all_questions_permission_expands_question_scope(self):
+        super_tokens = await self.login("rootadmin", "StrongPass123")
+        super_headers = self.auth_headers(super_tokens["access_token"])
+        role = await self.client.post(
+            "/api/admin/access/roles",
+            headers=super_headers,
+            json={
+                "name": "全部题目管理员",
+                "permissions": [QUESTIONS_MANAGE, QUESTIONS_MANAGE_ALL],
+            },
+        )
+        self.assertEqual(role.status_code, 201, role.text)
+        account = await self.client.post(
+            "/api/admin/users",
+            headers=super_headers,
+            json={
+                "username": "allquestions",
+                "password": "AllQuestions123",
+                "roles": [role.json()["key"]],
+            },
+        )
+        self.assertEqual(account.status_code, 201, account.text)
+
+        editor_tokens = await self.login("editor", "EditorPass123")
+        editor_headers = self.auth_headers(editor_tokens["access_token"])
+        editor_question = await self.client.post(
+            "/api/admin/questions",
+            headers=editor_headers,
+            json={"question": "编辑创建的题目", "answer": "A", "tag": "common"},
+        )
+        root_question = await self.client.post(
+            "/api/admin/questions",
+            headers=super_headers,
+            json={"question": "超级管理员创建的题目", "answer": "B", "tag": "vlog"},
+        )
+        self.assertEqual(editor_question.status_code, 200, editor_question.text)
+        self.assertEqual(root_question.status_code, 200, root_question.text)
+
+        editor_list = await self.client.get(
+            "/api/admin/questions",
+            headers=editor_headers,
+        )
+        editor_get_other = await self.client.get(
+            f"/api/admin/questions/{root_question.json()['id']}",
+            headers=editor_headers,
+        )
+        editor_reset_all = await self.client.post(
+            "/api/admin/questions/reset_stats_all",
+            headers=editor_headers,
+        )
+        self.assertEqual(editor_list.json()["total"], 1)
+        self.assertEqual(editor_get_other.status_code, 403)
+        self.assertEqual(editor_reset_all.status_code, 403)
+
+        manager_tokens = await self.login("allquestions", "AllQuestions123")
+        manager_headers = self.auth_headers(manager_tokens["access_token"])
+        manager_me = await self.client.get("/api/admin/me", headers=manager_headers)
+        manager_list = await self.client.get(
+            "/api/admin/questions",
+            headers=manager_headers,
+        )
+        manager_ids = await self.client.get("/api/questions/ids", headers=manager_headers)
+        manager_stats = await self.client.get("/api/admin/stats", headers=manager_headers)
+        filtered = await self.client.get(
+            "/api/admin/questions",
+            headers=manager_headers,
+            params={"contributor_id": self.question_admin["id"]},
+        )
+        self.assertTrue(
+            {QUESTIONS_MANAGE, QUESTIONS_MANAGE_ALL}
+            <= set(manager_me.json()["permissions"])
+        )
+        self.assertEqual(manager_list.json()["total"], 2)
+        self.assertEqual(
+            {item["id"] for item in manager_ids.json()},
+            {editor_question.json()["id"], root_question.json()["id"]},
+        )
+        self.assertEqual(manager_stats.json()["total"], 2)
+        self.assertEqual(filtered.json()["total"], 1)
+
+        updated = await self.client.put(
+            f"/api/admin/questions/{editor_question.json()['id']}",
+            headers=manager_headers,
+            json={
+                "question": "全部题目管理员已修改",
+                "contributor_ids": [account.json()["id"]],
+            },
+        )
+        reset_other = await self.client.post(
+            f"/api/admin/questions/{root_question.json()['id']}/reset_stats",
+            headers=manager_headers,
+        )
+        imported = await self.client.post(
+            "/api/admin/questions/batch_import",
+            headers=manager_headers,
+            json={
+                "questions": [{
+                    "id": root_question.json()["id"],
+                    "question": "全部题目管理员批量修改",
+                    "answer": "B",
+                    "resources": [],
+                    "tag": "vlog",
+                    "author": ["rootadmin"],
+                }],
+            },
+        )
+        deleted = await self.client.delete(
+            f"/api/admin/questions/{root_question.json()['id']}",
+            headers=manager_headers,
+        )
+        reset_all = await self.client.post(
+            "/api/admin/questions/reset_stats_all",
+            headers=manager_headers,
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["question"], "全部题目管理员已修改")
+        self.assertEqual(
+            [item["id"] for item in updated.json()["contributors"]],
+            [account.json()["id"]],
+        )
+        self.assertEqual(reset_other.status_code, 200, reset_other.text)
+        self.assertEqual(imported.json()["success_count"], 1)
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        self.assertEqual(reset_all.status_code, 200, reset_all.text)
 
     async def test_user_can_have_multiple_roles_and_permissions_are_unioned(self):
         super_tokens = await self.login("rootadmin", "StrongPass123")

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PERMISSIONS,
+  canManageAllQuestions,
   canAccessBackend,
   getDefaultAccessPath,
   hasContentAdminAccess,
@@ -17,6 +18,16 @@ test('permission helpers use explicit RBAC permissions', () => {
 
   assert.equal(hasPermission(questionManager, PERMISSIONS.QUESTIONS_MANAGE), true);
   assert.equal(hasContentAdminAccess(questionManager), true);
+  assert.equal(canManageAllQuestions(questionManager), false);
+  assert.equal(canManageAllQuestions({
+    permissions: [
+      PERMISSIONS.QUESTIONS_MANAGE,
+      PERMISSIONS.QUESTIONS_MANAGE_ALL,
+    ],
+  }), true);
+  assert.equal(canManageAllQuestions({
+    permissions: [PERMISSIONS.QUESTIONS_MANAGE_ALL],
+  }), false);
   assert.equal(canAccessBackend(questionManager), true);
   assert.equal(canAccessBackend(materialManager), true);
   assert.equal(canAccessBackend(quizOperator), false);

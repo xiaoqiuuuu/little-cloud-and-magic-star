@@ -7,6 +7,7 @@ from .config import get_connection
 
 
 QUESTIONS_MANAGE = "questions.manage"
+QUESTIONS_MANAGE_ALL = "questions.manage_all"
 MATERIALS_MANAGE = "materials.manage"
 CONTENT_ROLES_MANAGE = "content_roles.manage"
 QUIZ_ACTIVITIES_MANAGE = "quiz_activities.manage"
@@ -26,9 +27,16 @@ PERMISSION_DEFINITIONS = (
     (
         QUESTIONS_MANAGE,
         "题目管理",
-        "创建、编辑、导入、删除题目并查看题目统计。",
+        "创建、编辑、导入、删除自己关联的题目并查看题目统计。",
         "内容管理",
         10,
+    ),
+    (
+        QUESTIONS_MANAGE_ALL,
+        "管理全部题目",
+        "配合题目管理权限使用，可查看、编辑、删除和统计所有账号的题目。",
+        "内容管理",
+        15,
     ),
     (
         MATERIALS_MANAGE,
