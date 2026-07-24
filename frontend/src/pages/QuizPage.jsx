@@ -621,9 +621,6 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                 />
               )}
               <div className="quiz-character-control-actions">
-                <Button variant="secondary" onClick={handleRandomQuestion}>
-                  随机抽题
-                </Button>
                 <Button variant="secondary" onClick={() => setShowHiddenManager(true)}>
                   隐藏 ({hiddenQuestions.length})
                 </Button>
