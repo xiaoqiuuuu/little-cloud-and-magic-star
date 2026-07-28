@@ -41,12 +41,7 @@
   transform: translate3d(0, 0, 0);
   transform-style: preserve-3d;
   will-change: transform;
-  background:
-    radial-gradient(circle at 18% 24%, rgba(37, 99, 235, 0.18), transparent 20%),
-    radial-gradient(circle at 72% 19%, rgba(126, 34, 206, 0.15), transparent 24%),
-    radial-gradient(circle at 58% 76%, rgba(14, 116, 144, 0.16), transparent 23%),
-    radial-gradient(circle at 30% 80%, rgba(67, 56, 202, 0.12), transparent 25%),
-    linear-gradient(145deg, #02030a 0%, #08122b 43%, #100a28 68%, #03050d 100%);
+  background: transparent;
 }
 
 .xcdh-space-background {
@@ -57,6 +52,12 @@
   contain: none;
   pointer-events: none;
   transform-style: preserve-3d;
+  background:
+    radial-gradient(circle at 18% 24%, rgba(37, 99, 235, 0.18), transparent 20%),
+    radial-gradient(circle at 72% 19%, rgba(126, 34, 206, 0.15), transparent 24%),
+    radial-gradient(circle at 58% 76%, rgba(14, 116, 144, 0.16), transparent 23%),
+    radial-gradient(circle at 30% 80%, rgba(67, 56, 202, 0.12), transparent 25%),
+    linear-gradient(145deg, #02030a 0%, #08122b 43%, #100a28 68%, #03050d 100%);
 }
 
 .xcdh-space-background__content {
@@ -67,15 +68,15 @@
   transform-style: preserve-3d;
 }
 
-.xcdh-universe::before,
-.xcdh-universe::after {
+.xcdh-space-background::before,
+.xcdh-space-background::after {
   position: absolute;
   inset: 0;
   pointer-events: none;
   content: "";
 }
 
-.xcdh-universe::before {
+.xcdh-space-background::before {
   opacity: 0.32;
   background-image:
     radial-gradient(circle, rgba(255, 255, 255, 0.7) 0 0.6px, transparent 0.9px),
@@ -84,7 +85,7 @@
   background-size: 54px 57px, 79px 83px;
 }
 
-.xcdh-universe::after {
+.xcdh-space-background::after {
   opacity: 0.22;
   background:
     repeating-radial-gradient(circle at 50% 45%, transparent 0 130px, rgba(96, 165, 250, 0.05) 132px, transparent 136px),
