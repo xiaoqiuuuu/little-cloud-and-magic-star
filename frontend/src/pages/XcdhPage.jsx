@@ -18,7 +18,7 @@ const seededValue = (index, salt = 0) => {
 };
 
 
-const createBackgroundStars = () => Array.from({ length: 360 }, (_, index) => ({
+const createBackgroundStars = () => Array.from({ length: 260 }, (_, index) => ({
   id: `background-star-${index}`,
   x: seededValue(index, 1) * WORLD_WIDTH,
   y: seededValue(index, 2) * WORLD_HEIGHT,
@@ -27,6 +27,7 @@ const createBackgroundStars = () => Array.from({ length: 360 }, (_, index) => ({
   opacity: 0.22 + seededValue(index, 4) * 0.75,
   duration: 2.2 + seededValue(index, 5) * 5.5,
   delay: seededValue(index, 6) * -7,
+  twinkles: index % 3 === 0,
   color: seededValue(index, 7) > 0.88
     ? '#fef3c7'
     : seededValue(index, 7) > 0.68 ? '#bfdbfe' : '#ffffff',
@@ -234,11 +235,13 @@ function WishComposer({ open, onOpen, onClose, onCreated }) {
 
 function XcdhPage() {
   const viewportRef = useRef(null);
+  const universeRef = useRef(null);
   const audioRef = useRef(null);
   const dragRef = useRef(null);
+  const dragFrameRef = useRef(null);
+  const pendingOffsetRef = useRef(null);
   const offsetRef = useRef({ x: 0, y: 0 });
   const activeMessageIdRef = useRef(null);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [messages, setMessages] = useState([]);
   const [loadError, setLoadError] = useState('');
@@ -265,7 +268,9 @@ function XcdhPage() {
       y: clamp(nextOffset.y, minY, 0),
     };
     offsetRef.current = clamped;
-    setOffset(clamped);
+    if (universeRef.current) {
+      universeRef.current.style.transform = `translate3d(${clamped.x}px, ${clamped.y}px, 0)`;
+    }
     return clamped;
   }, []);
 
@@ -319,6 +324,9 @@ function XcdhPage() {
     return () => {
       document.title = previousTitle;
       window.removeEventListener('resize', handleResize);
+      if (dragFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragFrameRef.current);
+      }
     };
   }, [centerUniverse, closePopup, updateOffset]);
 
@@ -370,14 +378,29 @@ function XcdhPage() {
   const handlePointerMove = (event) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    updateOffset({
+    pendingOffsetRef.current = {
       x: drag.origin.x + event.clientX - drag.startX,
       y: drag.origin.y + event.clientY - drag.startY,
+    };
+    if (dragFrameRef.current !== null) return;
+    dragFrameRef.current = window.requestAnimationFrame(() => {
+      dragFrameRef.current = null;
+      if (!pendingOffsetRef.current) return;
+      updateOffset(pendingOffsetRef.current);
+      pendingOffsetRef.current = null;
     });
   };
 
   const finishDragging = (event) => {
     if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return;
+    if (dragFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    if (pendingOffsetRef.current) {
+      updateOffset(pendingOffsetRef.current);
+      pendingOffsetRef.current = null;
+    }
     dragRef.current = null;
     setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -469,11 +492,11 @@ function XcdhPage() {
         onPointerCancel={finishDragging}
       >
         <div
+          ref={universeRef}
           className="xcdh-universe"
           style={{
             width: WORLD_WIDTH,
             height: WORLD_HEIGHT,
-            transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
           }}
         >
           <div className="xcdh-deep-space" aria-hidden="true" />
@@ -491,14 +514,15 @@ function XcdhPage() {
           {backgroundStars.map((star) => (
             <i
               key={star.id}
-              className="xcdh-background-star"
+              className={`xcdh-background-star ${star.twinkles ? 'is-twinkling' : ''}`}
               style={{
                 left: star.x,
                 top: star.y,
                 width: star.size,
                 height: star.size,
-                opacity: star.opacity,
                 background: star.color,
+                '--star-opacity': star.opacity.toFixed(3),
+                '--star-dim-opacity': Math.max(0.12, star.opacity * 0.55).toFixed(3),
                 '--twinkle-duration': `${star.duration}s`,
                 '--twinkle-delay': `${star.delay}s`,
                 '--star-depth': `${star.depth}px`,

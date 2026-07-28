@@ -25,11 +25,20 @@
   cursor: grabbing;
 }
 
+.xcdh-viewport.is-dragging .xcdh-background-star.is-twinkling,
+.xcdh-viewport.is-dragging .xcdh-meteor,
+.xcdh-viewport.is-dragging .xcdh-nebula,
+.xcdh-viewport.is-dragging .xcdh-galaxy {
+  animation-play-state: paused;
+}
+
 .xcdh-universe {
   position: absolute;
   top: 0;
   left: 0;
   overflow: visible;
+  contain: layout style paint;
+  transform: translate3d(0, 0, 0);
   transform-style: preserve-3d;
   will-change: transform;
   background:
@@ -290,9 +299,15 @@
   z-index: 2;
   display: block;
   border-radius: 50%;
+  opacity: var(--star-opacity);
   pointer-events: none;
+  transform: translateZ(var(--star-depth, 0));
   transform-style: preserve-3d;
-  box-shadow: 0 0 4px currentColor;
+  box-shadow: 0 0 3px currentColor;
+}
+
+.xcdh-background-star.is-twinkling {
+  will-change: transform, opacity;
   animation: xcdh-background-twinkle var(--twinkle-duration) ease-in-out var(--twinkle-delay) infinite;
 }
 
@@ -344,7 +359,7 @@
   transform-origin: center;
   will-change: transform, opacity;
   filter: drop-shadow(0 22px 28px rgba(2, 6, 23, 0.86)) drop-shadow(0 0 20px rgba(34, 211, 238, 0.16));
-  animation: xcdh-spaceship-flight 56s cubic-bezier(0.42, 0, 0.58, 1) -8s infinite;
+  animation: xcdh-spaceship-flight 108s linear -32s infinite;
 }
 
 .xcdh-spaceship svg {
@@ -795,9 +810,9 @@
 }
 
 @keyframes xcdh-background-twinkle {
-  0%, 100% { filter: brightness(0.7); transform: translateZ(var(--star-depth, 0)) scale(0.7); }
-  45% { filter: brightness(1.4); transform: translateZ(var(--star-depth, 0)) scale(1.35); }
-  70% { filter: brightness(0.9); transform: translateZ(var(--star-depth, 0)) scale(0.95); }
+  0%, 100% { opacity: var(--star-dim-opacity); transform: translateZ(var(--star-depth, 0)) scale(0.82); }
+  45% { opacity: var(--star-opacity); transform: translateZ(var(--star-depth, 0)) scale(1.25); }
+  70% { opacity: var(--star-opacity); transform: translateZ(var(--star-depth, 0)) scale(0.96); }
 }
 
 @keyframes xcdh-wish-twinkle {
@@ -829,12 +844,31 @@
 }
 
 @keyframes xcdh-spaceship-flight {
-  0% { opacity: 0; transform: translate(-560px, 130px) rotate(-2deg) scale(0.72); }
-  7% { opacity: 0.92; }
-  34% { opacity: 0.96; transform: translate(430px, -115px) rotate(0deg) scale(0.9); }
-  65% { opacity: 1; transform: translate(1050px, 70px) rotate(1deg) scale(1.04); }
-  92% { opacity: 0.92; }
-  100% { opacity: 0; transform: translate(1810px, -150px) rotate(-1deg) scale(0.78); }
+  0% {
+    opacity: 0;
+    transform: translate(2350px, -500px) rotate(-0.3deg) scale(0.9);
+  }
+  6% { opacity: 0.98; }
+  18% {
+    transform: translate(1900px, -360px) rotate(-0.1deg) scale(0.93);
+  }
+  38% {
+    transform: translate(1330px, -110px) rotate(0.2deg) scale(0.97);
+  }
+  58% {
+    transform: translate(720px, 240px) rotate(0.45deg) scale(1);
+  }
+  76% {
+    transform: translate(150px, 430px) rotate(0.2deg) scale(0.98);
+  }
+  92% {
+    opacity: 0.98;
+    transform: translate(-480px, 350px) rotate(-0.15deg) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-820px, 230px) rotate(-0.35deg) scale(0.92);
+  }
 }
 
 @keyframes xcdh-engine-pulse {
