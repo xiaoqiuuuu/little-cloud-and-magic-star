@@ -86,41 +86,6 @@ from database import (
 - `update_material()`: 更新物料
 - `delete_material()`: 删除物料
 
-## 旧版星愿数据同步
-
-同步脚本只读取和写入 `xcdh_messages`。默认执行 dry-run，不会修改目标数据库：
-
-```bash
-python3 backend/scripts/sync_xcdh_messages.py \
-  --source 20260729_014318_db.sqlite \
-  --target quiz.db
-```
-
-确认统计正确后，显式添加 `--apply`。脚本会先备份目标数据库，再插入缺失星愿；重复执行不会重复插入：
-
-```bash
-python3 backend/scripts/sync_xcdh_messages.py \
-  --source 20260729_014318_db.sqlite \
-  --target quiz.db \
-  --apply
-```
-
-生产部署使用 GitHub Environment `production` 中的 Secret `XCDH_LEGACY_DB_BASE64`。建议先生成一个只包含星愿表的临时数据库：
-
-```bash
-sqlite3 xcdh-legacy-only.sqlite <<'SQL'
-ATTACH DATABASE '20260729_014318_db.sqlite' AS legacy;
-CREATE TABLE xcdh_messages AS
-SELECT id, username, content, x, y FROM legacy.xcdh_messages WHERE 0;
-INSERT INTO xcdh_messages
-SELECT id, username, content, x, y FROM legacy.xcdh_messages;
-SQL
-
-openssl base64 -A -in xcdh-legacy-only.sqlite | pbcopy
-```
-
-将剪贴板内容保存为 `XCDH_LEGACY_DB_BASE64` 后，下一次生产流水线会安全备份并写入生产数据库。导入完成后可以删除该 Secret；服务器数据库不会随 Git 更新而被覆盖。
-
 ## 添加新表
 
 当需要添加新表时，按以下步骤操作：
