@@ -766,29 +766,6 @@
   animation: xcdh-spin 700ms linear infinite;
 }
 
-.xcdh-drag-hint {
-  position: fixed;
-  right: 22px;
-  bottom: 25px;
-  z-index: 130;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 11px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 999px;
-  color: rgba(148, 163, 184, 0.62);
-  background: rgba(2, 6, 23, 0.34);
-  font-size: 0.68rem;
-  pointer-events: none;
-  backdrop-filter: blur(10px);
-}
-
-.xcdh-drag-hint span {
-  color: rgba(147, 197, 253, 0.72);
-  font-size: 0.9rem;
-}
-
 .xcdh-load-error {
   position: fixed;
   top: 124px;
@@ -938,12 +915,6 @@
   .xcdh-toolbar__stats {
     display: none;
   }
-
-  .xcdh-drag-hint {
-    right: 50%;
-    bottom: 145px;
-    transform: translateX(50%);
-  }
 }
 
 @media (max-width: 620px) {
@@ -973,10 +944,6 @@
 
   .xcdh-toolbar {
     bottom: 78px;
-  }
-
-  .xcdh-drag-hint {
-    bottom: 128px;
   }
 
   .xcdh-wish-popup {
