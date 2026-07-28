@@ -255,12 +255,19 @@ const createFlagship = () => {
     metalness: 0.38,
     roughness: 0.16,
   });
-  const windowMaterial = new THREE.MeshStandardMaterial({
-    color: 0xccefff,
-    emissive: 0x2b9dff,
-    emissiveIntensity: 3.8,
-    metalness: 0.35,
-    roughness: 0.12,
+  const windowMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x06131d,
+    emissive: 0x0b5278,
+    emissiveIntensity: 0.9,
+    metalness: 0.72,
+    roughness: 0.14,
+    clearcoat: 0.92,
+    clearcoatRoughness: 0.08,
+    envMapIntensity: 1.7,
+    transmission: 0.16,
+    thickness: 0.08,
+    transparent: true,
+    opacity: 0.96,
   });
   const nameTexture = createShipNameTexture();
   const nameMaterial = new THREE.MeshBasicMaterial({
@@ -371,9 +378,13 @@ const createFlagship = () => {
   commandDeck.position.set(0.4, 1.96, 0);
   addEdges(commandDeck, 0.32);
   ship.add(commandDeck);
-  addBox(ship, windowMaterial, [0.9, 0.075, 0.64], [0.58, 2.18, 0], [0, 0, -0.08]);
-  addBox(ship, windowMaterial, [0.92, 0.12, 0.045], [0.55, 2.02, 0.43]);
-  addBox(ship, windowMaterial, [0.92, 0.12, 0.045], [0.55, 2.02, -0.43]);
+  const canopyWindow = new THREE.Mesh(createPrismGeometry([
+    [-0.46, -0.27], [0.26, -0.3], [0.46, 0], [0.26, 0.3], [-0.46, 0.27],
+  ], 0.032, { topScale: 0.9, topOffsetX: 0.02 }), windowMaterial);
+  canopyWindow.position.set(0.56, 2.178, 0);
+  ship.add(canopyWindow);
+  addBox(ship, windowMaterial, [0.72, 0.06, 0.026], [0.48, 2.035, 0.405], [0, 0, -0.08]);
+  addBox(ship, windowMaterial, [0.72, 0.06, 0.026], [0.48, 2.035, -0.405], [0, 0, -0.08]);
   const dorsalFin = new THREE.Mesh(createPrismGeometry([
     [-0.28, -0.25], [0.32, -0.28], [0.48, 0], [0.32, 0.28], [-0.28, 0.25],
   ], 1.34, { topScale: 0.38, topOffsetX: 0.08 }), gunmetal);
@@ -502,6 +513,7 @@ function XcdhFlagship3D() {
 
     const pointer = { x: 0, y: 0 };
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const freezeShipForVisualDebug = true;
     const handleContextLost = (event) => {
       event.preventDefault();
       setWebglUnavailable(true);
@@ -524,10 +536,10 @@ function XcdhFlagship3D() {
     resizeObserver.observe(canvas);
     resize();
 
-    const clock = new THREE.Clock();
+    const startedAt = performance.now();
     const render = () => {
-      const elapsed = clock.getElapsedTime();
-      if (!reducedMotion.matches) {
+      const elapsed = (performance.now() - startedAt) / 1000;
+      if (!freezeShipForVisualDebug && !reducedMotion.matches) {
         ship.position.y = Math.sin(elapsed * 0.55) * 0.12;
         ship.rotation.x += ((-0.05 + pointer.y * 0.035) - ship.rotation.x) * 0.035;
         ship.rotation.y += ((-0.12 + pointer.x * 0.09) - ship.rotation.y) * 0.035;
