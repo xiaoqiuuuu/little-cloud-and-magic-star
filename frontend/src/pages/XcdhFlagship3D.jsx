@@ -404,11 +404,12 @@ const createFlagship = () => {
     clearcoatRoughness: 0.2,
     envMapIntensity: 1.35,
     bumpMap: nameTexture,
-    bumpScale: -0.065,
+    bumpScale: -0.085,
   });
   const namePlate = new THREE.Mesh(createNamePlateGeometry(), namePlateMaterial);
-  namePlate.position.set(-1.52, 0.12, 2.25);
-  namePlate.rotation.set(-0.16, 0, -0.018);
+  namePlate.position.set(1.08, 0.315, 2.08);
+  namePlate.rotation.set(-Math.PI / 2, -0.17, 0);
+  namePlate.scale.set(0.82, 0.72, 0.22);
   ship.add(namePlate);
   addEdges(namePlate, 0.1);
 
@@ -424,7 +425,7 @@ const createFlagship = () => {
     polygonOffsetUnits: -2,
   });
   const shipName = new THREE.Mesh(new THREE.PlaneGeometry(5.05, 1.06), nameMaterial);
-  shipName.position.set(0, 0, 0.095);
+  shipName.position.set(0, 0, 0.125);
   shipName.renderOrder = 9;
   namePlate.add(shipName);
 
