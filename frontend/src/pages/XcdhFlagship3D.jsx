@@ -256,18 +256,16 @@ const createFlagship = () => {
     roughness: 0.16,
   });
   const windowMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0x06131d,
-    emissive: 0x0b5278,
-    emissiveIntensity: 0.9,
-    metalness: 0.72,
-    roughness: 0.14,
-    clearcoat: 0.92,
-    clearcoatRoughness: 0.08,
-    envMapIntensity: 1.7,
-    transmission: 0.16,
-    thickness: 0.08,
-    transparent: true,
-    opacity: 0.96,
+    color: 0x02070c,
+    emissive: 0x062c40,
+    emissiveIntensity: 0.45,
+    metalness: 0.32,
+    roughness: 0.11,
+    clearcoat: 1,
+    clearcoatRoughness: 0.06,
+    envMapIntensity: 0.85,
+    ior: 1.46,
+    reflectivity: 0.88,
   });
   const nameTexture = createShipNameTexture();
   const nameMaterial = new THREE.MeshBasicMaterial({
@@ -374,17 +372,10 @@ const createFlagship = () => {
   ship.add(bridgeRoof);
   const commandDeck = new THREE.Mesh(createPrismGeometry([
     [-0.05, -0.38], [1.2, -0.42], [1.52, 0], [1.2, 0.42], [-0.05, 0.38],
-  ], 0.42, { topScale: 0.58, topOffsetX: 0.12 }), armorDark);
+  ], 0.42, { topScale: 0.58, topOffsetX: 0.12 }), windowMaterial);
   commandDeck.position.set(0.4, 1.96, 0);
   addEdges(commandDeck, 0.32);
   ship.add(commandDeck);
-  const canopyWindow = new THREE.Mesh(createPrismGeometry([
-    [-0.46, -0.27], [0.26, -0.3], [0.46, 0], [0.26, 0.3], [-0.46, 0.27],
-  ], 0.032, { topScale: 0.9, topOffsetX: 0.02 }), windowMaterial);
-  canopyWindow.position.set(0.56, 2.178, 0);
-  ship.add(canopyWindow);
-  addBox(ship, windowMaterial, [0.72, 0.06, 0.026], [0.48, 2.035, 0.405], [0, 0, -0.08]);
-  addBox(ship, windowMaterial, [0.72, 0.06, 0.026], [0.48, 2.035, -0.405], [0, 0, -0.08]);
   const dorsalFin = new THREE.Mesh(createPrismGeometry([
     [-0.28, -0.25], [0.32, -0.28], [0.48, 0], [0.32, 0.28], [-0.28, 0.25],
   ], 1.34, { topScale: 0.38, topOffsetX: 0.08 }), gunmetal);
