@@ -500,54 +500,56 @@ function XcdhPage() {
           }}
         >
           <div className="xcdh-space-background" aria-hidden="true">
-            <div className="xcdh-deep-space" />
-            <div className="xcdh-nebula xcdh-nebula--one" />
-            <div className="xcdh-nebula xcdh-nebula--two" />
-            <div className="xcdh-nebula xcdh-nebula--three" />
-            <div className="xcdh-cosmic-dust xcdh-cosmic-dust--one" />
-            <div className="xcdh-cosmic-dust xcdh-cosmic-dust--two" />
-            <div className="xcdh-volume-light" />
-            <div className="xcdh-galaxy" />
-            <div className="xcdh-planet xcdh-planet--blue" />
-            <div className="xcdh-planet xcdh-planet--ringed"><span /></div>
-            <div className="xcdh-moon" />
+            <div className="xcdh-space-background__content">
+              <div className="xcdh-deep-space" />
+              <div className="xcdh-nebula xcdh-nebula--one" />
+              <div className="xcdh-nebula xcdh-nebula--two" />
+              <div className="xcdh-nebula xcdh-nebula--three" />
+              <div className="xcdh-cosmic-dust xcdh-cosmic-dust--one" />
+              <div className="xcdh-cosmic-dust xcdh-cosmic-dust--two" />
+              <div className="xcdh-volume-light" />
+              <div className="xcdh-galaxy" />
+              <div className="xcdh-planet xcdh-planet--blue" />
+              <div className="xcdh-planet xcdh-planet--ringed"><span /></div>
+              <div className="xcdh-moon" />
 
-            {backgroundStars.map((star) => (
-              <i
-                key={star.id}
-                className={`xcdh-background-star ${star.twinkles ? 'is-twinkling' : ''}`}
-                style={{
-                  left: star.x,
-                  top: star.y,
-                  width: star.size,
-                  height: star.size,
-                  background: star.color,
-                  '--star-opacity': star.opacity.toFixed(3),
-                  '--star-dim-opacity': Math.max(0.12, star.opacity * 0.55).toFixed(3),
-                  '--twinkle-duration': `${star.duration}s`,
-                  '--twinkle-delay': `${star.delay}s`,
-                  '--star-depth': `${star.depth}px`,
-                }}
-              />
-            ))}
+              {backgroundStars.map((star) => (
+                <i
+                  key={star.id}
+                  className={`xcdh-background-star ${star.twinkles ? 'is-twinkling' : ''}`}
+                  style={{
+                    left: star.x,
+                    top: star.y,
+                    width: star.size,
+                    height: star.size,
+                    background: star.color,
+                    '--star-opacity': star.opacity.toFixed(3),
+                    '--star-dim-opacity': Math.max(0.12, star.opacity * 0.55).toFixed(3),
+                    '--twinkle-duration': `${star.duration}s`,
+                    '--twinkle-delay': `${star.delay}s`,
+                    '--star-depth': `${star.depth}px`,
+                  }}
+                />
+              ))}
 
-            {meteors.map((meteor) => (
-              <i
-                key={meteor.id}
-                className="xcdh-meteor"
-                style={{
-                  left: meteor.x,
-                  top: meteor.y,
-                  width: meteor.length,
-                  '--meteor-duration': `${meteor.duration}s`,
-                  '--meteor-delay': `${meteor.delay}s`,
-                  '--meteor-angle': `${meteor.angle}deg`,
-                  '--meteor-dx': `${meteor.dx}px`,
-                  '--meteor-dy': `${meteor.dy}px`,
-                  '--meteor-depth': `${meteor.depth}px`,
-                }}
-              />
-            ))}
+              {meteors.map((meteor) => (
+                <i
+                  key={meteor.id}
+                  className="xcdh-meteor"
+                  style={{
+                    left: meteor.x,
+                    top: meteor.y,
+                    width: meteor.length,
+                    '--meteor-duration': `${meteor.duration}s`,
+                    '--meteor-delay': `${meteor.delay}s`,
+                    '--meteor-angle': `${meteor.angle}deg`,
+                    '--meteor-dx': `${meteor.dx}px`,
+                    '--meteor-dy': `${meteor.dy}px`,
+                    '--meteor-depth': `${meteor.depth}px`,
+                  }}
+                />
+              ))}
+            </div>
           </div>
 
           <SpaceShip />

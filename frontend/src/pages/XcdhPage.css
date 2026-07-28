@@ -37,7 +37,7 @@
   top: 0;
   left: 0;
   overflow: visible;
-  contain: layout style;
+  contain: none;
   transform: translate3d(0, 0, 0);
   transform-style: preserve-3d;
   will-change: transform;
@@ -51,9 +51,19 @@
 
 .xcdh-space-background {
   position: absolute;
-  inset: 0;
+  inset: -720px;
   z-index: 0;
+  overflow: visible;
+  contain: none;
   pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.xcdh-space-background__content {
+  position: absolute;
+  inset: 720px;
+  overflow: visible;
+  contain: none;
   transform-style: preserve-3d;
 }
 
