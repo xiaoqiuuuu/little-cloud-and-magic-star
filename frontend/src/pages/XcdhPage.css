@@ -337,11 +337,12 @@
   position: absolute;
   top: 670px;
   left: 120px;
-  z-index: 12;
+  z-index: 120;
   width: 430px;
   opacity: 0;
   pointer-events: none;
   transform-origin: center;
+  will-change: transform, opacity;
   filter: drop-shadow(0 22px 28px rgba(2, 6, 23, 0.86)) drop-shadow(0 0 20px rgba(34, 211, 238, 0.16));
   animation: xcdh-spaceship-flight 56s cubic-bezier(0.42, 0, 0.58, 1) -8s infinite;
 }

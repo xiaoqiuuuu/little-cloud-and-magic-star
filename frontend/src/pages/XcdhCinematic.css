@@ -201,7 +201,7 @@
   transform: translate(920px, 30px) rotate(-1deg) scale(1);
   transform-style: preserve-3d;
   filter: drop-shadow(0 28px 36px rgba(0, 0, 0, 0.94)) drop-shadow(0 0 18px rgba(45, 138, 215, 0.18));
-  animation: none;
+  animation: xcdh-reference-flagship-flight 58s cubic-bezier(0.42, 0, 0.58, 1) -26s infinite;
 }
 
 .xcdh-spaceship__depth {
