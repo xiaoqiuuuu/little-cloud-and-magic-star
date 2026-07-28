@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './XcdhPage.css';
 import './XcdhCinematic.css';
 import XcdhFlagship3D from './XcdhFlagship3D';
+import { getDeduplicated } from '../api';
 import { isRectVisible, selectOffscreenMessage } from '../utils/xcdhDiscovery';
 
 
-const WORLD_WIDTH = 2400;
-const WORLD_HEIGHT = 1600;
+const WORLD_WIDTH = 3000;
+const WORLD_HEIGHT = 2000;
 const POPUP_HEIGHT = 190;
 
 
@@ -359,12 +360,12 @@ function XcdhPage() {
 
   useEffect(() => {
     let canceled = false;
-    fetch('/api/xcdh/messages')
+    getDeduplicated('/xcdh/messages', {
+      hideLoading: true,
+      hideErrorMessage: true,
+    })
       .then((response) => {
-        if (!response.ok) throw new Error('星愿暂时迷失在宇宙中');
-        return response.json();
-      })
-      .then((data) => {
+        const data = response.data;
         if (!canceled) setMessages(Array.isArray(data) ? data : []);
       })
       .catch((error) => {
@@ -495,7 +496,7 @@ function XcdhPage() {
         <div className="xcdh-title__aurora" />
         <h1>黄霄雲的星辰大海</h1>
         <div className="xcdh-title__line" />
-        <p>拖动宇宙，寻找每一颗为梦想亮起的星</p>
+        <p>循着黄霄雲的歌声，奔赴更辽阔的星辰大海</p>
       </header>
 
       <div className="xcdh-toolbar" data-interactive="true">
