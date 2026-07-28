@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 
-const createPrismGeometry = (outline, height) => {
+const createPrismGeometry = (outline, height, options = {}) => {
+  const {
+    topScale = 1,
+    topOffsetX = 0,
+    topOffsetZ = 0,
+  } = options;
   const halfHeight = height / 2;
   const positions = [];
   const indices = [];
   const contour = outline.map(([x, z]) => new THREE.Vector2(x, z));
   const triangles = THREE.ShapeUtils.triangulateShape(contour, []);
+  const center = outline.reduce(
+    (result, [x, z]) => ({ x: result.x + x / outline.length, z: result.z + z / outline.length }),
+    { x: 0, z: 0 },
+  );
+  const topOutline = outline.map(([x, z]) => [
+    center.x + (x - center.x) * topScale + topOffsetX,
+    center.z + (z - center.z) * topScale + topOffsetZ,
+  ]);
 
-  outline.forEach(([x, z]) => positions.push(x, halfHeight, z));
+  topOutline.forEach(([x, z]) => positions.push(x, halfHeight, z));
   outline.forEach(([x, z]) => positions.push(x, -halfHeight, z));
 
   triangles.forEach(([a, b, c]) => {
@@ -27,6 +41,154 @@ const createPrismGeometry = (outline, height) => {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
+  return geometry;
+};
+
+
+const createShipNameTexture = () => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1536;
+  canvas.height = 384;
+  const context = canvas.getContext('2d');
+  const text = '宇宙无敌号';
+  const glyphs = [...text];
+  const glyphSpacing = 230;
+  const centerX = canvas.width / 2;
+  const baselineY = canvas.height / 2 + 24;
+  const getGlyphX = (index) => (index - (glyphs.length - 1) / 2) * glyphSpacing;
+  const drawGlyphs = (method, y) => {
+    glyphs.forEach((glyph, index) => {
+      context[method](glyph, getGlyphX(index), y);
+    });
+  };
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.save();
+  context.translate(centerX, 0);
+  context.transform(1, 0, -0.065, 1, 0, 0);
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.font = '900 238px "Songti SC", "STSong", "SimSun", serif';
+  context.lineJoin = 'miter';
+  context.miterLimit = 8;
+
+  context.shadowColor = 'rgba(0, 0, 0, 0.96)';
+  context.shadowBlur = 22;
+  context.shadowOffsetY = 15;
+  context.strokeStyle = 'rgba(1, 8, 16, 0.98)';
+  context.lineWidth = 30;
+  drawGlyphs('strokeText', baselineY);
+
+  context.shadowColor = 'rgba(74, 176, 255, 0.62)';
+  context.shadowBlur = 18;
+  context.shadowOffsetY = 0;
+  context.strokeStyle = 'rgba(83, 128, 161, 0.92)';
+  context.lineWidth = 16;
+  drawGlyphs('strokeText', baselineY);
+
+  const silver = context.createLinearGradient(0, 54, 0, 322);
+  silver.addColorStop(0, '#eefaff');
+  silver.addColorStop(0.2, '#778b9d');
+  silver.addColorStop(0.43, '#ffffff');
+  silver.addColorStop(0.62, '#91a0ad');
+  silver.addColorStop(0.82, '#eaf8ff');
+  silver.addColorStop(1, '#4c6172');
+  context.fillStyle = silver;
+  drawGlyphs('fillText', baselineY);
+
+  context.shadowBlur = 0;
+  context.strokeStyle = 'rgba(255, 255, 255, 0.78)';
+  context.lineWidth = 2.5;
+  drawGlyphs('strokeText', baselineY - 2);
+
+  context.globalCompositeOperation = 'source-atop';
+  context.strokeStyle = 'rgba(6, 18, 30, 0.44)';
+  context.lineWidth = 7;
+  for (let index = -5; index <= 5; index += 1) {
+    const x = index * 135;
+    context.beginPath();
+    context.moveTo(x - 68, 92);
+    context.lineTo(x + 46, 310);
+    context.stroke();
+  }
+  context.restore();
+
+  context.globalCompositeOperation = 'source-over';
+  const blade = context.createLinearGradient(70, 0, canvas.width - 70, 0);
+  blade.addColorStop(0, 'rgba(151, 221, 255, 0)');
+  blade.addColorStop(0.18, 'rgba(214, 244, 255, 0.88)');
+  blade.addColorStop(0.5, 'rgba(255, 255, 255, 0.45)');
+  blade.addColorStop(0.82, 'rgba(119, 190, 231, 0.8)');
+  blade.addColorStop(1, 'rgba(82, 159, 210, 0)');
+  context.fillStyle = blade;
+  context.beginPath();
+  context.moveTo(54, 86);
+  context.lineTo(1450, 56);
+  context.lineTo(1338, 90);
+  context.lineTo(126, 112);
+  context.closePath();
+  context.fill();
+  context.beginPath();
+  context.moveTo(128, 328);
+  context.lineTo(1400, 296);
+  context.lineTo(1308, 326);
+  context.lineTo(210, 350);
+  context.closePath();
+  context.fill();
+
+  // “号”的横折笔画在舰体透视缩小后最容易与蚀刻纹理混在一起，
+  // 最后单独补一层清晰的金属描边，保留雕刻感但避免看成其他字形。
+  context.save();
+  context.translate(centerX, 0);
+  context.transform(1, 0, -0.065, 1, 0, 0);
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.font = '900 244px "Songti SC", "STSong", "SimSun", serif';
+  context.lineJoin = 'miter';
+  context.miterLimit = 8;
+  const lastGlyphX = getGlyphX(glyphs.length - 1);
+  context.shadowColor = 'rgba(0, 0, 0, 0.96)';
+  context.shadowBlur = 10;
+  context.strokeStyle = 'rgba(0, 7, 13, 0.98)';
+  context.lineWidth = 25;
+  context.strokeText(glyphs.at(-1), lastGlyphX, baselineY);
+  context.shadowBlur = 0;
+  context.strokeStyle = 'rgba(75, 166, 220, 0.96)';
+  context.lineWidth = 11;
+  context.strokeText(glyphs.at(-1), lastGlyphX, baselineY);
+  context.fillStyle = silver;
+  context.fillText(glyphs.at(-1), lastGlyphX, baselineY);
+  context.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  context.lineWidth = 3.5;
+  context.strokeText(glyphs.at(-1), lastGlyphX, baselineY - 1);
+  context.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  return texture;
+};
+
+
+const createNamePlateGeometry = () => {
+  const shape = new THREE.Shape();
+  shape.moveTo(-2.72, -0.42);
+  shape.lineTo(-2.48, -0.58);
+  shape.lineTo(2.28, -0.5);
+  shape.lineTo(2.72, -0.16);
+  shape.lineTo(2.55, 0.43);
+  shape.lineTo(-2.5, 0.57);
+  shape.lineTo(-2.78, 0.18);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.12,
+    bevelEnabled: true,
+    bevelSegments: 1,
+    bevelSize: 0.035,
+    bevelThickness: 0.025,
+  });
+  geometry.center();
   return geometry;
 };
 
@@ -53,9 +215,9 @@ const addEdges = (mesh, opacity = 0.2) => {
   const edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(mesh.geometry, 22),
     new THREE.LineBasicMaterial({
-      color: 0x91b5ca,
+      color: 0x55788e,
       transparent: true,
-      opacity,
+      opacity: opacity * 0.52,
       blending: THREE.AdditiveBlending,
     }),
   );
@@ -76,36 +238,48 @@ const createFlagship = () => {
   const ship = new THREE.Group();
   ship.name = '宇宙无敌号';
 
-  const armor = new THREE.MeshStandardMaterial({
-    color: 0x313b46,
-    metalness: 0.94,
-    roughness: 0.27,
-    flatShading: true,
-    side: THREE.DoubleSide,
-  });
-  const armorLight = new THREE.MeshStandardMaterial({
-    color: 0x8795a2,
+  const armor = new THREE.MeshPhysicalMaterial({
+    color: 0x25313c,
     metalness: 0.96,
-    roughness: 0.22,
+    roughness: 0.2,
+    clearcoat: 0.68,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 1.65,
     flatShading: true,
     side: THREE.DoubleSide,
   });
-  const armorDark = new THREE.MeshStandardMaterial({
-    color: 0x080d13,
-    metalness: 0.88,
-    roughness: 0.34,
+  const armorLight = new THREE.MeshPhysicalMaterial({
+    color: 0x52616d,
+    metalness: 1,
+    roughness: 0.21,
+    clearcoat: 0.7,
+    clearcoatRoughness: 0.18,
+    envMapIntensity: 1.12,
     flatShading: true,
     side: THREE.DoubleSide,
   });
-  const gunmetal = new THREE.MeshStandardMaterial({
-    color: 0x151d25,
-    metalness: 0.92,
-    roughness: 0.3,
+  const armorDark = new THREE.MeshPhysicalMaterial({
+    color: 0x050a0f,
+    metalness: 0.94,
+    roughness: 0.24,
+    clearcoat: 0.46,
+    clearcoatRoughness: 0.25,
+    envMapIntensity: 1.35,
+    flatShading: true,
+    side: THREE.DoubleSide,
+  });
+  const gunmetal = new THREE.MeshPhysicalMaterial({
+    color: 0x0d151d,
+    metalness: 0.96,
+    roughness: 0.25,
+    clearcoat: 0.32,
+    clearcoatRoughness: 0.28,
+    envMapIntensity: 1.4,
   });
   const energy = new THREE.MeshStandardMaterial({
     color: 0xa4e8ff,
     emissive: 0x168cff,
-    emissiveIntensity: 7,
+    emissiveIntensity: 5.4,
     metalness: 0.38,
     roughness: 0.16,
   });
@@ -118,19 +292,22 @@ const createFlagship = () => {
   });
 
   const mainHull = new THREE.Mesh(createPrismGeometry([
-    [-6.5, 0], [-2.2, -1.18], [2.9, -1.7], [5.05, -1.18],
-    [4.25, 0], [5.05, 1.18], [2.9, 1.7], [-2.2, 1.18],
-  ], 0.92), armorDark);
+    [-7.15, 0], [-2.45, -1.08], [2.95, -1.58], [5.2, -1.1],
+    [4.45, 0], [5.2, 1.1], [2.95, 1.58], [-2.45, 1.08],
+  ], 1.02, { topScale: 0.84, topOffsetX: 0.26 }), armorDark);
   addEdges(mainHull, 0.28);
   ship.add(mainHull);
 
   const wingOutline = [
-    [-4.65, 0.62], [-2.05, 0.94], [2.85, 1.48], [5.18, 3.92],
-    [2.45, 3.38], [-1.85, 1.76],
+    [-5.2, 0.58], [-2.25, 0.88], [2.9, 1.36], [5.4, 3.72],
+    [2.58, 3.2], [-2.05, 1.62],
   ];
   [1, -1].forEach((side) => {
     const wing = new THREE.Mesh(
-      createPrismGeometry(wingOutline.map(([x, z]) => [x, z * side]), 0.34),
+      createPrismGeometry(wingOutline.map(([x, z]) => [x, z * side]), 0.38, {
+        topScale: 0.9,
+        topOffsetX: 0.12,
+      }),
       armor,
     );
     wing.position.y = -0.12;
@@ -138,54 +315,126 @@ const createFlagship = () => {
     ship.add(wing);
 
     const wingArmor = new THREE.Mesh(createPrismGeometry([
-      [-3.55, 0.92 * side], [-1.35, 1.18 * side], [2.48, 1.8 * side],
-      [4.28, 3.23 * side], [2.2, 2.76 * side], [-1.55, 1.55 * side],
-    ], 0.16), armorLight);
+      [-4.1, 0.82 * side], [-1.45, 1.08 * side], [2.35, 1.68 * side],
+      [4.46, 3.08 * side], [2.18, 2.62 * side], [-1.78, 1.46 * side],
+    ], 0.18, { topScale: 0.82, topOffsetX: 0.18 }), armorDark);
     wingArmor.position.y = 0.16;
     addEdges(wingArmor, 0.18);
     ship.add(wingArmor);
 
-    addBox(ship, energy, [2.8, 0.055, 0.12], [-0.8, 0.32, 1.63 * side], [0, -0.08 * side, 0]);
-    addBox(ship, energy, [1.5, 0.05, 0.1], [2.45, 0.31, 2.62 * side], [0, -0.48 * side, 0]);
+    const forwardFacet = new THREE.Mesh(createPrismGeometry([
+      [-4.38, 0.79 * side], [-2.64, 0.96 * side], [-0.58, 1.3 * side],
+      [-1.72, 1.43 * side], [-3.64, 1.08 * side],
+    ], 0.085, { topScale: 0.88, topOffsetX: 0.08 }), armorLight);
+    forwardFacet.position.y = 0.29;
+    ship.add(forwardFacet);
+
+    const aftFacet = new THREE.Mesh(createPrismGeometry([
+      [1.08, 1.52 * side], [2.5, 1.73 * side], [4.08, 2.85 * side],
+      [2.38, 2.43 * side], [1.42, 2.02 * side],
+    ], 0.08, { topScale: 0.84, topOffsetX: 0.08 }), armorLight);
+    aftFacet.position.y = 0.285;
+    ship.add(aftFacet);
+
+    addBox(ship, energy, [3.15, 0.05, 0.095], [-0.95, 0.31, 1.51 * side], [0, -0.08 * side, 0]);
+    addBox(ship, energy, [1.62, 0.046, 0.082], [2.5, 0.3, 2.46 * side], [0, -0.48 * side, 0]);
   });
 
   const upperArmor = new THREE.Mesh(createPrismGeometry([
     [-5.45, 0], [-1.25, -0.82], [2.75, -1.12], [4.1, -0.67],
     [3.42, 0], [4.1, 0.67], [2.75, 1.12], [-1.25, 0.82],
-  ], 0.24), armorLight);
+  ], 0.28, { topScale: 0.78, topOffsetX: 0.22 }), armor);
   upperArmor.position.y = 0.58;
   addEdges(upperArmor, 0.3);
   ship.add(upperArmor);
 
+  const forwardCrown = new THREE.Mesh(createPrismGeometry([
+    [-6.05, 0], [-2.1, -0.48], [-0.82, 0], [-2.1, 0.48],
+  ], 0.1, { topScale: 0.8, topOffsetX: 0.12 }), armorLight);
+  forwardCrown.position.y = 0.77;
+  ship.add(forwardCrown);
+
   const spine = new THREE.Mesh(createPrismGeometry([
     [-4.7, 0], [-1.1, -0.3], [3.2, -0.42], [4.05, 0],
     [3.2, 0.42], [-1.1, 0.3],
-  ], 0.24), armorDark);
+  ], 0.3, { topScale: 0.7, topOffsetX: 0.28 }), armorDark);
   spine.position.y = 0.83;
   ship.add(spine);
 
   const bridgeBase = new THREE.Mesh(createPrismGeometry([
     [-0.85, -0.65], [2.55, -0.82], [3.2, 0], [2.55, 0.82], [-0.85, 0.65],
-  ], 0.38), armor);
+  ], 0.44, { topScale: 0.7, topOffsetX: 0.22 }), armor);
   bridgeBase.position.y = 1.03;
   addEdges(bridgeBase, 0.3);
   ship.add(bridgeBase);
 
-  const bridge = addBox(ship, armorLight, [1.7, 0.58, 1.1], [0.85, 1.45, 0], [0, 0, -0.07]);
+  const bridge = new THREE.Mesh(createPrismGeometry([
+    [-0.5, -0.56], [1.58, -0.62], [2.04, 0], [1.58, 0.62], [-0.5, 0.56],
+  ], 0.62, { topScale: 0.68, topOffsetX: 0.18 }), armor);
+  bridge.position.set(0.15, 1.45, 0);
   addEdges(bridge, 0.28);
-  const commandDeck = addBox(ship, armorDark, [1.08, 0.4, 0.76], [0.92, 1.92, 0], [0, 0, -0.08]);
+  ship.add(bridge);
+  const bridgeRoof = new THREE.Mesh(createPrismGeometry([
+    [-0.18, -0.42], [1.32, -0.46], [1.65, 0], [1.32, 0.46], [-0.18, 0.42],
+  ], 0.12, { topScale: 0.72, topOffsetX: 0.12 }), armorLight);
+  bridgeRoof.position.set(0.38, 1.82, 0);
+  ship.add(bridgeRoof);
+  const commandDeck = new THREE.Mesh(createPrismGeometry([
+    [-0.05, -0.38], [1.2, -0.42], [1.52, 0], [1.2, 0.42], [-0.05, 0.38],
+  ], 0.42, { topScale: 0.58, topOffsetX: 0.12 }), armorDark);
+  commandDeck.position.set(0.4, 1.96, 0);
   addEdges(commandDeck, 0.32);
-  addBox(ship, windowMaterial, [0.72, 0.09, 0.8], [0.45, 2.12, 0], [0, 0, -0.08]);
-  addBox(ship, gunmetal, [0.18, 1.45, 0.52], [1.55, 2.35, 0], [0, 0, -0.12]);
+  ship.add(commandDeck);
+  addBox(ship, windowMaterial, [0.9, 0.075, 0.64], [0.58, 2.18, 0], [0, 0, -0.08]);
+  addBox(ship, windowMaterial, [0.92, 0.12, 0.045], [0.55, 2.02, 0.43]);
+  addBox(ship, windowMaterial, [0.92, 0.12, 0.045], [0.55, 2.02, -0.43]);
+  const dorsalFin = new THREE.Mesh(createPrismGeometry([
+    [-0.28, -0.25], [0.32, -0.28], [0.48, 0], [0.32, 0.28], [-0.28, 0.25],
+  ], 1.34, { topScale: 0.38, topOffsetX: 0.08 }), gunmetal);
+  dorsalFin.position.set(1.45, 2.52, 0);
+  ship.add(dorsalFin);
   addBox(ship, energy, [2.85, 0.065, 0.1], [-1.42, 0.95, 0]);
 
+  const nameTexture = createShipNameTexture();
+  const namePlateMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x1b2934,
+    metalness: 0.95,
+    roughness: 0.23,
+    clearcoat: 0.58,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 1.35,
+    bumpMap: nameTexture,
+    bumpScale: -0.065,
+  });
+  const namePlate = new THREE.Mesh(createNamePlateGeometry(), namePlateMaterial);
+  namePlate.position.set(-1.52, 0.12, 2.25);
+  namePlate.rotation.set(-0.16, 0, -0.018);
+  ship.add(namePlate);
+  addEdges(namePlate, 0.1);
+
+  const nameMaterial = new THREE.MeshBasicMaterial({
+    map: nameTexture,
+    transparent: true,
+    alphaTest: 0.025,
+    depthWrite: false,
+    depthTest: true,
+    toneMapped: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  const shipName = new THREE.Mesh(new THREE.PlaneGeometry(5.05, 1.06), nameMaterial);
+  shipName.position.set(0, 0, 0.095);
+  shipName.renderOrder = 9;
+  namePlate.add(shipName);
+
   [-1, 1].forEach((side) => {
-    for (let index = 0; index < 8; index += 1) {
+    for (let index = 0; index < 6; index += 1) {
       addBox(
         ship,
         index % 3 === 0 ? armorLight : gunmetal,
-        [0.42 + (index % 2) * 0.12, 0.16, 0.27],
-        [-1.8 + index * 0.63, 0.86 + (index % 2) * 0.08, side * (0.72 + index * 0.045)],
+        [0.5 + (index % 2) * 0.13, 0.105, 0.2],
+        [-1.72 + index * 0.75, 0.88 + (index % 2) * 0.055, side * (0.7 + index * 0.052)],
         [0, -side * 0.05, 0],
       );
     }
@@ -196,25 +445,25 @@ const createFlagship = () => {
         gunmetal,
       );
       engine.rotation.z = Math.PI / 2;
-      engine.position.set(4.45, -0.18, side * z);
+      engine.position.set(4.72, -0.18, side * z);
       ship.add(engine);
 
       const exhaust = new THREE.Mesh(new THREE.CircleGeometry(0.3 - engineIndex * 0.035, 24), energy);
       exhaust.rotation.y = Math.PI / 2;
-      exhaust.position.set(5.27, -0.18, side * z);
+      exhaust.position.set(5.55, -0.18, side * z);
       ship.add(exhaust);
     });
 
     const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.1, 2.1, 10), gunmetal);
     cannon.rotation.z = Math.PI / 2;
-    cannon.position.set(-3.65, 0.22, side * 1.72);
+    cannon.position.set(-4.05, 0.18, side * 1.62);
     ship.add(cannon);
   });
 
   const glowTexture = createGlowTexture();
   [
-    [5.48, -0.18, 1.28, 1.35], [5.48, -0.18, -1.28, 1.35],
-    [5.5, -0.18, 2.45, 1.05], [5.5, -0.18, -2.45, 1.05],
+    [5.76, -0.18, 1.28, 1.35], [5.76, -0.18, -1.28, 1.35],
+    [5.78, -0.18, 2.45, 1.05], [5.78, -0.18, -2.45, 1.05],
   ].forEach(([x, y, z, scale]) => {
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({
       map: glowTexture,
@@ -230,11 +479,12 @@ const createFlagship = () => {
   });
 
   const engineLight = new THREE.PointLight(0x238dff, 24, 12, 2);
-  engineLight.position.set(4.6, 0, 0);
+  engineLight.position.set(5.1, 0, 0);
   ship.add(engineLight);
 
   ship.userData.glowTexture = glowTexture;
-  ship.rotation.set(-0.05, -0.12, -0.025);
+  ship.userData.nameTexture = nameTexture;
+  ship.rotation.set(-0.025, -0.055, -0.014);
   return ship;
 };
 
@@ -264,24 +514,37 @@ function XcdhFlagship3D() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.28;
+    renderer.toneMappingExposure = 0.96;
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 100);
-    camera.position.set(-0.7, 5.1, 15.4);
-    camera.lookAt(-0.25, 0.1, 0);
+    scene.environmentIntensity = 0.72;
+    const environment = new RoomEnvironment();
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const environmentTarget = pmremGenerator.fromScene(environment, 0.04);
+    scene.environment = environmentTarget.texture;
+    environment.dispose();
+    pmremGenerator.dispose();
 
-    scene.add(new THREE.HemisphereLight(0x8bb7d8, 0x010205, 1.8));
-    const keyLight = new THREE.DirectionalLight(0xf2f8ff, 5.6);
-    keyLight.position.set(-6, 9, 8);
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+    camera.position.set(-0.9, 7.9, 13.4);
+    camera.lookAt(-0.4, 0.05, 0);
+
+    scene.add(new THREE.HemisphereLight(0x9bc8e5, 0x010205, 1.1));
+    const keyLight = new THREE.DirectionalLight(0xf6fbff, 5.1);
+    keyLight.position.set(-7, 10, 9);
     scene.add(keyLight);
-    const rimLight = new THREE.DirectionalLight(0x176dff, 4.5);
-    rimLight.position.set(7, 2, -8);
+    const rimLight = new THREE.DirectionalLight(0x237eff, 5.2);
+    rimLight.position.set(8, 3, -9);
     scene.add(rimLight);
+    const fillLight = new THREE.PointLight(0xb7dfff, 9, 26, 2);
+    fillLight.position.set(-4, 2.4, 8);
+    scene.add(fillLight);
 
     const ship = createFlagship();
-    ship.scale.setScalar(1.03);
+    ship.userData.nameTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    ship.userData.nameTexture.needsUpdate = true;
+    ship.scale.setScalar(0.98);
     scene.add(ship);
 
     const pointer = { x: 0, y: 0 };
@@ -335,19 +598,23 @@ function XcdhFlagship3D() {
         }
       });
       ship.userData.glowTexture?.dispose();
+      ship.userData.nameTexture?.dispose();
+      environmentTarget.dispose();
       renderer.dispose();
     };
   }, [webglUnavailable]);
 
   if (webglUnavailable) {
     return (
-      <img
-        className="xcdh-flagship-fallback"
-        src="/xcdh-flagship-cutout.svg"
-        alt=""
-        draggable="false"
-        aria-hidden="true"
-      />
+      <div className="xcdh-flagship-fallback-shell" aria-hidden="true">
+        <img
+          className="xcdh-flagship-fallback"
+          src="/xcdh-flagship-cutout.svg"
+          alt=""
+          draggable="false"
+        />
+        <span>2D 兼容模式</span>
+      </div>
     );
   }
 
