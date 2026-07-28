@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './XcdhPage.css';
 import './XcdhCinematic.css';
 import XcdhFlagship3D from './XcdhFlagship3D';
+import { isRectVisible, selectOffscreenMessage } from '../utils/xcdhDiscovery';
 
 
 const WORLD_WIDTH = 2400;
@@ -239,6 +240,7 @@ function XcdhPage() {
   const audioRef = useRef(null);
   const dragRef = useRef(null);
   const dragFrameRef = useRef(null);
+  const focusTimerRef = useRef(null);
   const pendingOffsetRef = useRef(null);
   const offsetRef = useRef({ x: 0, y: 0 });
   const activeMessageIdRef = useRef(null);
@@ -287,13 +289,18 @@ function XcdhPage() {
   const focusMessage = useCallback((message) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
+    closePopup();
+    if (focusTimerRef.current !== null) {
+      window.clearTimeout(focusTimerRef.current);
+    }
     const worldX = (message.x / 100) * WORLD_WIDTH;
     const worldY = (message.y / 100) * WORLD_HEIGHT;
     const focusedOffset = updateOffset({
       x: viewport.clientWidth / 2 - worldX,
       y: viewport.clientHeight / 2 - worldY,
     });
-    window.setTimeout(() => {
+    focusTimerRef.current = window.setTimeout(() => {
+      focusTimerRef.current = null;
       const width = Math.min(310, window.innerWidth - 32);
       const halfWidth = width / 2;
       const starLeft = worldX + focusedOffset.x;
@@ -310,7 +317,24 @@ function XcdhPage() {
         placement,
       });
     }, 360);
-  }, [updateOffset]);
+  }, [closePopup, updateOffset]);
+
+  const discoverNewWish = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || messages.length === 0) return;
+    const viewportRect = viewport.getBoundingClientRect();
+    const visibleMessageIds = new Set(
+      Array.from(viewport.querySelectorAll('[data-message-id]'))
+        .filter((element) => isRectVisible(element.getBoundingClientRect(), viewportRect))
+        .map((element) => element.dataset.messageId),
+    );
+    const target = selectOffscreenMessage(
+      messages,
+      visibleMessageIds,
+      activeMessageIdRef.current,
+    );
+    if (target) focusMessage(target);
+  }, [focusMessage, messages]);
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -326,6 +350,9 @@ function XcdhPage() {
       window.removeEventListener('resize', handleResize);
       if (dragFrameRef.current !== null) {
         window.cancelAnimationFrame(dragFrameRef.current);
+      }
+      if (focusTimerRef.current !== null) {
+        window.clearTimeout(focusTimerRef.current);
       }
     };
   }, [centerUniverse, closePopup, updateOffset]);
@@ -477,7 +504,7 @@ function XcdhPage() {
           <span>，</span>
           魔星拜访 <strong>{totalDiscoveries}</strong> 次
         </div>
-        <button onClick={centerUniverse}>寻找新的星愿</button>
+        <button onClick={discoverNewWish}>寻找新的星愿</button>
         <button onClick={toggleMusic} aria-label={musicPlaying ? '暂停背景音乐' : '播放背景音乐'}>
           {musicPlaying ? '♫ 音乐开启' : '♪ 播放音乐'}
         </button>
@@ -565,6 +592,7 @@ function XcdhPage() {
               }}
               onClick={(event) => openMessage(message, event)}
               data-interactive="true"
+              data-message-id={String(message.id)}
               aria-label={`查看 ${message.username} 的星愿，已被发现 ${message.click_count || 0} 次`}
             >
               <StarShape message={message} />
