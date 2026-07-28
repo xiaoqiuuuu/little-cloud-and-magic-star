@@ -502,6 +502,7 @@
     rgba(8, 18, 40, 0.94);
   box-shadow: 0 22px 65px rgba(2, 6, 23, 0.62), inset 0 1px rgba(255, 255, 255, 0.05), 0 0 34px rgba(59, 130, 246, 0.12);
   backdrop-filter: blur(20px);
+  pointer-events: none;
   transform: translateX(-50%);
   animation: xcdh-popup-arrive 220ms ease-out both;
 }
@@ -591,8 +592,8 @@
   position: absolute;
   top: 12px;
   right: 12px;
+  pointer-events: auto;
 }
-
 .xcdh-composer {
   position: fixed;
   bottom: max(24px, env(safe-area-inset-bottom));
