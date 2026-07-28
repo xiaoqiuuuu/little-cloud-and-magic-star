@@ -171,24 +171,22 @@ const createShipNameTexture = () => {
 };
 
 
-const createNamePlateGeometry = () => {
-  const shape = new THREE.Shape();
-  shape.moveTo(-2.72, -0.42);
-  shape.lineTo(-2.48, -0.58);
-  shape.lineTo(2.28, -0.5);
-  shape.lineTo(2.72, -0.16);
-  shape.lineTo(2.55, 0.43);
-  shape.lineTo(-2.5, 0.57);
-  shape.lineTo(-2.78, 0.18);
-  shape.closePath();
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.12,
-    bevelEnabled: true,
-    bevelSegments: 1,
-    bevelSize: 0.035,
-    bevelThickness: 0.025,
-  });
-  geometry.center();
+const createWingEngravingGeometry = () => {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    1.42, 0.049, 1.67,
+    3.18, 0.049, 2.29,
+    3.1, 0.049, 2.52,
+    1.55, 0.049, 2,
+  ], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([
+    0.1, 0.08,
+    0.9, 0.08,
+    0.9, 0.92,
+    0.1, 0.92,
+  ], 2));
+  geometry.setIndex([0, 2, 1, 0, 3, 2]);
+  geometry.computeVertexNormals();
   return geometry;
 };
 
@@ -290,6 +288,20 @@ const createFlagship = () => {
     metalness: 0.35,
     roughness: 0.12,
   });
+  const nameTexture = createShipNameTexture();
+  const nameMaterial = new THREE.MeshBasicMaterial({
+    map: nameTexture,
+    color: 0xb8dce9,
+    transparent: true,
+    opacity: 1,
+    alphaTest: 0.025,
+    depthWrite: false,
+    depthTest: true,
+    toneMapped: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
 
   const mainHull = new THREE.Mesh(createPrismGeometry([
     [-7.15, 0], [-2.45, -1.08], [2.95, -1.58], [5.2, -1.1],
@@ -335,6 +347,12 @@ const createFlagship = () => {
     ], 0.08, { topScale: 0.84, topOffsetX: 0.08 }), armorLight);
     aftFacet.position.y = 0.285;
     ship.add(aftFacet);
+
+    if (side === 1) {
+      const wingEngraving = new THREE.Mesh(createWingEngravingGeometry(), nameMaterial);
+      wingEngraving.renderOrder = 9;
+      aftFacet.add(wingEngraving);
+    }
 
     addBox(ship, energy, [3.15, 0.05, 0.095], [-0.95, 0.31, 1.51 * side], [0, -0.08 * side, 0]);
     addBox(ship, energy, [1.62, 0.046, 0.082], [2.5, 0.3, 2.46 * side], [0, -0.48 * side, 0]);
@@ -394,40 +412,6 @@ const createFlagship = () => {
   dorsalFin.position.set(1.45, 2.52, 0);
   ship.add(dorsalFin);
   addBox(ship, energy, [2.85, 0.065, 0.1], [-1.42, 0.95, 0]);
-
-  const nameTexture = createShipNameTexture();
-  const namePlateMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0x1b2934,
-    metalness: 0.95,
-    roughness: 0.23,
-    clearcoat: 0.58,
-    clearcoatRoughness: 0.2,
-    envMapIntensity: 1.35,
-    bumpMap: nameTexture,
-    bumpScale: -0.085,
-  });
-  const namePlate = new THREE.Mesh(createNamePlateGeometry(), namePlateMaterial);
-  namePlate.position.set(1.08, 0.315, 2.08);
-  namePlate.rotation.set(-Math.PI / 2, -0.17, 0);
-  namePlate.scale.set(0.82, 0.72, 0.22);
-  ship.add(namePlate);
-  addEdges(namePlate, 0.1);
-
-  const nameMaterial = new THREE.MeshBasicMaterial({
-    map: nameTexture,
-    transparent: true,
-    alphaTest: 0.025,
-    depthWrite: false,
-    depthTest: true,
-    toneMapped: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
-  });
-  const shipName = new THREE.Mesh(new THREE.PlaneGeometry(5.05, 1.06), nameMaterial);
-  shipName.position.set(0, 0, 0.125);
-  shipName.renderOrder = 9;
-  namePlate.add(shipName);
 
   [-1, 1].forEach((side) => {
     for (let index = 0; index < 6; index += 1) {
