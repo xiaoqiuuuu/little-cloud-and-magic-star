@@ -374,22 +374,6 @@ function XcdhPage() {
     return () => { canceled = true; };
   }, []);
 
-  useEffect(() => {
-    const startMusic = (event) => {
-      if (event.target?.closest?.('.xcdh-toolbar')) return;
-      const audio = audioRef.current;
-      if (!audio || !audio.paused) return;
-      audio.volume = 0.12;
-      audio.play().then(() => setMusicPlaying(true)).catch(() => {});
-    };
-    window.addEventListener('pointerdown', startMusic, { once: true });
-    window.addEventListener('keydown', startMusic, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', startMusic);
-      window.removeEventListener('keydown', startMusic);
-    };
-  }, []);
-
   const handlePointerDown = (event) => {
     if (event.button !== 0 || event.target.closest('[data-interactive="true"]')) return;
     dragRef.current = {
