@@ -5,6 +5,20 @@ export const isRectVisible = (rect, viewportRect) => (
   && rect.top < viewportRect.bottom
 );
 
+export const clampUniverseOffset = (
+  offset,
+  { viewportWidth, viewportHeight, worldWidth, worldHeight, overscan = 0 },
+) => ({
+  x: Math.min(
+    Math.max(offset.x, Math.min(0, viewportWidth - worldWidth) - overscan),
+    overscan,
+  ),
+  y: Math.min(
+    Math.max(offset.y, Math.min(0, viewportHeight - worldHeight) - overscan),
+    overscan,
+  ),
+});
+
 export const selectOffscreenMessage = (
   messages,
   visibleMessageIds,

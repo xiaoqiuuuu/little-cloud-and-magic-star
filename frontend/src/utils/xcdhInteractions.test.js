@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const stylesheet = await readFile(new URL('../pages/XcdhPage.css', import.meta.url), 'utf8');
+const pageSource = await readFile(new URL('../pages/XcdhPage.jsx', import.meta.url), 'utf8');
 
 const getRule = (selector) => {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -14,4 +15,12 @@ const getRule = (selector) => {
 test('wish popup lets users click stars behind it while keeping close interactive', () => {
   assert.match(getRule('.xcdh-wish-popup'), /pointer-events:\s*none\s*;/);
   assert.match(getRule('.xcdh-wish-popup__close'), /pointer-events:\s*auto\s*;/);
+});
+
+test('offscreen wish discovery records a visit after focus', () => {
+  assert.match(pageSource, /if \(target\) focusMessage\(target, true\);/);
+  assert.match(
+    pageSource,
+    /if \(countDiscovery\) \{\s*void recordMessageDiscovery\(message\);\s*\}/,
+  );
 });

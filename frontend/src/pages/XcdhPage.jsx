@@ -3,11 +3,16 @@ import './XcdhPage.css';
 import './XcdhCinematic.css';
 import XcdhFlagship3D from './XcdhFlagship3D';
 import { getDeduplicated } from '../api';
-import { isRectVisible, selectOffscreenMessage } from '../utils/xcdhDiscovery';
+import {
+  clampUniverseOffset,
+  isRectVisible,
+  selectOffscreenMessage,
+} from '../utils/xcdhDiscovery';
 
 
 const WORLD_WIDTH = 3000;
 const WORLD_HEIGHT = 2000;
+const UNIVERSE_OVERSCAN = 200;
 const POPUP_HEIGHT = 190;
 
 
@@ -261,15 +266,30 @@ function XcdhPage() {
     setPopupPosition(null);
   }, []);
 
+  const recordMessageDiscovery = useCallback(async (message) => {
+    try {
+      const response = await fetch(`/api/xcdh/messages/${message.id}/click`, { method: 'POST' });
+      if (!response.ok) return;
+      const updated = await response.json();
+      setMessages((current) => current.map((item) => item.id === updated.id ? updated : item));
+      if (activeMessageIdRef.current === updated.id) {
+        setActiveMessage(updated);
+      }
+    } catch {
+      // 点击统计失败不影响星愿查看。
+    }
+  }, []);
+
   const updateOffset = useCallback((nextOffset) => {
     const viewport = viewportRef.current;
     if (!viewport) return nextOffset;
-    const minX = Math.min(0, viewport.clientWidth - WORLD_WIDTH);
-    const minY = Math.min(0, viewport.clientHeight - WORLD_HEIGHT);
-    const clamped = {
-      x: clamp(nextOffset.x, minX, 0),
-      y: clamp(nextOffset.y, minY, 0),
-    };
+    const clamped = clampUniverseOffset(nextOffset, {
+      viewportWidth: viewport.clientWidth,
+      viewportHeight: viewport.clientHeight,
+      worldWidth: WORLD_WIDTH,
+      worldHeight: WORLD_HEIGHT,
+      overscan: UNIVERSE_OVERSCAN,
+    });
     offsetRef.current = clamped;
     if (universeRef.current) {
       universeRef.current.style.transform = `translate3d(${clamped.x}px, ${clamped.y}px, 0)`;
@@ -287,7 +307,7 @@ function XcdhPage() {
     closePopup();
   }, [closePopup, updateOffset]);
 
-  const focusMessage = useCallback((message) => {
+  const focusMessage = useCallback((message, countDiscovery = false) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     closePopup();
@@ -304,8 +324,10 @@ function XcdhPage() {
       focusTimerRef.current = null;
       const width = Math.min(310, window.innerWidth - 32);
       const halfWidth = width / 2;
-      const starLeft = worldX + focusedOffset.x;
-      const starTop = worldY + focusedOffset.y;
+      const starElement = viewport.querySelector(`[data-message-id="${message.id}"]`);
+      const starRect = starElement?.getBoundingClientRect();
+      const starLeft = starRect ? starRect.left + starRect.width / 2 : worldX + focusedOffset.x;
+      const starTop = starRect ? starRect.top + starRect.height / 2 : worldY + focusedOffset.y;
       const placement = window.innerHeight - starTop >= POPUP_HEIGHT + 110 ? 'below' : 'above';
       activeMessageIdRef.current = message.id;
       setActiveMessage(message);
@@ -317,8 +339,11 @@ function XcdhPage() {
         width,
         placement,
       });
+      if (countDiscovery) {
+        void recordMessageDiscovery(message);
+      }
     }, 360);
-  }, [closePopup, updateOffset]);
+  }, [closePopup, recordMessageDiscovery, updateOffset]);
 
   const discoverNewWish = useCallback(() => {
     const viewport = viewportRef.current;
@@ -334,7 +359,7 @@ function XcdhPage() {
       visibleMessageIds,
       activeMessageIdRef.current,
     );
-    if (target) focusMessage(target);
+    if (target) focusMessage(target, true);
   }, [focusMessage, messages]);
 
   useEffect(() => {
@@ -420,7 +445,7 @@ function XcdhPage() {
     }
   };
 
-  const openMessage = async (message, event) => {
+  const openMessage = (message, event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const width = Math.min(310, window.innerWidth - 32);
     const halfWidth = width / 2;
@@ -433,18 +458,7 @@ function XcdhPage() {
     activeMessageIdRef.current = message.id;
     setActiveMessage(message);
     setPopupPosition({ left, top, width, placement });
-
-    try {
-      const response = await fetch(`/api/xcdh/messages/${message.id}/click`, { method: 'POST' });
-      if (!response.ok) return;
-      const updated = await response.json();
-      setMessages((current) => current.map((item) => item.id === updated.id ? updated : item));
-      if (activeMessageIdRef.current === updated.id) {
-        setActiveMessage(updated);
-      }
-    } catch {
-      // 点击统计失败不影响星愿查看。
-    }
+    void recordMessageDiscovery(message);
   };
 
   const handleCreated = (message) => {
