@@ -37,7 +37,7 @@
   top: 0;
   left: 0;
   overflow: visible;
-  contain: layout style paint;
+  contain: layout style;
   transform: translate3d(0, 0, 0);
   transform-style: preserve-3d;
   will-change: transform;
@@ -47,6 +47,14 @@
     radial-gradient(circle at 58% 76%, rgba(14, 116, 144, 0.16), transparent 23%),
     radial-gradient(circle at 30% 80%, rgba(67, 56, 202, 0.12), transparent 25%),
     linear-gradient(145deg, #02030a 0%, #08122b 43%, #100a28 68%, #03050d 100%);
+}
+
+.xcdh-space-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transform-style: preserve-3d;
 }
 
 .xcdh-universe::before,
