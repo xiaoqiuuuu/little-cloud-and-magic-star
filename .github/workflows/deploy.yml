@@ -39,6 +39,7 @@ jobs:
         run: |
           python -m pip install -r requirements.txt
           python -m compileall -q .
+          python -m unittest tests.test_sync_xcdh_messages -v
           python - <<'PY'
           from main import app
 
@@ -68,6 +69,32 @@ jobs:
       - name: Package frontend
         run: tar -C frontend/dist -czf frontend-dist.tar.gz .
 
+      - name: Prepare optional legacy XCDH database
+        id: xcdh_import
+        env:
+          XCDH_LEGACY_DB_BASE64: ${{ secrets.XCDH_LEGACY_DB_BASE64 }}
+        run: |
+          if [ -z "${XCDH_LEGACY_DB_BASE64:-}" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          printf '%s' "$XCDH_LEGACY_DB_BASE64" | base64 --decode > xcdh-legacy.sqlite
+          python - <<'PY'
+          import sqlite3
+
+          connection = sqlite3.connect("file:xcdh-legacy.sqlite?mode=ro", uri=True)
+          try:
+              row = connection.execute(
+                  "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'xcdh_messages'"
+              ).fetchone()
+              if row is None:
+                  raise SystemExit("Legacy database is missing xcdh_messages")
+          finally:
+              connection.close()
+          PY
+          echo "present=true" >> "$GITHUB_OUTPUT"
+
       - name: Upload frontend artifact to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -80,18 +107,32 @@ jobs:
           target: /tmp
           overwrite: true
 
-      - name: Deploy and restart service
-        uses: appleboy/ssh-action@v1
-        env:
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          RELEASE_SHA: ${{ github.sha }}
+      - name: Upload optional legacy XCDH database
+        if: steps.xcdh_import.outputs.present == 'true'
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           fingerprint: ${{ secrets.SERVER_FINGERPRINT }}
-          envs: DEPLOY_PATH,RELEASE_SHA
+          source: xcdh-legacy.sqlite
+          target: /tmp
+          overwrite: true
+
+      - name: Deploy and restart service
+        uses: appleboy/ssh-action@v1
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          RELEASE_SHA: ${{ github.sha }}
+          XCDH_IMPORT_PRESENT: ${{ steps.xcdh_import.outputs.present }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          fingerprint: ${{ secrets.SERVER_FINGERPRINT }}
+          envs: DEPLOY_PATH,RELEASE_SHA,XCDH_IMPORT_PRESENT
           command_timeout: 20m
           script: |
             set -Eeuo pipefail
@@ -119,6 +160,7 @@ jobs:
 
               sudo -n systemctl restart little-cloud.service || true
               sudo -n systemctl restart little-cloud-log-api.service || true
+              rm -f /tmp/xcdh-legacy.sqlite
               exit "$exit_code"
             }
             trap rollback ERR
@@ -150,6 +192,15 @@ jobs:
             pip_index_url="https://mirrors.aliyun.com/pypi/simple"
             "$BACKEND_DIR/venv/bin/python" -m pip install --quiet --index-url "$pip_index_url" --upgrade pip
             "$BACKEND_DIR/venv/bin/python" -m pip install --quiet --index-url "$pip_index_url" -r "$BACKEND_DIR/requirements.txt"
+
+            if [ "$XCDH_IMPORT_PRESENT" = "true" ]; then
+              legacy_db="/tmp/xcdh-legacy.sqlite"
+              test -f "$legacy_db"
+              "$BACKEND_DIR/venv/bin/python" "$BACKEND_DIR/scripts/sync_xcdh_messages.py" \
+                --source "$legacy_db" \
+                --apply
+              rm -f "$legacy_db"
+            fi
 
             rm -rf "$DEPLOY_STATE/dist-new" "$DEPLOY_STATE/dist-previous"
             mkdir -p "$DEPLOY_STATE/dist-new"
@@ -190,6 +241,6 @@ jobs:
             test "$log_api_healthy" -eq 1
 
             rm -rf "$DEPLOY_STATE/dist-previous"
-            rm -f "$ARCHIVE"
+            rm -f "$ARCHIVE" /tmp/xcdh-legacy.sqlite
             trap - ERR
             echo "Deployment ${RELEASE_SHA:0:12} succeeded."
