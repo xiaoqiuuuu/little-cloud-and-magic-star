@@ -504,7 +504,6 @@ function XcdhFlagship3D() {
 
     const pointer = { x: 0, y: 0 };
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const freezeShipForVisualDebug = true;
     const handleContextLost = (event) => {
       event.preventDefault();
       setWebglUnavailable(true);
@@ -530,7 +529,7 @@ function XcdhFlagship3D() {
     const startedAt = performance.now();
     const render = () => {
       const elapsed = (performance.now() - startedAt) / 1000;
-      if (!freezeShipForVisualDebug && !reducedMotion.matches) {
+      if (!reducedMotion.matches) {
         ship.position.y = Math.sin(elapsed * 0.55) * 0.12;
         ship.rotation.x += ((-0.05 + pointer.y * 0.035) - ship.rotation.x) * 0.035;
         ship.rotation.y += ((-0.12 + pointer.x * 0.09) - ship.rotation.y) * 0.035;
