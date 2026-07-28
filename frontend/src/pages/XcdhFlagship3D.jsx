@@ -452,12 +452,19 @@ function XcdhFlagship3D() {
     const canvas = canvasRef.current;
     if (!canvas || webglUnavailable) return undefined;
 
+    const compactViewport = window.matchMedia('(max-width: 900px)').matches;
+    const hardwareThreads = navigator.hardwareConcurrency || 8;
+    const deviceMemory = navigator.deviceMemory || 8;
+    const constrainedDevice = hardwareThreads <= 4 || deviceMemory <= 4;
+    const pixelRatioCap = compactViewport || constrainedDevice ? 1 : 1.25;
+    const targetFps = compactViewport || constrainedDevice ? 24 : 36;
+    const targetFrameDuration = 1000 / targetFps;
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: true,
+        antialias: !constrainedDevice,
         powerPreference: 'high-performance',
         premultipliedAlpha: true,
       });
@@ -466,7 +473,10 @@ function XcdhFlagship3D() {
       setWebglUnavailable(true);
       return undefined;
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    const renderPixelRatio = Math.min(window.devicePixelRatio || 1, pixelRatioCap);
+    renderer.setPixelRatio(renderPixelRatio);
+    canvas.dataset.renderPixelRatio = String(renderPixelRatio);
+    canvas.dataset.targetFps = String(targetFps);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.96;
@@ -497,7 +507,7 @@ function XcdhFlagship3D() {
     scene.add(fillLight);
 
     const ship = createFlagship();
-    ship.userData.nameTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    ship.userData.nameTexture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
     ship.userData.nameTexture.needsUpdate = true;
     ship.scale.setScalar(0.98);
     scene.add(ship);
@@ -527,8 +537,11 @@ function XcdhFlagship3D() {
     resize();
 
     const startedAt = performance.now();
-    const render = () => {
-      const elapsed = (performance.now() - startedAt) / 1000;
+    let lastRenderAt = -Infinity;
+    const render = (time = performance.now()) => {
+      if (time - lastRenderAt < targetFrameDuration) return;
+      lastRenderAt = time;
+      const elapsed = (time - startedAt) / 1000;
       if (!reducedMotion.matches) {
         ship.position.y = Math.sin(elapsed * 0.55) * 0.12;
         ship.rotation.x += ((-0.05 + pointer.y * 0.035) - ship.rotation.x) * 0.035;
@@ -537,13 +550,38 @@ function XcdhFlagship3D() {
       }
       renderer.render(scene, camera);
     };
-    renderer.setAnimationLoop(render);
+    let canvasVisible = true;
+    let pageVisible = !document.hidden;
+    const updateAnimationLoop = () => {
+      const shouldAnimate = canvasVisible && pageVisible && !reducedMotion.matches;
+      renderer.setAnimationLoop(shouldAnimate ? render : null);
+      if (!shouldAnimate && canvasVisible && pageVisible) {
+        renderer.render(scene, camera);
+      }
+    };
+    const handleVisibilityChange = () => {
+      pageVisible = !document.hidden;
+      lastRenderAt = -Infinity;
+      updateAnimationLoop();
+    };
+    const intersectionObserver = new IntersectionObserver(([entry]) => {
+      canvasVisible = entry.isIntersecting;
+      lastRenderAt = -Infinity;
+      updateAnimationLoop();
+    }, { threshold: 0.01 });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    reducedMotion.addEventListener?.('change', updateAnimationLoop);
+    intersectionObserver.observe(canvas);
+    updateAnimationLoop();
 
     return () => {
       renderer.setAnimationLoop(null);
       resizeObserver.disconnect();
+      intersectionObserver.disconnect();
       canvas.removeEventListener('webglcontextlost', handleContextLost, false);
       window.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      reducedMotion.removeEventListener?.('change', updateAnimationLoop);
       scene.traverse((object) => {
         object.geometry?.dispose?.();
         if (Array.isArray(object.material)) {
