@@ -602,10 +602,6 @@ function XcdhPage() {
         </div>
       </div>
 
-      <div className="xcdh-drag-hint" aria-hidden="true">
-        <span>↔</span> 按住并拖动探索宇宙
-      </div>
-
       {loadError && <div className="xcdh-load-error">{loadError}</div>}
 
       <WishPopup
