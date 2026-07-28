@@ -149,7 +149,7 @@ const createWingEngravingGeometry = () => {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute([
     -0.8, 0.061, 1.25,
     2.55, 0.061, 1.98,
-    2.45, 0.061, 2.68,
+    2.7, 0.061, 2.51,
     -0.65, 0.061, 1.78,
   ], 3));
   // Keep the glyph baseline on the outer wing edge (the last two vertices).
