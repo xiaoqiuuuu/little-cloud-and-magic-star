@@ -136,33 +136,6 @@ const createShipNameTexture = () => {
   context.closePath();
   context.fill();
 
-  // “号”的横折笔画在舰体透视缩小后最容易与蚀刻纹理混在一起，
-  // 最后单独补一层清晰的金属描边，保留雕刻感但避免看成其他字形。
-  context.save();
-  context.translate(centerX, 0);
-  context.transform(1, 0, -0.065, 1, 0, 0);
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.font = '900 244px "Songti SC", "STSong", "SimSun", serif';
-  context.lineJoin = 'miter';
-  context.miterLimit = 8;
-  const lastGlyphX = getGlyphX(glyphs.length - 1);
-  context.shadowColor = 'rgba(0, 0, 0, 0.96)';
-  context.shadowBlur = 10;
-  context.strokeStyle = 'rgba(0, 7, 13, 0.98)';
-  context.lineWidth = 25;
-  context.strokeText(glyphs.at(-1), lastGlyphX, baselineY);
-  context.shadowBlur = 0;
-  context.strokeStyle = 'rgba(75, 166, 220, 0.96)';
-  context.lineWidth = 11;
-  context.strokeText(glyphs.at(-1), lastGlyphX, baselineY);
-  context.fillStyle = silver;
-  context.fillText(glyphs.at(-1), lastGlyphX, baselineY);
-  context.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-  context.lineWidth = 3.5;
-  context.strokeText(glyphs.at(-1), lastGlyphX, baselineY - 1);
-  context.restore();
-
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -174,16 +147,17 @@ const createShipNameTexture = () => {
 const createWingEngravingGeometry = () => {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute([
-    1.42, 0.049, 1.67,
-    3.18, 0.049, 2.29,
-    3.1, 0.049, 2.52,
-    1.55, 0.049, 2,
+    -0.8, 0.061, 1.25,
+    2.55, 0.061, 1.98,
+    2.45, 0.061, 2.68,
+    -0.65, 0.061, 1.78,
   ], 3));
+  // Keep the glyph baseline on the outer wing edge (the last two vertices).
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute([
-    0.1, 0.08,
-    0.9, 0.08,
-    0.9, 0.92,
-    0.1, 0.92,
+    0, 0.92,
+    1, 0.92,
+    1, 0.08,
+    0, 0.08,
   ], 2));
   geometry.setIndex([0, 2, 1, 0, 3, 2]);
   geometry.computeVertexNormals();
@@ -291,7 +265,7 @@ const createFlagship = () => {
   const nameTexture = createShipNameTexture();
   const nameMaterial = new THREE.MeshBasicMaterial({
     map: nameTexture,
-    color: 0xb8dce9,
+    color: 0xc9e7f1,
     transparent: true,
     opacity: 1,
     alphaTest: 0.025,
@@ -334,28 +308,22 @@ const createFlagship = () => {
     addEdges(wingArmor, 0.18);
     ship.add(wingArmor);
 
-    const forwardFacet = new THREE.Mesh(createPrismGeometry([
-      [-4.38, 0.79 * side], [-2.64, 0.96 * side], [-0.58, 1.3 * side],
-      [-1.72, 1.43 * side], [-3.64, 1.08 * side],
-    ], 0.085, { topScale: 0.88, topOffsetX: 0.08 }), armorLight);
-    forwardFacet.position.y = 0.29;
-    ship.add(forwardFacet);
-
-    const aftFacet = new THREE.Mesh(createPrismGeometry([
-      [1.08, 1.52 * side], [2.5, 1.73 * side], [4.08, 2.85 * side],
-      [2.38, 2.43 * side], [1.42, 2.02 * side],
-    ], 0.08, { topScale: 0.84, topOffsetX: 0.08 }), armorLight);
-    aftFacet.position.y = 0.285;
-    ship.add(aftFacet);
+    const mainWingFacet = new THREE.Mesh(createPrismGeometry([
+      [-3.95, 0.84 * side], [-1.25, 1.05 * side], [2.15, 1.52 * side],
+      [4.48, 3.08 * side], [2.26, 3.05 * side], [-1.55, 1.72 * side],
+    ], 0.11, { topScale: 0.9, topOffsetX: 0.12 }), armor);
+    mainWingFacet.position.y = 0.285;
+    addEdges(mainWingFacet, 0.22);
+    ship.add(mainWingFacet);
 
     if (side === 1) {
       const wingEngraving = new THREE.Mesh(createWingEngravingGeometry(), nameMaterial);
       wingEngraving.renderOrder = 9;
-      aftFacet.add(wingEngraving);
+      mainWingFacet.add(wingEngraving);
     }
 
-    addBox(ship, energy, [3.15, 0.05, 0.095], [-0.95, 0.31, 1.51 * side], [0, -0.08 * side, 0]);
-    addBox(ship, energy, [1.62, 0.046, 0.082], [2.5, 0.3, 2.46 * side], [0, -0.48 * side, 0]);
+    addBox(ship, energy, [2.25, 0.038, 0.07], [-2, 0.36, 1.16 * side], [0, -0.08 * side, 0]);
+    addBox(ship, energy, [1.08, 0.036, 0.065], [3.34, 0.36, 2.98 * side], [0, -0.5 * side, 0]);
   });
 
   const upperArmor = new THREE.Mesh(createPrismGeometry([
