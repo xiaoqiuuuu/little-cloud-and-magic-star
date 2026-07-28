@@ -474,10 +474,10 @@ function XcdhPage() {
       <div className="xcdh-toolbar" data-interactive="true">
         <div className="xcdh-toolbar__stats">
           <strong>{messages.length}</strong> 颗星愿
-          <span>·</span>
-          被发现 <strong>{totalDiscoveries}</strong> 次
+          <span>，</span>
+          魔星拜访 <strong>{totalDiscoveries}</strong> 次
         </div>
-        <button onClick={centerUniverse}>回到星海中心</button>
+        <button onClick={centerUniverse}>寻找新的星愿</button>
         <button onClick={toggleMusic} aria-label={musicPlaying ? '暂停背景音乐' : '播放背景音乐'}>
           {musicPlaying ? '♫ 音乐开启' : '♪ 播放音乐'}
         </button>
