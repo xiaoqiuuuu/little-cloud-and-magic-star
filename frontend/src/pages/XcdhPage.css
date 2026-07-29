@@ -559,18 +559,17 @@
 
 .xcdh-wish-popup__meta {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 13px;
   padding-top: 11px;
   border-top: 1px solid rgba(148, 163, 184, 0.12);
   color: rgba(148, 163, 184, 0.72);
   font-size: 0.68rem;
+  white-space: nowrap;
 }
 
 .xcdh-wish-popup__time {
-  width: 100%;
-  margin-top: 1px;
   color: rgba(147, 197, 253, 0.68);
 }
 
@@ -958,8 +957,8 @@
   }
 
   .xcdh-wish-popup__meta {
-    flex-direction: column;
-    gap: 3px;
+    gap: 8px;
+    font-size: 0.62rem;
   }
 }
 

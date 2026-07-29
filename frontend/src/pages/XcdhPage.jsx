@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './XcdhPage.css';
 import './XcdhCinematic.css';
 import XcdhFlagship3D from './XcdhFlagship3D';
+import XcdhWishSearch from './XcdhWishSearch';
 import { getDeduplicated } from '../api';
 import {
   clampUniverseOffset,
@@ -11,6 +12,7 @@ import {
   selectOffscreenMessage,
 } from '../utils/xcdhDiscovery';
 import { formatXcdhCreatedAt } from '../utils/xcdhTime';
+import { getWishDiscoveryTheme } from '../utils/xcdhWishes';
 
 
 const WORLD_WIDTH = 3000;
@@ -18,6 +20,7 @@ const WORLD_HEIGHT = 2000;
 const UNIVERSE_OVERSCAN = 720;
 const FOCUS_SAFE_MARGIN = 200;
 const POPUP_HEIGHT = 190;
+const POPUP_WIDTH = 410;
 
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -95,8 +98,16 @@ function SparkleIcon() {
 
 function StarShape({ message }) {
   const variant = seededValue(Number(message.id) || 1, 21);
-  const fill = variant > 0.82 ? '#fff3b0' : variant > 0.58 ? '#dbeafe' : '#ffffff';
-  const glow = variant > 0.82 ? '#f59e0b' : variant > 0.58 ? '#60a5fa' : '#38bdf8';
+  const discoveryTheme = getWishDiscoveryTheme(message.click_count);
+  const palettes = {
+    new: variant > 0.58
+      ? { fill: '#dbeafe', glow: '#60a5fa' }
+      : { fill: '#ffffff', glow: '#38bdf8' },
+    glowing: { fill: '#ede9fe', glow: '#a78bfa' },
+    radiant: { fill: '#fef3c7', glow: '#f59e0b' },
+    legendary: { fill: '#ffe4e6', glow: '#fb7185' },
+  };
+  const { fill, glow } = palettes[discoveryTheme];
   const size = 21 + seededValue(Number(message.id) || 1, 22) * 12;
   const rotation = seededValue(Number(message.id) || 1, 23) * 42;
   const duration = 2.3 + seededValue(Number(message.id) || 1, 24) * 2.8;
@@ -104,6 +115,7 @@ function StarShape({ message }) {
   return (
     <span
       className="xcdh-wish-star__visual"
+      data-discovery-theme={discoveryTheme}
       style={{
         '--star-fill': fill,
         '--star-glow': glow,
@@ -154,10 +166,10 @@ function WishPopup({ message, position, onClose }) {
       </div>
       <p>{message.content}</p>
       <div className="xcdh-wish-popup__meta">
-        <span>✦ 已被发现 {message.click_count || 0} 次</span>
         <span>星愿 #{message.id}</span>
+        <span>发现 {message.click_count || 0} 次</span>
         {createdAt && (
-          <span className="xcdh-wish-popup__time">投递于 {createdAt}</span>
+          <span className="xcdh-wish-popup__time">投递 {createdAt}</span>
         )}
       </div>
     </aside>
@@ -330,7 +342,7 @@ function XcdhPage() {
     });
     focusTimerRef.current = window.setTimeout(() => {
       focusTimerRef.current = null;
-      const width = Math.min(310, window.innerWidth - 32);
+      const width = Math.min(POPUP_WIDTH, window.innerWidth - 32);
       const halfWidth = width / 2;
       const starElement = viewport.querySelector(`[data-message-id="${message.id}"]`);
       if (!starElement) return;
@@ -474,7 +486,7 @@ function XcdhPage() {
 
   const openMessage = (message, event) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    const width = Math.min(310, window.innerWidth - 32);
+    const width = Math.min(POPUP_WIDTH, window.innerWidth - 32);
     const halfWidth = width / 2;
     const left = clamp(rect.left + rect.width / 2, 16 + halfWidth, window.innerWidth - 16 - halfWidth);
     const spaceBelow = window.innerHeight - rect.bottom;
@@ -535,6 +547,11 @@ function XcdhPage() {
           {musicPlaying ? '♫ 音乐开启' : '♪ 播放音乐'}
         </button>
       </div>
+
+      <XcdhWishSearch
+        messages={messages}
+        onSelect={(message) => focusMessage(message, true)}
+      />
 
       <div
         ref={viewportRef}
