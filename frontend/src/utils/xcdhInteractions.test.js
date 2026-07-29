@@ -26,3 +26,18 @@ test('offscreen wish discovery records a visit after focus', () => {
     /if \(countDiscovery\) \{\s*void recordMessageDiscovery\(message\);\s*\}/,
   );
 });
+
+test('searched wishes record a visit after safe focus', () => {
+  assert.match(
+    pageSource,
+    /<XcdhWishSearch[\s\S]*?onSelect=\{\(message\) => focusMessage\(message, true\)\}/,
+  );
+});
+
+test('wish popup metadata is ordered by id, discoveries, and creation time', () => {
+  assert.match(
+    pageSource,
+    /<div className="xcdh-wish-popup__meta">\s*<span>星愿 #\{message\.id\}<\/span>\s*<span>发现 \{message\.click_count \|\| 0\} 次<\/span>[\s\S]*?投递 \{createdAt\}/,
+  );
+  assert.match(getRule('.xcdh-wish-popup__meta'), /flex-wrap:\s*nowrap\s*;/);
+});
