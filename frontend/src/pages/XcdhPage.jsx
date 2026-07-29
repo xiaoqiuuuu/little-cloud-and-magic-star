@@ -10,6 +10,7 @@ import {
   isRectVisible,
   selectOffscreenMessage,
 } from '../utils/xcdhDiscovery';
+import { formatXcdhCreatedAt } from '../utils/xcdhTime';
 
 
 const WORLD_WIDTH = 3000;
@@ -135,6 +136,7 @@ function SpaceShip() {
 
 function WishPopup({ message, position, onClose }) {
   if (!message || !position) return null;
+  const createdAt = formatXcdhCreatedAt(message.created_at);
 
   return (
     <aside
@@ -154,6 +156,9 @@ function WishPopup({ message, position, onClose }) {
       <div className="xcdh-wish-popup__meta">
         <span>✦ 已被发现 {message.click_count || 0} 次</span>
         <span>星愿 #{message.id}</span>
+        {createdAt && (
+          <span className="xcdh-wish-popup__time">投递于 {createdAt}</span>
+        )}
       </div>
     </aside>
   );
