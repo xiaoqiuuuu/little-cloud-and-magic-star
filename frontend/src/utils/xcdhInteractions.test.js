@@ -19,6 +19,8 @@ test('wish popup lets users click stars behind it while keeping close interactiv
 
 test('offscreen wish discovery records a visit after focus', () => {
   assert.match(pageSource, /if \(target\) focusMessage\(target, true\);/);
+  assert.match(pageSource, /if \(!starElement\) return;/);
+  assert.match(pageSource, /if \(!isRectFullyVisible\(starRect, viewportRect\)\) return;/);
   assert.match(
     pageSource,
     /if \(countDiscovery\) \{\s*void recordMessageDiscovery\(message\);\s*\}/,

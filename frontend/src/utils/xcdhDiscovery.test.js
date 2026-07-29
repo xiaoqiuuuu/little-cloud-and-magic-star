@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   clampUniverseOffset,
+  getViewportFocusCorrection,
+  isRectFullyVisible,
   isRectVisible,
   selectOffscreenMessage,
 } from './xcdhDiscovery.js';
@@ -27,6 +29,22 @@ test('focused universe offsets keep edge wishes inside the safe viewport area', 
     clampUniverseOffset({ x: -2400, y: -1600 }, bounds),
     { x: -2000, y: -1400 },
   );
+});
+
+test('focus correction moves a rendered offscreen wish into the safe viewport area', () => {
+  const viewport = { left: 0, top: 0, right: 1200, bottom: 800 };
+  const offscreen = { left: 2100, top: 400, right: 2146, bottom: 446 };
+  const correction = getViewportFocusCorrection(offscreen, viewport, 200);
+  const corrected = {
+    left: offscreen.left + correction.x,
+    right: offscreen.right + correction.x,
+    top: offscreen.top + correction.y,
+    bottom: offscreen.bottom + correction.y,
+  };
+
+  assert.deepEqual(correction, { x: -1123, y: 0 });
+  assert.equal(isRectFullyVisible(offscreen, viewport), false);
+  assert.equal(isRectFullyVisible(corrected, viewport), true);
 });
 
 test('new wish selection only returns an offscreen non-active message', () => {

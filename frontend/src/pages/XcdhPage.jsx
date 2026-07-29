@@ -5,6 +5,8 @@ import XcdhFlagship3D from './XcdhFlagship3D';
 import { getDeduplicated } from '../api';
 import {
   clampUniverseOffset,
+  getViewportFocusCorrection,
+  isRectFullyVisible,
   isRectVisible,
   selectOffscreenMessage,
 } from '../utils/xcdhDiscovery';
@@ -12,7 +14,8 @@ import {
 
 const WORLD_WIDTH = 3000;
 const WORLD_HEIGHT = 2000;
-const UNIVERSE_OVERSCAN = 200;
+const UNIVERSE_OVERSCAN = 720;
+const FOCUS_SAFE_MARGIN = 200;
 const POPUP_HEIGHT = 190;
 
 
@@ -316,7 +319,7 @@ function XcdhPage() {
     }
     const worldX = (message.x / 100) * WORLD_WIDTH;
     const worldY = (message.y / 100) * WORLD_HEIGHT;
-    const focusedOffset = updateOffset({
+    updateOffset({
       x: viewport.clientWidth / 2 - worldX,
       y: viewport.clientHeight / 2 - worldY,
     });
@@ -325,17 +328,36 @@ function XcdhPage() {
       const width = Math.min(310, window.innerWidth - 32);
       const halfWidth = width / 2;
       const starElement = viewport.querySelector(`[data-message-id="${message.id}"]`);
-      const starRect = starElement?.getBoundingClientRect();
-      const starLeft = starRect ? starRect.left + starRect.width / 2 : worldX + focusedOffset.x;
-      const starTop = starRect ? starRect.top + starRect.height / 2 : worldY + focusedOffset.y;
-      const placement = window.innerHeight - starTop >= POPUP_HEIGHT + 110 ? 'below' : 'above';
+      if (!starElement) return;
+      const viewportRect = viewport.getBoundingClientRect();
+      let starRect = starElement.getBoundingClientRect();
+      const correction = getViewportFocusCorrection(starRect, viewportRect, FOCUS_SAFE_MARGIN);
+      if (correction.x !== 0 || correction.y !== 0) {
+        updateOffset({
+          x: offsetRef.current.x + correction.x,
+          y: offsetRef.current.y + correction.y,
+        });
+        starRect = starElement.getBoundingClientRect();
+      }
+      if (!isRectFullyVisible(starRect, viewportRect)) return;
+      const starLeft = starRect.left + starRect.width / 2;
+      const starTop = starRect.top + starRect.height / 2;
+      const placement = viewportRect.bottom - starTop >= POPUP_HEIGHT + 110 ? 'below' : 'above';
       activeMessageIdRef.current = message.id;
       setActiveMessage(message);
       setPopupPosition({
-        left: clamp(starLeft, 16 + halfWidth, window.innerWidth - 16 - halfWidth),
+        left: clamp(
+          starLeft,
+          viewportRect.left + 16 + halfWidth,
+          viewportRect.right - 16 - halfWidth,
+        ),
         top: placement === 'below'
-          ? clamp(starTop + 28, 110, window.innerHeight - POPUP_HEIGHT - 90)
-          : Math.max(86, starTop - POPUP_HEIGHT - 24),
+          ? clamp(
+            starTop + 28,
+            viewportRect.top + 110,
+            viewportRect.bottom - POPUP_HEIGHT - 90,
+          )
+          : Math.max(viewportRect.top + 86, starTop - POPUP_HEIGHT - 24),
         width,
         placement,
       });
