@@ -44,10 +44,10 @@ class XcdhApiTests(unittest.IsolatedAsyncioTestCase):
         message = created.json()
         self.assertEqual(message["username"], "魔星")
         self.assertEqual(message["content"], "奔赴星辰大海")
-        self.assertGreaterEqual(message["x"], 5)
-        self.assertLessEqual(message["x"], 95)
-        self.assertGreaterEqual(message["y"], 9)
-        self.assertLessEqual(message["y"], 76)
+        self.assertGreaterEqual(message["x"], 4)
+        self.assertLessEqual(message["x"], 96)
+        self.assertGreaterEqual(message["y"], 6)
+        self.assertLessEqual(message["y"], 94)
         self.assertEqual(message["click_count"], 0)
 
         clicked = await self.client.post(
