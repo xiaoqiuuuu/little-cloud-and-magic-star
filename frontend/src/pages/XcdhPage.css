@@ -559,12 +559,19 @@
 
 .xcdh-wish-popup__meta {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 10px;
   padding-top: 11px;
   border-top: 1px solid rgba(148, 163, 184, 0.12);
   color: rgba(148, 163, 184, 0.72);
   font-size: 0.68rem;
+}
+
+.xcdh-wish-popup__time {
+  width: 100%;
+  margin-top: 1px;
+  color: rgba(147, 197, 253, 0.68);
 }
 
 .xcdh-icon-button {
