@@ -13,6 +13,7 @@ import {
 } from '../utils/xcdhDiscovery';
 import { formatXcdhCreatedAt } from '../utils/xcdhTime';
 import { getWishDiscoveryTheme } from '../utils/xcdhWishes';
+import { createBackgroundStars, createMeteors, seededValue } from '../utils/xcdhScene';
 
 
 const WORLD_WIDTH = 3000;
@@ -24,47 +25,6 @@ const POPUP_WIDTH = 410;
 
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-
-const seededValue = (index, salt = 0) => {
-  const value = Math.sin((index + 1) * 9283.31 + salt * 77.17) * 43758.5453;
-  return value - Math.floor(value);
-};
-
-
-const createBackgroundStars = () => Array.from({ length: 260 }, (_, index) => ({
-  id: `background-star-${index}`,
-  x: seededValue(index, 1) * WORLD_WIDTH,
-  y: seededValue(index, 2) * WORLD_HEIGHT,
-  depth: -320 + seededValue(index, 8) * 520,
-  size: 0.6 + seededValue(index, 3) * 2.8,
-  opacity: 0.22 + seededValue(index, 4) * 0.75,
-  duration: 2.2 + seededValue(index, 5) * 5.5,
-  delay: seededValue(index, 6) * -7,
-  twinkles: index % 3 === 0,
-  color: seededValue(index, 7) > 0.88
-    ? '#fef3c7'
-    : seededValue(index, 7) > 0.68 ? '#bfdbfe' : '#ffffff',
-}));
-
-
-const createMeteors = () => Array.from({ length: 9 }, (_, index) => {
-  const angle = 18 + seededValue(index, 16) * 17;
-  const distance = 520 + seededValue(index, 17) * 420;
-  const radians = angle * (Math.PI / 180);
-  return {
-    id: `meteor-${index}`,
-    x: 80 + seededValue(index, 11) * (WORLD_WIDTH - 900),
-    y: 40 + seededValue(index, 12) * (WORLD_HEIGHT - 720),
-    length: 120 + seededValue(index, 13) * 180,
-    duration: 7 + seededValue(index, 14) * 10,
-    delay: seededValue(index, 15) * -24,
-    angle,
-    dx: Math.cos(radians) * distance,
-    dy: Math.sin(radians) * distance,
-    depth: -80 + seededValue(index, 18) * 220,
-  };
-});
 
 
 function PlusIcon() {
@@ -277,8 +237,16 @@ function XcdhPage() {
   const [popupPosition, setPopupPosition] = useState(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
-  const backgroundStars = useMemo(createBackgroundStars, []);
-  const meteors = useMemo(createMeteors, []);
+  const backgroundStars = useMemo(() => createBackgroundStars({
+    worldWidth: WORLD_WIDTH,
+    worldHeight: WORLD_HEIGHT,
+    overscan: UNIVERSE_OVERSCAN,
+  }), []);
+  const meteors = useMemo(() => createMeteors({
+    worldWidth: WORLD_WIDTH,
+    worldHeight: WORLD_HEIGHT,
+    overscan: UNIVERSE_OVERSCAN,
+  }), []);
 
   const closePopup = useCallback(() => {
     activeMessageIdRef.current = null;
