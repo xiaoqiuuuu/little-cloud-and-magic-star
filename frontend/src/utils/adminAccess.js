@@ -8,6 +8,7 @@ export const PERMISSIONS = Object.freeze({
   ACCOUNTS_MANAGE: 'accounts.manage',
   HOMEPAGE_MANAGE: 'homepage.manage',
   QUIZ_OPERATE: 'quiz.operate',
+  XCDH_MESSAGES_MANAGE: 'xcdh_messages.manage',
 });
 
 const BACKEND_PERMISSIONS = [
@@ -18,6 +19,7 @@ const BACKEND_PERMISSIONS = [
   PERMISSIONS.VISIT_STATS_VIEW,
   PERMISSIONS.HOMEPAGE_MANAGE,
   PERMISSIONS.ACCOUNTS_MANAGE,
+  PERMISSIONS.XCDH_MESSAGES_MANAGE,
 ];
 
 
@@ -63,6 +65,7 @@ export const canAccessBackend = (user) => hasAnyPermission(user, BACKEND_PERMISS
 
 export const getDefaultAccessPath = (user) => {
   if (hasPermission(user, PERMISSIONS.QUESTIONS_MANAGE)) return '/admin/questions';
+  if (hasPermission(user, PERMISSIONS.XCDH_MESSAGES_MANAGE)) return '/admin/xcdh-messages';
   if (hasPermission(user, PERMISSIONS.MATERIALS_MANAGE)) return '/admin/materials';
   if (hasPermission(user, PERMISSIONS.CONTENT_ROLES_MANAGE)) return '/admin/roles';
   if (hasPermission(user, PERMISSIONS.HOMEPAGE_MANAGE)) return '/admin/site-events';

@@ -20,6 +20,7 @@ from database import (  # noqa: E402
     QUIZ_ACTIVITIES_MANAGE,
     QUIZ_OPERATE,
     VISIT_STATS_VIEW,
+    XCDH_MESSAGES_MANAGE,
     create_admin,
     init_db,
 )
@@ -32,6 +33,7 @@ QUESTION_ADMIN_PERMISSIONS = {
     CONTENT_ROLES_MANAGE,
     QUIZ_ACTIVITIES_MANAGE,
     VISIT_STATS_VIEW,
+    XCDH_MESSAGES_MANAGE,
 }
 
 
@@ -104,6 +106,7 @@ class RbacPermissionTests(unittest.IsolatedAsyncioTestCase):
         visit_stats = await self.client.get("/api/stats/", headers=headers)
         access_roles = await self.client.get("/api/admin/access/roles", headers=headers)
         site_events = await self.client.get("/api/admin/site-events", headers=headers)
+        xcdh_messages = await self.client.get("/api/admin/xcdh/messages", headers=headers)
 
         self.assertEqual(users.status_code, 403)
         self.assertEqual(update_config.status_code, 200)
@@ -113,6 +116,7 @@ class RbacPermissionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(visit_stats.status_code, 200)
         self.assertEqual(access_roles.status_code, 403)
         self.assertEqual(site_events.status_code, 403)
+        self.assertEqual(xcdh_messages.status_code, 200)
 
     async def test_default_roles_expose_permissions_in_current_user(self):
         expected = {
@@ -177,6 +181,7 @@ class RbacPermissionTests(unittest.IsolatedAsyncioTestCase):
         activities = await self.client.get("/api/admin/activities", headers=headers)
         users = await self.client.get("/api/admin/users", headers=headers)
         access_roles = await self.client.get("/api/admin/access/roles", headers=headers)
+        xcdh_messages = await self.client.get("/api/admin/xcdh/messages", headers=headers)
 
         self.assertEqual(site_events.status_code, 200)
         self.assertEqual(duplicated.status_code, 201, duplicated.text)
@@ -184,6 +189,7 @@ class RbacPermissionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(activities.status_code, 403)
         self.assertEqual(users.status_code, 403)
         self.assertEqual(access_roles.status_code, 403)
+        self.assertEqual(xcdh_messages.status_code, 403)
 
     async def test_custom_account_role_can_manage_accounts_and_permissions(self):
         super_tokens = await self.login("rootadmin", "StrongPass123")
@@ -588,6 +594,7 @@ class RbacPermissionTests(unittest.IsolatedAsyncioTestCase):
             CONTENT_ROLES_MANAGE,
             QUIZ_ACTIVITIES_MANAGE,
             VISIT_STATS_VIEW,
+            XCDH_MESSAGES_MANAGE,
         ]
 
         conn = database_config.get_connection()

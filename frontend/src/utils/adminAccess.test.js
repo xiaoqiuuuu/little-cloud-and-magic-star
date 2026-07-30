@@ -15,6 +15,7 @@ test('permission helpers use explicit RBAC permissions', () => {
   const questionManager = { permissions: [PERMISSIONS.QUESTIONS_MANAGE] };
   const materialManager = { permissions: [PERMISSIONS.MATERIALS_MANAGE] };
   const quizOperator = { permissions: [PERMISSIONS.QUIZ_OPERATE] };
+  const xcdhManager = { permissions: [PERMISSIONS.XCDH_MESSAGES_MANAGE] };
 
   assert.equal(hasPermission(questionManager, PERMISSIONS.QUESTIONS_MANAGE), true);
   assert.equal(hasContentAdminAccess(questionManager), true);
@@ -30,6 +31,7 @@ test('permission helpers use explicit RBAC permissions', () => {
   }), false);
   assert.equal(canAccessBackend(questionManager), true);
   assert.equal(canAccessBackend(materialManager), true);
+  assert.equal(canAccessBackend(xcdhManager), true);
   assert.equal(canAccessBackend(quizOperator), false);
   assert.equal(hasContentAdminAccess(null), false);
 });
@@ -56,6 +58,10 @@ test('default access path follows permission priority', () => {
   assert.equal(
     getDefaultAccessPath({ permissions: [PERMISSIONS.HOMEPAGE_MANAGE] }),
     '/admin/site-events',
+  );
+  assert.equal(
+    getDefaultAccessPath({ permissions: [PERMISSIONS.XCDH_MESSAGES_MANAGE] }),
+    '/admin/xcdh-messages',
   );
   assert.equal(
     getDefaultAccessPath({ permissions: [PERMISSIONS.MATERIALS_MANAGE] }),

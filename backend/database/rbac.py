@@ -15,12 +15,14 @@ VISIT_STATS_VIEW = "visit_stats.view"
 ACCOUNTS_MANAGE = "accounts.manage"
 HOMEPAGE_MANAGE = "homepage.manage"
 QUIZ_OPERATE = "quiz.operate"
+XCDH_MESSAGES_MANAGE = "xcdh_messages.manage"
 
 LEGACY_QUESTION_ADMIN_PERMISSIONS = (
     MATERIALS_MANAGE,
     CONTENT_ROLES_MANAGE,
     QUIZ_ACTIVITIES_MANAGE,
     VISIT_STATS_VIEW,
+    XCDH_MESSAGES_MANAGE,
 )
 
 PERMISSION_DEFINITIONS = (
@@ -51,6 +53,13 @@ PERMISSION_DEFINITIONS = (
         "维护游戏规则中展示的角色、阵营和技能资料。",
         "内容管理",
         30,
+    ),
+    (
+        XCDH_MESSAGES_MANAGE,
+        "星愿管理",
+        "查看、搜索、隐藏、恢复和永久删除星辰大海中的用户星愿。",
+        "内容管理",
+        35,
     ),
     (
         QUIZ_ACTIVITIES_MANAGE,
@@ -101,7 +110,7 @@ DEFAULT_ACCESS_ROLES = (
     (
         "question_admin",
         "题目管理员",
-        "管理题目、物料、内容角色、答题活动和访问分析。",
+        "管理题目、物料、内容角色、星愿、答题活动和访问分析。",
         True,
         False,
         (QUESTIONS_MANAGE, *LEGACY_QUESTION_ADMIN_PERMISSIONS),

@@ -12,6 +12,7 @@ from database.rbac import (
     QUIZ_ACTIVITIES_MANAGE,
     QUIZ_OPERATE,
     VISIT_STATS_VIEW,
+    XCDH_MESSAGES_MANAGE,
 )
 
 
@@ -89,6 +90,7 @@ require_visit_stats_view = require_permission(VISIT_STATS_VIEW)
 require_accounts_manage = require_permission(ACCOUNTS_MANAGE)
 require_homepage_manage = require_permission(HOMEPAGE_MANAGE)
 require_quiz_operate = require_permission(QUIZ_OPERATE)
+require_xcdh_messages_manage = require_permission(XCDH_MESSAGES_MANAGE)
 
 # 兼容旧模块名称，含义已升级为题目与答题活动管理权限。
 require_content_admin = require_questions_manage
