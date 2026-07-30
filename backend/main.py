@@ -29,6 +29,7 @@ from api import (
     site_events_admin_router,
     site_events_public_router,
     xcdh_router,
+    xcdh_admin_router,
 )
 
 # 初始化数据库
@@ -66,6 +67,7 @@ app.include_router(access_router)  # RBAC 权限管理接口
 app.include_router(site_events_public_router)  # 官网活动公开接口
 app.include_router(site_events_admin_router)  # 官网活动管理接口
 app.include_router(xcdh_router)  # 星辰大海留言接口
+app.include_router(xcdh_admin_router)  # 星辰大海留言管理接口
 
 
 @app.get("/api/health")

@@ -318,6 +318,30 @@ class XcdhMessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=100)
 
 
+class XcdhAdminMessage(XcdhMessage):
+    is_hidden: bool = False
+    hidden_at: Optional[str] = None
+
+
+class XcdhMessageSummary(BaseModel):
+    total: int
+    visible: int
+    hidden: int
+    total_clicks: int
+
+
+class PaginatedXcdhMessages(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: List[XcdhAdminMessage]
+    summary: XcdhMessageSummary
+
+
+class XcdhMessageVisibilityUpdate(BaseModel):
+    hidden: bool
+
+
 class SiteEventUpdate(BaseModel):
     slug: Optional[str] = Field(
         default=None,

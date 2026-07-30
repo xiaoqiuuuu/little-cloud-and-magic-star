@@ -83,6 +83,7 @@ from .rbac import (
     QUIZ_ACTIVITIES_MANAGE,
     QUIZ_OPERATE,
     VISIT_STATS_VIEW,
+    XCDH_MESSAGES_MANAGE,
     create_access_role,
     delete_access_role,
     get_access_role,
@@ -111,8 +112,11 @@ from .site_events import (
 )
 from .xcdh import (
     create_xcdh_message,
+    delete_xcdh_message,
     increment_xcdh_message_click,
+    list_admin_xcdh_messages,
     list_xcdh_messages,
+    set_xcdh_message_hidden,
 )
 
 __all__ = [
@@ -156,6 +160,7 @@ __all__ = [
     'ACCOUNTS_MANAGE',
     'HOMEPAGE_MANAGE',
     'QUIZ_OPERATE',
+    'XCDH_MESSAGES_MANAGE',
     'list_permissions',
     'list_access_roles',
     'get_access_role',
@@ -222,7 +227,10 @@ __all__ = [
     'delete_site_event',
     # 星辰大海相关
     'list_xcdh_messages',
+    'list_admin_xcdh_messages',
     'create_xcdh_message',
     'increment_xcdh_message_click',
+    'set_xcdh_message_hidden',
+    'delete_xcdh_message',
 ]
 from .configs import get_config, set_config

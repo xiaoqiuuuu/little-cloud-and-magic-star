@@ -15,6 +15,7 @@ import {
   PlayCircleOutlined,
   GlobalOutlined,
   UserOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { showSuccess } from '../utils/message';
 import api, { clearAuthSession, getDeduplicated } from '../api';
@@ -42,6 +43,7 @@ const PAGE_TITLES = {
   '/admin/stats': '访问分析',
   '/admin/users': '账号与权限',
   '/admin/profile': '个人资料',
+  '/admin/xcdh-messages': '星愿管理',
 };
 
 function AdminLayout() {
@@ -126,6 +128,10 @@ function AdminLayout() {
   const canViewVisitStats = hasPermission(currentUser, PERMISSIONS.VISIT_STATS_VIEW);
   const canManageAccounts = hasPermission(currentUser, PERMISSIONS.ACCOUNTS_MANAGE);
   const canOperateQuiz = hasPermission(currentUser, PERMISSIONS.QUIZ_OPERATE);
+  const canManageXcdhMessages = hasPermission(
+    currentUser,
+    PERMISSIONS.XCDH_MESSAGES_MANAGE,
+  );
 
   if (!authLoading && !currentUser) {
     return <Navigate to="/admin/login" replace />;
@@ -136,7 +142,7 @@ function AdminLayout() {
   }
 
   const menuItems = [
-    ...(canManageQuestions || canManageMaterials || canManageContentRoles ? [{
+    ...(canManageQuestions || canManageMaterials || canManageContentRoles || canManageXcdhMessages ? [{
       type: 'group',
       key: 'content-group',
       label: '内容中心',
@@ -155,6 +161,11 @@ function AdminLayout() {
           key: '/admin/roles',
           icon: <TeamOutlined />,
           label: <Link to="/admin/roles">内容角色</Link>,
+        }] : []),
+        ...(canManageXcdhMessages ? [{
+          key: '/admin/xcdh-messages',
+          icon: <StarOutlined />,
+          label: <Link to="/admin/xcdh-messages">星愿</Link>,
         }] : []),
       ],
     }] : []),

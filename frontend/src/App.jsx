@@ -33,6 +33,7 @@ import 'antd/dist/reset.css'; // Ant Design 样式
 const VisitStatsPage = lazy(() => import('./pages/VisitStatsPage'));
 const ComponentLibraryPage = lazy(() => import('./pages/ComponentLibraryPage'));
 const XcdhPage = lazy(() => import('./pages/XcdhPage'));
+const XcdhMessageManager = lazy(() => import('./pages/XcdhMessageManager'));
 
 
 function AdminIndexRedirect() {
@@ -275,6 +276,13 @@ function AppContent() {
                 <Route path="site-events" element={
                   <RequirePermission permission={PERMISSIONS.HOMEPAGE_MANAGE}>
                     <SiteEventManager />
+                  </RequirePermission>
+                } />
+                <Route path="xcdh-messages" element={
+                  <RequirePermission permission={PERMISSIONS.XCDH_MESSAGES_MANAGE}>
+                    <Suspense fallback={<div className="py-20 text-center text-gray-400">正在加载星愿列表...</div>}>
+                      <XcdhMessageManager />
+                    </Suspense>
                   </RequirePermission>
                 } />
                 {/* 兼容旧路由 */}
