@@ -39,6 +39,31 @@ class QuestionCreate(BaseModel):
     author: List[str] = []
     contributor_ids: List[int] = Field(default_factory=list)
 
+
+class PublicQuestionSubmission(BaseModel):
+    question: str = Field(min_length=1, max_length=5000)
+    answer: str = Field(min_length=1, max_length=5000)
+    resources: List[str] = Field(default_factory=list, max_length=20)
+    tag: str = Field(default="common", min_length=1, max_length=50)
+
+
+class QuestionSubmissionLink(BaseModel):
+    token: str
+    submission_count: int = 0
+    last_submitted_at: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class QuestionSubmissionFormInfo(BaseModel):
+    owner_name: str
+    tag_options: List[str] = Field(default_factory=list)
+
+
+class QuestionSubmissionResult(BaseModel):
+    question_id: str
+    message: str
+
 # 更新题目请求
 
 

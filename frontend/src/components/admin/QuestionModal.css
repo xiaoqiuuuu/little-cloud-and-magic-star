@@ -392,6 +392,13 @@
   font-size: 22px;
 }
 
+.question-resource-card__invalid {
+  padding: 12px;
+  color: #b91c1c;
+  font-size: 12px;
+  text-align: center;
+}
+
 .question-resource-card__name {
   display: block;
   overflow: hidden;

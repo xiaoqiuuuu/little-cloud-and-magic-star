@@ -30,6 +30,8 @@ from api import (
     site_events_public_router,
     xcdh_router,
     xcdh_admin_router,
+    question_submissions_admin_router,
+    question_submissions_public_router,
 )
 
 # 初始化数据库
@@ -68,6 +70,8 @@ app.include_router(site_events_public_router)  # 官网活动公开接口
 app.include_router(site_events_admin_router)  # 官网活动管理接口
 app.include_router(xcdh_router)  # 星辰大海留言接口
 app.include_router(xcdh_admin_router)  # 星辰大海留言管理接口
+app.include_router(question_submissions_public_router)  # 公开出题问卷
+app.include_router(question_submissions_admin_router)  # 出题问卷链接管理
 
 
 @app.get("/api/health")

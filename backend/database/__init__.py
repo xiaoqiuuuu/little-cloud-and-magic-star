@@ -118,6 +118,15 @@ from .xcdh import (
     list_xcdh_messages,
     set_xcdh_message_hidden,
 )
+from .question_submissions import (
+    DuplicateSubmittedQuestion,
+    InvalidQuestionSubmissionLink,
+    create_question_from_submission,
+    get_active_question_submission_link,
+    get_question_submission_link_for_admin,
+    revoke_question_submission_link,
+    rotate_question_submission_link,
+)
 
 __all__ = [
     # 配置
@@ -232,5 +241,13 @@ __all__ = [
     'increment_xcdh_message_click',
     'set_xcdh_message_hidden',
     'delete_xcdh_message',
+    # 公开出题问卷相关
+    'DuplicateSubmittedQuestion',
+    'InvalidQuestionSubmissionLink',
+    'create_question_from_submission',
+    'get_active_question_submission_link',
+    'get_question_submission_link_for_admin',
+    'revoke_question_submission_link',
+    'rotate_question_submission_link',
 ]
 from .configs import get_config, set_config

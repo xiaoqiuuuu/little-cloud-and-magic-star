@@ -59,6 +59,13 @@ export function getResourceType(url = '') {
   return 'link';
 }
 
+export function isSafeResourceUrl(url = '') {
+  const value = String(url).trim();
+  return value.startsWith('/uploads/')
+    || value.startsWith('https://')
+    || value.startsWith('http://');
+}
+
 export function hasQuestionDraftContent(formData) {
   const normalized = normalizeQuestionForm(formData);
   return Boolean(
