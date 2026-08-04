@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Table, Tag, Button, Space, App } from 'antd';
 import { BugOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined, DownloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { getQuestionTagMeta } from '../../constants/questionTags';
 import { CharacterButton, CharacterEmptyState } from '../../ui';
+import QuestionMobileList from './QuestionMobileList';
+import './QuestionList.css';
 
 const formatDateTime = (value) => {
   if (!value) return '-';
@@ -36,6 +38,19 @@ const QuestionList = ({
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const hasActiveFilters = Boolean(searchKeyword || filterTag !== 'all' || filterContributorId);
+
+  useEffect(() => {
+    const currentIds = new Set(questions.map((question) => question.id));
+    setSelectedRowKeys((selectedKeys) => selectedKeys.filter((id) => currentIds.has(id)));
+  }, [questions]);
+
+  const toggleAnswer = (questionId) => {
+    setExpandedRowKeys((expandedKeys) => (
+      expandedKeys.includes(questionId)
+        ? expandedKeys.filter((id) => id !== questionId)
+        : [...expandedKeys, questionId]
+    ));
+  };
 
   const handleBatchDelete = () => {
     if (selectedRowKeys.length === 0) {
@@ -165,11 +180,7 @@ const QuestionList = ({
               type="link"
               size="small"
               icon={isExpanded ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-              onClick={() => {
-                setExpandedRowKeys(prev => 
-                  isExpanded ? prev.filter(key => key !== record.id) : [...prev, record.id]
-                );
-              }}
+              onClick={() => toggleAnswer(record.id)}
             >
               {isExpanded ? '隐藏答案' : '查看答案'}
             </Button>
@@ -299,9 +310,9 @@ const QuestionList = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="question-list-container bg-white rounded-lg shadow">
       {selectedRowKeys.length > 0 && (
-        <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+        <div className="question-list-batch--desktop p-4 bg-blue-50 border-b border-blue-100 items-center justify-between">
           <span className="text-sm text-gray-700">
             已选择 <span className="font-semibold text-blue-600">{selectedRowKeys.length}</span> 个题目
           </span>
@@ -334,38 +345,82 @@ const QuestionList = ({
           </Space>
         </div>
       )}
-      
-      <Table
-        rowSelection={rowSelection}
-        columns={columns}
-        dataSource={questions}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: currentPage,
-          pageSize: pageSize,
-          total: total,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total) => `共 ${total} 个题目`,
-          pageSizeOptions: ['10', '20', '50', '100'],
-          onChange: (page, size) => {
-            onPageChange(page, size);
-          },
-        }}
-        scroll={{ x: 1500 }}
-        locale={{
-          emptyText: (
-            <CharacterEmptyState
-              size="small"
-              title={hasActiveFilters ? '没有找到匹配的题目' : '暂无题目，请添加题目'}
-              action={!hasActiveFilters && onCreate ? (
-                <CharacterButton size="small" onClick={onCreate}>新建题目</CharacterButton>
-              ) : undefined}
-            />
-          ),
-        }}
-      />
+
+      {selectedRowKeys.length > 0 && (
+        <div className="question-list-batch--mobile">
+          <span>已选择 {selectedRowKeys.length} 道题</span>
+          <button type="button" onClick={handleBatchExport}>
+            <DownloadOutlined /> 导出
+          </button>
+          <button type="button" onClick={handleBatchResetStats}>
+            <ReloadOutlined /> 归零
+          </button>
+          <button type="button" className="is-danger" onClick={handleBatchDelete}>
+            <DeleteOutlined /> 删除
+          </button>
+          <button type="button" onClick={() => setSelectedRowKeys([])}>取消</button>
+        </div>
+      )}
+
+      <div className="question-list-desktop">
+        <Table
+          rowSelection={rowSelection}
+          columns={columns}
+          dataSource={questions}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (tableTotal) => `共 ${tableTotal} 个题目`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            onChange: (page, size) => {
+              onPageChange(page, size);
+            },
+          }}
+          scroll={{ x: 1500 }}
+          locale={{
+            emptyText: (
+              <CharacterEmptyState
+                size="small"
+                title={hasActiveFilters ? '没有找到匹配的题目' : '暂无题目，请添加题目'}
+                action={!hasActiveFilters && onCreate ? (
+                  <CharacterButton size="small" onClick={onCreate}>新建题目</CharacterButton>
+                ) : undefined}
+              />
+            ),
+          }}
+        />
+      </div>
+
+      <div className="question-list-mobile">
+        <QuestionMobileList
+          questions={questions}
+          loading={loading}
+          selectedRowKeys={selectedRowKeys}
+          onSelectedRowKeysChange={setSelectedRowKeys}
+          expandedRowKeys={expandedRowKeys}
+          onToggleAnswer={toggleAnswer}
+          sortDesc={sortDesc}
+          onToggleSort={() => {
+            setSortDesc((currentSortDesc) => !currentSortDesc);
+            onPageChange(1, pageSize);
+          }}
+          onDebug={onDebug}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onResetStats={onResetStats}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={onPageChange}
+          hasActiveFilters={hasActiveFilters}
+          onCreate={onCreate}
+        />
+      </div>
     </div>
   );
 };
