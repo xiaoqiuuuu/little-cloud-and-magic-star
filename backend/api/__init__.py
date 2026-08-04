@@ -14,6 +14,10 @@ from .question_submissions import (
     admin_router as question_submissions_admin_router,
     public_router as question_submissions_public_router,
 )
+from .question_answer_invites import (
+    admin_router as question_answer_invites_admin_router,
+    public_router as question_answer_invites_public_router,
+)
 
 __all__ = [
     'auth_router',
@@ -28,6 +32,8 @@ __all__ = [
     'xcdh_admin_router',
     'question_submissions_admin_router',
     'question_submissions_public_router',
+    'question_answer_invites_admin_router',
+    'question_answer_invites_public_router',
 ]
 from .configs import router as configs_router
 from .roles import router as roles_router

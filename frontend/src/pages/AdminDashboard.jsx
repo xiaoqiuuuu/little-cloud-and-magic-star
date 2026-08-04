@@ -19,6 +19,7 @@ import SearchById from '../components/admin/SearchById';
 import QuestionList from '../components/admin/QuestionList';
 import QuestionModal from '../components/admin/QuestionModal';
 import QuestionSubmissionLinkManager from '../components/admin/QuestionSubmissionLinkManager';
+import QuestionAnswerInviteManager from '../components/admin/QuestionAnswerInviteManager';
 import ExcelImportExport from '../components/admin/ExcelImportExport';
 import { mergeQuestionTagOptions } from '../constants/questionTags';
 import { CharacterButton } from '../ui';
@@ -49,6 +50,7 @@ function AdminDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [showSubmissionLink, setShowSubmissionLink] = useState(false);
+  const [showAnswerInvite, setShowAnswerInvite] = useState(false);
 
   const navigate = useNavigate();
   const latestQuestionsRequest = useRef(0);
@@ -351,6 +353,12 @@ function AdminDashboard() {
               出题问卷链接
             </button>
             <button
+              onClick={() => setShowAnswerInvite(true)}
+              className="flex-1 border border-purple-200 bg-purple-50 text-purple-700 px-4 py-2 rounded-md hover:bg-purple-100 transition-colors font-medium text-sm sm:flex-none"
+            >
+              随机邀请答题
+            </button>
+            <button
               onClick={() => navigate('/admin/quiz')}
               className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm sm:flex-none"
             >
@@ -445,6 +453,10 @@ function AdminDashboard() {
       <QuestionSubmissionLinkManager
         open={showSubmissionLink}
         onClose={() => setShowSubmissionLink(false)}
+      />
+      <QuestionAnswerInviteManager
+        open={showAnswerInvite}
+        onClose={() => setShowAnswerInvite(false)}
       />
     </div>
   );

@@ -13,6 +13,7 @@ import AdminUserManager from './pages/AdminUserManager';
 import QuizActivityManager from './pages/QuizActivityManager';
 import AdminQuizPage from './pages/AdminQuizPage';
 import QuestionSubmissionPage from './pages/QuestionSubmissionPage';
+import QuestionAnswerInvitePage from './pages/QuestionAnswerInvitePage';
 import SiteEventManager from './pages/SiteEventManager';
 import AdminLayout from './components/AdminLayout';
 import RequirePermission from './components/RequirePermission';
@@ -193,6 +194,7 @@ function AppContent() {
               {/* 规则介绍页面 */}
               <Route path="/rules" element={<GameRules />} />
               <Route path="/submit-question" element={<QuestionSubmissionPage />} />
+              <Route path="/answer-invite" element={<QuestionAnswerInvitePage />} />
               
               {/* 活动现场答题页面，仅允许拥有现场答题权限的账号进入。 */}
               <Route path="/quiz" element={

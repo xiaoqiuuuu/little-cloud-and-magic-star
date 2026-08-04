@@ -381,6 +381,24 @@ def init_db():
         ON question_submission_links(token)
     ''')
 
+    # 每道题可启用一条公开邀请答题链接。token 只通过 URL fragment 和请求头传递；
+    # 重新生成或删除记录会立即使旧链接失效。
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS question_answer_invite_links (
+            admin_id INTEGER PRIMARY KEY,
+            question_id TEXT NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            reveal_count INTEGER NOT NULL DEFAULT 0,
+            last_revealed_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_question_answer_invites_token
+        ON question_answer_invite_links(token)
+    ''')
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS admin_refresh_tokens (
             jti TEXT PRIMARY KEY,

@@ -360,6 +360,10 @@ def delete_question(question_id: str) -> bool:
             'DELETE FROM question_contributors WHERE question_id = ?',
             (question_id,),
         )
+        conn.execute(
+            'DELETE FROM question_answer_invite_links WHERE question_id = ?',
+            (question_id,),
+        )
         if draft_activity_ids:
             placeholders = ",".join("?" for _ in draft_activity_ids)
             conn.execute(
