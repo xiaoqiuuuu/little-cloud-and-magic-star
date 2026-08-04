@@ -64,6 +64,30 @@ class QuestionSubmissionResult(BaseModel):
     question_id: str
     message: str
 
+
+class QuestionAnswerInviteLink(BaseModel):
+    question_id: str
+    question: str
+    tag: str
+    token: str
+    reveal_count: int = 0
+    last_revealed_at: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class PublicQuestionAnswerInvite(BaseModel):
+    question_id: str
+    question: str
+    resources: List[str] = Field(default_factory=list)
+    tag: str
+    invited_by: str
+
+
+class QuestionAnswerInviteResult(BaseModel):
+    answer: str
+    reveal_count: int
+
 # 更新题目请求
 
 

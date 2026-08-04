@@ -12,6 +12,7 @@ api/
 ├── activities.py      # 答题活动、题目范围与活动状态 API
 ├── questions.py       # 题目相关的所有API
 ├── question_submissions.py # 出题问卷链接与公开提交 API
+├── question_answer_invites.py # 随机单题邀请答题 API
 └── materials.py       # 物料相关的所有API
 ```
 
@@ -103,6 +104,17 @@ api/
 
 公开接口通过 `X-Question-Submission-Token` 请求头携带分享令牌。前端分享地址使用
 `/submit-question#令牌`，避免令牌进入普通页面访问日志和 Referer。
+
+### question_answer_invites.py（随机邀请答题）
+
+- `GET /api/admin/question-answer-invites`: 获取当前账号的邀请链接
+- `POST /api/admin/question-answer-invites`: 从账号可管理的题库随机抽题并生成新链接
+- `DELETE /api/admin/question-answer-invites`: 停用当前邀请链接
+- `GET /api/question-answer-invites`: 获取公开题目，不返回答案
+- `POST /api/question-answer-invites/reveal`: 主动揭晓答案并记录查看次数
+
+公开接口通过 `X-Question-Answer-Invite-Token` 请求头携带随机令牌。前端分享地址使用
+`/answer-invite#令牌`；重新生成、停用、账号禁用或失去题目权限后，旧令牌立即失效。
 
 ### materials.py（物料模块）
 **前缀**: `/api/admin`
