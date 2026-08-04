@@ -364,6 +364,23 @@ def init_db():
     ''')
     _backfill_account_contributors(cursor)
 
+    # 题目管理员可生成一条公开问卷链接，提交内容直接归属该账号。
+    # token 是不可猜测的 bearer secret；重新生成或删除记录会立即使旧链接失效。
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS question_submission_links (
+            admin_id INTEGER PRIMARY KEY,
+            token TEXT UNIQUE NOT NULL,
+            submission_count INTEGER NOT NULL DEFAULT 0,
+            last_submitted_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_question_submission_links_token
+        ON question_submission_links(token)
+    ''')
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS admin_refresh_tokens (
             jti TEXT PRIMARY KEY,

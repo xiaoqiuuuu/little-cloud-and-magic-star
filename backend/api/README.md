@@ -11,6 +11,7 @@ api/
 ├── users.py           # 人员管理与个人资料 API
 ├── activities.py      # 答题活动、题目范围与活动状态 API
 ├── questions.py       # 题目相关的所有API
+├── question_submissions.py # 出题问卷链接与公开提交 API
 └── materials.py       # 物料相关的所有API
 ```
 
@@ -90,6 +91,18 @@ api/
 - `POST /api/admin/questions`: 创建题目
 - `PUT /api/admin/questions/{question_id}`: 更新题目
 - `DELETE /api/admin/questions/{question_id}`: 删除题目
+
+### question_submissions.py（公开出题问卷）
+
+- `GET /api/admin/question-submission-link`: 获取当前账号的问卷链接
+- `POST /api/admin/question-submission-link`: 生成或轮换问卷链接
+- `DELETE /api/admin/question-submission-link`: 撤销问卷链接
+- `GET /api/question-submissions`: 获取公开问卷信息
+- `POST /api/question-submissions`: 提交题目并直接加入题库
+- `POST /api/question-submissions/upload`: 上传问卷题目资源
+
+公开接口通过 `X-Question-Submission-Token` 请求头携带分享令牌。前端分享地址使用
+`/submit-question#令牌`，避免令牌进入普通页面访问日志和 Referer。
 
 ### materials.py（物料模块）
 **前缀**: `/api/admin`

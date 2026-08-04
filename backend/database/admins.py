@@ -305,6 +305,10 @@ def delete_admin(admin_id: int) -> bool:
     try:
         conn.execute("BEGIN IMMEDIATE")
         conn.execute(
+            "DELETE FROM question_submission_links WHERE admin_id = ?",
+            (admin_id,),
+        )
+        conn.execute(
             "DELETE FROM admin_access_roles WHERE admin_id = ?",
             (admin_id,),
         )

@@ -6,6 +6,7 @@ import {
   clearQuestionDraft,
   createEmptyQuestionForm,
   getResourceType,
+  isSafeResourceUrl,
   loadQuestionDraft,
   parseResourceUrls,
   removeResourceUrl,
@@ -42,6 +43,9 @@ test('resource type detection ignores URL query strings and fragments', () => {
   assert.equal(getResourceType('https://cdn.test/clip.mp4#preview'), 'video');
   assert.equal(getResourceType('https://cdn.test/audio.opus'), 'audio');
   assert.equal(getResourceType('https://example.com/resource'), 'link');
+  assert.equal(isSafeResourceUrl('/uploads/question.jpg'), true);
+  assert.equal(isSafeResourceUrl('https://cdn.test/question.jpg'), true);
+  assert.equal(isSafeResourceUrl('javascript:alert(1)'), false);
 });
 
 test('question drafts persist only meaningful new-question content', () => {
