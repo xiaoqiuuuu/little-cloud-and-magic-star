@@ -1,375 +1,532 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  CloseOutlined,
+  DeleteOutlined,
+  LinkOutlined,
+  LoadingOutlined,
+  UploadOutlined,
+} from '@ant-design/icons';
 import { App } from 'antd';
 import ImagePreview from '../ImagePreview';
 import VideoPreview from '../VideoPreview';
 import AudioPreview from '../AudioPreview';
 import api from '../../api';
-import { DEFAULT_QUESTION_TAG } from '../../constants/questionTags';
+import {
+  MAX_RESOURCE_FILE_SIZE,
+  appendResourceUrls,
+  clearQuestionDraft,
+  createEmptyQuestionForm,
+  getResourceType,
+  hasQuestionDraftContent,
+  loadQuestionDraft,
+  parseResourceUrls,
+  removeResourceUrl,
+  saveQuestionDraft,
+} from './questionForm';
+import './QuestionModal.css';
 
-const QuestionModal = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  editingQuestion, 
-  contributors,
+const CUSTOM_TAG_VALUE = '__custom__';
+
+function getBrowserStorage() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function ResourcePreviewCard({ url, index, onRemove }) {
+  const resourceType = getResourceType(url);
+  const shortUrl = url.replace(/^https?:\/\//, '').slice(0, 48);
+  let preview;
+
+  if (resourceType === 'image') {
+    preview = <ImagePreview src={url} alt={`图片资源 ${index + 1}`} className="question-resource-card__media" />;
+  } else if (resourceType === 'video') {
+    preview = <VideoPreview src={url} className="question-resource-card__media" />;
+  } else if (resourceType === 'audio') {
+    preview = <AudioPreview src={url} className="question-resource-card__audio" />;
+  } else {
+    preview = (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="question-resource-card__link"
+      >
+        <LinkOutlined />
+        <span>打开资源</span>
+      </a>
+    );
+  }
+
+  return (
+    <div className="question-resource-card">
+      <div className="question-resource-card__preview">{preview}</div>
+      <span className="question-resource-card__name" title={url}>{shortUrl}</span>
+      <button
+        type="button"
+        className="question-resource-card__remove"
+        onClick={() => onRemove(index)}
+        aria-label={`删除资源 ${index + 1}`}
+        title="删除资源"
+      >
+        <DeleteOutlined />
+      </button>
+    </div>
+  );
+}
+
+const QuestionModal = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  editingQuestion,
+  contributors = [],
   canManageAllQuestions,
   tagOptions = [],
+  draftKey = 'admin-question-draft',
 }) => {
   const { message } = App.useApp();
-  
-  const [formData, setFormData] = useState({
-    question: '',
-    answer: '',
-    resources: '',
-    tag: DEFAULT_QUESTION_TAG,
-    contributor_ids: [],
-  });
+  const dialogRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const requestCloseRef = useRef(null);
+  const [formData, setFormData] = useState(createEmptyQuestionForm);
+  const [formReady, setFormReady] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const storage = getBrowserStorage();
+
+  const isEditing = Boolean(editingQuestion);
+  const isBusy = isSubmitting || isUploading;
+  const resourceUrls = parseResourceUrls(formData.resources);
+  const knownTagValues = new Set(tagOptions.map((option) => option.value));
+  const usesCustomTag = !knownTagValues.has(formData.tag);
+  const hasDraft = !isEditing && hasQuestionDraftContent(formData);
+
+  const updateField = (field, value) => {
+    setFormData((previous) => ({ ...previous, [field]: value }));
+  };
 
   useEffect(() => {
-    if (isOpen) {
-      if (editingQuestion) {
-        setFormData({
-          question: editingQuestion.question,
-          answer: editingQuestion.answer,
-          resources: editingQuestion.resources.join('\n'),
-          tag: editingQuestion.tag,
-          contributor_ids: editingQuestion.contributors?.map((item) => item.id) || [],
-        });
-      } else {
-        setFormData({
-          question: '',
-          answer: '',
-          resources: '',
-          tag: DEFAULT_QUESTION_TAG,
-          contributor_ids: [],
-        });
-      }
+    if (!isOpen) {
+      setFormReady(false);
+      return;
     }
-  }, [isOpen, editingQuestion]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const data = {
-      question: formData.question,
-      answer: formData.answer,
-      resources: formData.resources
-        .split('\n')
-        .map((url) => url.trim())
-        .filter((url) => url),
-      tag: formData.tag,
-    };
+    setFormReady(false);
+    setIsSubmitting(false);
+    setIsUploading(false);
+    setIsDragging(false);
 
     if (editingQuestion) {
-      data.contributor_ids = formData.contributor_ids || [];
+      setFormData({
+        question: editingQuestion.question || '',
+        answer: editingQuestion.answer || '',
+        resources: Array.isArray(editingQuestion.resources)
+          ? editingQuestion.resources.join('\n')
+          : editingQuestion.resources || '',
+        tag: editingQuestion.tag || '',
+        contributor_ids: editingQuestion.contributors?.map((item) => item.id) || [],
+      });
+      setDraftRestored(false);
+    } else {
+      const savedDraft = loadQuestionDraft(storage, draftKey);
+      setFormData(savedDraft || createEmptyQuestionForm());
+      setDraftRestored(Boolean(savedDraft));
     }
 
+    setFormReady(true);
+  }, [draftKey, editingQuestion, isOpen, storage]);
+
+  useEffect(() => {
+    if (!isOpen || isEditing || !formReady) return;
+    const saveTimer = window.setTimeout(() => {
+      saveQuestionDraft(storage, draftKey, formData);
+    }, 250);
+    return () => window.clearTimeout(saveTimer);
+  }, [draftKey, formData, formReady, isEditing, isOpen, storage]);
+
+  const requestClose = useCallback(() => {
+    if (isBusy) {
+      message.info(isUploading ? '资源正在上传，请稍候' : '题目正在保存，请稍候');
+      return;
+    }
+    if (!isEditing) saveQuestionDraft(storage, draftKey, formData);
+    onClose();
+  }, [draftKey, formData, isBusy, isEditing, isUploading, message, onClose, storage]);
+  requestCloseRef.current = requestClose;
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const focusFrame = window.requestAnimationFrame(() => dialogRef.current?.focus());
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !document.querySelector('.media-preview-overlay')) {
+        requestCloseRef.current?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  const handleClearDraft = () => {
+    clearQuestionDraft(storage, draftKey);
+    setFormData(createEmptyQuestionForm());
+    setDraftRestored(false);
+  };
+
+  const uploadFiles = useCallback(async (fileList) => {
+    const selectedFiles = Array.from(fileList || []);
+    if (!selectedFiles.length) return;
+
+    const oversizedFiles = selectedFiles.filter((file) => file.size > MAX_RESOURCE_FILE_SIZE);
+    const uploadableFiles = selectedFiles.filter((file) => file.size <= MAX_RESOURCE_FILE_SIZE);
+
+    if (oversizedFiles.length) {
+      message.warning(`${oversizedFiles.map((file) => file.name).join('、')} 超过 10MB，已跳过`);
+    }
+    if (!uploadableFiles.length) return;
+
+    setIsUploading(true);
     try {
-      if (editingQuestion) {
+      const results = await Promise.all(uploadableFiles.map(async (file) => {
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+        try {
+          const response = await api.post('/upload', uploadData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          return { file, url: response.data.url };
+        } catch (error) {
+          return { file, error };
+        }
+      }));
+
+      const uploadedUrls = results.map((result) => result.url).filter(Boolean);
+      const failedFiles = results.filter((result) => result.error).map((result) => result.file.name);
+
+      if (uploadedUrls.length) {
+        setFormData((previous) => ({
+          ...previous,
+          resources: appendResourceUrls(previous.resources, uploadedUrls),
+        }));
+        message.success(`已添加 ${uploadedUrls.length} 个资源`);
+      }
+      if (failedFiles.length) {
+        message.error(`${failedFiles.join('、')} 上传失败，请重试`);
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }, [message]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (isBusy) return;
+
+    const question = formData.question.trim();
+    const answer = formData.answer.trim();
+    const tag = formData.tag.trim();
+
+    if (!question || !answer) {
+      message.warning('请填写题目内容和答案');
+      return;
+    }
+    if (!tag) {
+      message.warning('请选择或填写题目类型');
+      return;
+    }
+    if (tag.length > 50) {
+      message.warning('题目类型最多 50 个字符');
+      return;
+    }
+    if (isEditing && canManageAllQuestions && formData.contributor_ids.length === 0) {
+      message.warning('请至少选择一个贡献账号');
+      return;
+    }
+
+    const data = {
+      question,
+      answer,
+      resources: parseResourceUrls(formData.resources),
+      tag,
+    };
+    if (isEditing) data.contributor_ids = formData.contributor_ids || [];
+
+    setIsSubmitting(true);
+    try {
+      if (isEditing) {
         await api.put(`/admin/questions/${editingQuestion.id}`, data);
-        message.success('更新成功!');
+        message.success('题目已更新');
       } else {
         await api.post('/admin/questions', data);
-        message.success('创建成功!');
+        clearQuestionDraft(storage, draftKey);
+        message.success('题目已创建');
       }
       onSuccess();
       onClose();
     } catch (error) {
       console.error('操作失败:', error);
-      message.error('操作失败，请稍后重试');
+      const detail = error.response?.data?.detail;
+      message.error(typeof detail === 'string' ? detail : '操作失败，请稍后重试');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const toggleContributor = (contributorId) => {
+    setFormData((previous) => {
+      const selected = previous.contributor_ids.includes(contributorId);
+      return {
+        ...previous,
+        contributor_ids: selected
+          ? previous.contributor_ids.filter((id) => id !== contributorId)
+          : [...previous.contributor_ids, contributorId],
+      };
+    });
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-4">
-      <div className="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white mb-4">
-        <div className="mt-3">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">
-            {editingQuestion ? '编辑题目' : '新建题目'}
-          </h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                题目内容 *
-              </label>
-              <textarea
-                required
-                value={formData.question}
-                onChange={(e) => setFormData({ ...formData, question: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                rows="3"
-              />
-            </div>
+    <div className="question-modal-overlay">
+      <section
+        ref={dialogRef}
+        className="question-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="question-modal-title"
+        tabIndex={-1}
+      >
+        <header className="question-modal-header">
+          <div>
+            <p className="question-modal-eyebrow">题目录入</p>
+            <h2 id="question-modal-title">
+              {isEditing ? `编辑题目 #${editingQuestion.id}` : '新建题目'}
+            </h2>
+            {!isEditing && <p className="question-modal-subtitle">未提交内容会自动保存在当前设备</p>}
+          </div>
+          <button
+            type="button"
+            className="question-modal-close"
+            onClick={requestClose}
+            disabled={isBusy}
+            aria-label={hasDraft ? '暂存并关闭' : '关闭'}
+          >
+            <CloseOutlined />
+          </button>
+        </header>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                答案 *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.answer}
-                onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                题目类型
-              </label>
-              <input
-                required
-                list="question-tag-options"
-                value={formData.tag}
-                onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
-                placeholder="选择或输入自定义标签"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-              />
-              <datalist id="question-tag-options">
-                {tagOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </datalist>
-              <p className="text-xs text-gray-500 mt-1">
-                可使用内置标签，也可以直接输入新的标签名称，最多 50 个字符。
-              </p>
-            </div>
-
-            {canManageAllQuestions && editingQuestion && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  贡献账号（可多选）
-                </label>
-                <div className="space-y-2">
-                  <select
-                    multiple
-                    value={formData.contributor_ids.map(String)}
-                    onChange={(e) => {
-                      const selected = Array.from(
-                        e.target.selectedOptions,
-                        (option) => Number(option.value),
-                      );
-                      setFormData({ ...formData, contributor_ids: selected });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                    size="5"
-                  >
-                    {contributors.map((contributor) => (
-                      <option
-                        key={contributor.id}
-                        value={contributor.id}
-                        disabled={!contributor.is_active}
-                      >
-                        {contributor.display_name}（{contributor.username}）
-                        {!contributor.is_active ? '（已停用）' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {formData.contributor_ids.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {formData.contributor_ids.map((contributorId) => {
-                        const contributor = contributors.find((item) => item.id === contributorId);
-                        return contributor ? (
-                          <span key={contributorId} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                            {contributor.display_name}（{contributor.username}）
-                            <button
-                              type="button"
-                              onClick={() => setFormData({
-                                ...formData,
-                                contributor_ids: formData.contributor_ids.filter((id) => id !== contributorId),
-                              })}
-                              className="text-blue-600 hover:text-blue-800 font-bold"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                  )}
+        {formReady ? (
+          <form id="question-editor-form" className="question-modal-form" onSubmit={handleSubmit}>
+            <div className="question-modal-body">
+              {draftRestored && (
+                <div className="question-draft-notice" role="status">
+                  <div>
+                    <strong>已恢复未提交的草稿</strong>
+                    <span>可以接着上次的内容继续出题。</span>
+                  </div>
+                  <button type="button" onClick={handleClearDraft}>重新开始</button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  按住 Ctrl/Cmd 可选择多个账号。
-                </p>
-              </div>
-            )}
+              )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                资源链接（每行一个，支持图片/视频/音频）
-              </label>
-              {/* 拖拽上传区域 */}
-              <div
-                className="w-full min-h-[60px] border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center p-2 mb-2 bg-gray-50 hover:bg-gray-100 transition cursor-pointer"
-                onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
-                onDrop={async e => {
-                  e.preventDefault();
-                  const files = Array.from(e.dataTransfer.files);
-                  if (!files.length) return;
-                  let urls = [];
-                  for (const file of files) {
-                    if (file.size > 10 * 1024 * 1024) {
-                      message.warning(`${file.name} 超过10M，已跳过`);
-                      continue;
-                    }
-                    const form = new FormData();
-                    form.append('file', file);
-                    try {
-                      const res = await api.post('/upload', form, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                      });
-                      urls.push(res.data.url);
-                    } catch (err) {
-                      message.error(`${file.name} 上传失败`);
-                    }
-                  }
-                  setFormData((prev) => ({
-                    ...prev,
-                    resources: prev.resources
-                      ? prev.resources + '\n' + urls.join('\n')
-                      : urls.join('\n'),
-                  }));
-                }}
-                title="拖拽文件到此上传"
-              >
-                <span className="text-gray-400 text-xs">拖拽文件到此上传，或点击下方按钮选择</span>
+              <div className="question-form-field">
+                <div className="question-form-label-row">
+                  <label htmlFor="question-content">题目内容 <span aria-hidden="true">*</span></label>
+                  <span>{formData.question.length} 字</span>
+                </div>
+                <textarea
+                  id="question-content"
+                  required
+                  value={formData.question}
+                  onChange={(event) => updateField('question', event.target.value)}
+                  rows="4"
+                  placeholder="输入要向答题者展示的问题"
+                />
               </div>
-              <input
-                type="file"
-                multiple
-                accept="image/*,video/*,audio/*"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm mb-2"
-                onChange={async (e) => {
-                  const files = Array.from(e.target.files);
-                  if (!files.length) return;
-                  let urls = [];
-                  for (const file of files) {
-                    if (file.size > 10 * 1024 * 1024) {
-                      message.warning(`${file.name} 超过10M，已跳过`);
-                      continue;
-                    }
-                    const form = new FormData();
-                    form.append('file', file);
-                    try {
-                      const res = await api.post('/upload', form, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                      });
-                      urls.push(res.data.url);
-                    } catch (err) {
-                      message.error(`${file.name} 上传失败`);
-                    }
-                  }
-                  setFormData((prev) => ({
-                    ...prev,
-                    resources: prev.resources
-                      ? prev.resources + '\n' + urls.join('\n')
-                      : urls.join('\n'),
-                  }));
-                }}
-              />
-              <textarea
-                value={formData.resources}
-                onChange={(e) => setFormData({ ...formData, resources: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base font-mono"
-                rows="4"
-                placeholder="https://example.com/image.jpg"
-              />
-              {/* 资源预览区 */}
-              <div className="mt-2 flex flex-wrap gap-3">
-                {formData.resources
-                  ? formData.resources.split('\n').filter(Boolean).map((url, idx) => {
-                      const ext = url.split('.').pop().toLowerCase();
-                      if (/(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(ext)) {
-                        return (
-                          <div key={idx} className="relative w-28 h-28 flex flex-col items-center justify-center border rounded bg-white shadow-sm p-1">
-                            <ImagePreview src={url} alt="图片资源" className="object-contain w-full h-full" />
-                            <button
-                              type="button"
-                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                              title="删除"
-                              onClick={() => {
-                                const arr = formData.resources.split('\n').filter(Boolean);
-                                arr.splice(idx, 1);
-                                setFormData(prev => ({ ...prev, resources: arr.join('\n') }));
-                              }}
-                            >×</button>
-                          </div>
-                        );
-                      } else if (/(mp4|webm|ogg|mov|avi|mkv)$/.test(ext)) {
-                        return (
-                          <div key={idx} className="relative w-28 h-28 flex flex-col items-center justify-center border rounded bg-white shadow-sm p-1">
-                            <VideoPreview src={url} className="object-contain w-full h-full" />
-                            <button
-                              type="button"
-                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                              title="删除"
-                              onClick={() => {
-                                const arr = formData.resources.split('\n').filter(Boolean);
-                                arr.splice(idx, 1);
-                                setFormData(prev => ({ ...prev, resources: arr.join('\n') }));
-                              }}
-                            >×</button>
-                          </div>
-                        );
-                      } else if (/(mp3|wav|aac|flac|m4a|ogg)$/.test(ext)) {
-                        return (
-                          <div key={idx} className="relative w-28 h-28 flex flex-col items-center justify-center border rounded bg-white shadow-sm p-1">
-                            <AudioPreview src={url} className="w-full" />
-                            <button
-                              type="button"
-                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                              title="删除"
-                              onClick={() => {
-                                const arr = formData.resources.split('\n').filter(Boolean);
-                                arr.splice(idx, 1);
-                                setFormData(prev => ({ ...prev, resources: arr.join('\n') }));
-                              }}
-                            >×</button>
-                          </div>
-                        );
-                      } else {
-                        return (
-                          <div key={idx} className="relative w-28 h-28 flex flex-col items-center justify-center border rounded bg-white shadow-sm p-1">
-                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs">资源链接</a>
-                            <button
-                              type="button"
-                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                              title="删除"
-                              onClick={() => {
-                                const arr = formData.resources.split('\n').filter(Boolean);
-                                arr.splice(idx, 1);
-                                setFormData(prev => ({ ...prev, resources: arr.join('\n') }));
-                              }}
-                            >×</button>
-                          </div>
-                        );
-                      }
-                    })
-                  : <span className="text-xs text-gray-400">暂无资源</span>}
+
+              <div className="question-form-field">
+                <div className="question-form-label-row">
+                  <label htmlFor="question-answer">答案 <span aria-hidden="true">*</span></label>
+                  <span>{formData.answer.length} 字</span>
+                </div>
+                <textarea
+                  id="question-answer"
+                  required
+                  value={formData.answer}
+                  onChange={(event) => updateField('answer', event.target.value)}
+                  rows="2"
+                  placeholder="输入正确答案"
+                />
               </div>
+
+              <div className="question-form-field">
+                <label htmlFor="question-tag">题目类型</label>
+                <select
+                  id="question-tag"
+                  value={usesCustomTag ? CUSTOM_TAG_VALUE : formData.tag}
+                  onChange={(event) => updateField(
+                    'tag',
+                    event.target.value === CUSTOM_TAG_VALUE ? '' : event.target.value,
+                  )}
+                >
+                  {tagOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                  <option value={CUSTOM_TAG_VALUE}>自定义类型…</option>
+                </select>
+                {usesCustomTag && (
+                  <input
+                    type="text"
+                    value={formData.tag}
+                    onChange={(event) => updateField('tag', event.target.value)}
+                    placeholder="输入自定义类型"
+                    maxLength="50"
+                    aria-label="自定义题目类型"
+                  />
+                )}
+              </div>
+
+              {canManageAllQuestions && isEditing && (
+                <fieldset className="question-form-field">
+                  <legend>贡献账号（可多选）</legend>
+                  <div className="question-contributor-list">
+                    {contributors.map((contributor) => (
+                      <label
+                        key={contributor.id}
+                        className={`question-contributor-option ${
+                          formData.contributor_ids.includes(contributor.id) ? 'is-selected' : ''
+                        } ${!contributor.is_active ? 'is-disabled' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.contributor_ids.includes(contributor.id)}
+                          disabled={!contributor.is_active}
+                          onChange={() => toggleContributor(contributor.id)}
+                        />
+                        <span>
+                          <strong>{contributor.display_name}</strong>
+                          <small>@{contributor.username}{!contributor.is_active ? ' · 已停用' : ''}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="question-form-help">直接点选账号，无需按住 Ctrl 或 Command。</p>
+                </fieldset>
+              )}
+
+              <section className="question-form-field question-resource-section" aria-labelledby="question-resources-label">
+                <div className="question-form-label-row">
+                  <h3 id="question-resources-label">图片、视频或音频</h3>
+                  <span>{resourceUrls.length} 个资源</span>
+                </div>
+
+                <button
+                  type="button"
+                  className={`question-upload-zone ${isDragging ? 'is-dragging' : ''}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragLeave={(event) => {
+                    event.preventDefault();
+                    if (!event.currentTarget.contains(event.relatedTarget)) setIsDragging(false);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDragging(false);
+                    uploadFiles(event.dataTransfer.files);
+                  }}
+                  disabled={isUploading}
+                >
+                  {isUploading ? <LoadingOutlined spin /> : <UploadOutlined />}
+                  <span>
+                    <strong>{isUploading ? '正在上传资源…' : '从手机或电脑选择文件'}</strong>
+                    <small>支持相册、拍照、视频和音频，单个文件不超过 10MB</small>
+                  </span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,video/*,audio/*"
+                  className="question-file-input"
+                  onChange={(event) => {
+                    uploadFiles(event.target.files);
+                    event.target.value = '';
+                  }}
+                />
+
+                <details className="question-resource-links">
+                  <summary><LinkOutlined /> 手动粘贴资源链接</summary>
+                  <textarea
+                    value={formData.resources}
+                    onChange={(event) => updateField('resources', event.target.value)}
+                    rows="3"
+                    placeholder="每行一个链接，例如 https://example.com/image.jpg"
+                    inputMode="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
+                  />
+                </details>
+
+                {resourceUrls.length > 0 ? (
+                  <div className="question-resource-grid">
+                    {resourceUrls.map((url, index) => (
+                      <ResourcePreviewCard
+                        key={`${url}-${index}`}
+                        url={url}
+                        index={index}
+                        onRemove={(resourceIndex) => updateField(
+                          'resources',
+                          removeResourceUrl(formData.resources, resourceIndex),
+                        )}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="question-resource-empty">资源为可选项，可以稍后再添加。</p>
+                )}
+              </section>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
+            <footer className="question-modal-footer">
               <button
                 type="button"
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="question-modal-button question-modal-button--secondary"
+                onClick={requestClose}
+                disabled={isBusy}
               >
-                取消
+                {hasDraft ? '暂存退出' : '取消'}
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="question-modal-button question-modal-button--primary"
+                disabled={isBusy}
               >
-                {editingQuestion ? '更新' : '创建'}
+                {isSubmitting && <LoadingOutlined spin />}
+                {isSubmitting ? '保存中…' : isEditing ? '保存修改' : '创建题目'}
               </button>
-            </div>
+            </footer>
           </form>
-        </div>
-      </div>
+        ) : (
+          <div className="question-modal-loading"><LoadingOutlined spin /> 正在准备表单…</div>
+        )}
+      </section>
     </div>
   );
 };

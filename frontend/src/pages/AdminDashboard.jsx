@@ -335,10 +335,16 @@ function AdminDashboard() {
               />
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <CharacterButton
+              className="w-full justify-center sm:w-auto"
+              onClick={() => handleOpenModal()}
+            >
+              新建题目
+            </CharacterButton>
             <button
               onClick={() => navigate('/admin/quiz')}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
+              className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm sm:flex-none"
             >
               {canManageAllQuestions ? '调试全部题目' : '调试我的题目'}
             </button>
@@ -358,14 +364,11 @@ function AdminDashboard() {
                     }
                   });
                 }}
-                className="bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors font-medium text-sm"
+                className="flex-1 bg-orange-500 text-white px-4 py-2 rounded-md hover:bg-orange-600 transition-colors font-medium text-sm sm:flex-none"
               >
                 全部统计归零
               </button>
             )}
-            <CharacterButton onClick={() => handleOpenModal()}>
-              新建题目
-            </CharacterButton>
           </div>
         </div>
 
@@ -429,6 +432,7 @@ function AdminDashboard() {
         contributors={contributors}
         canManageAllQuestions={canManageAllQuestions}
         tagOptions={questionTagOptions}
+        draftKey={`admin-question-draft:${currentUser.id}`}
       />
     </div>
   );
