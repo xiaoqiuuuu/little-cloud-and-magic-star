@@ -350,13 +350,13 @@ function AdminDashboard() {
               onClick={() => setShowSubmissionLink(true)}
               className="flex-1 border border-blue-200 bg-blue-50 text-blue-700 px-4 py-2 rounded-md hover:bg-blue-100 transition-colors font-medium text-sm sm:flex-none"
             >
-              出题问卷链接
+              邀请出题
             </button>
             <button
               onClick={() => setShowAnswerInvite(true)}
               className="flex-1 border border-purple-200 bg-purple-50 text-purple-700 px-4 py-2 rounded-md hover:bg-purple-100 transition-colors font-medium text-sm sm:flex-none"
             >
-              随机邀请答题
+              邀请答题
             </button>
             <button
               onClick={() => navigate('/admin/quiz')}

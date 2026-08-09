@@ -4,7 +4,6 @@ import {
   EyeOutlined,
   LinkOutlined,
   LoadingOutlined,
-  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { App } from 'antd';
 import { useLocation } from 'react-router-dom';
@@ -51,6 +50,21 @@ function ResourceCard({ url, index }) {
 }
 
 
+function getParticipantId(token) {
+  const storageKey = `question-answer-participant:${token}`;
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored) return stored;
+    const generated = window.crypto?.randomUUID?.()
+      || `participant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    window.localStorage.setItem(storageKey, generated);
+    return generated;
+  } catch {
+    return `participant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+
 export default function QuestionAnswerInvitePage() {
   const location = useLocation();
   const token = location.hash.replace(/^#/, '');
@@ -59,6 +73,7 @@ export default function QuestionAnswerInvitePage() {
   const [question, setQuestion] = useState(null);
   const [answer, setAnswer] = useState(null);
   const [answerVisible, setAnswerVisible] = useState(false);
+  const [participantId, setParticipantId] = useState('');
   const [loading, setLoading] = useState(true);
   const [revealing, setRevealing] = useState(false);
   const [invalidLink, setInvalidLink] = useState(false);
@@ -74,11 +89,13 @@ export default function QuestionAnswerInvitePage() {
     setQuestion(null);
     setAnswer(null);
     setAnswerVisible(false);
+    setParticipantId('');
     if (!token) {
       setInvalidLink(true);
       setLoading(false);
       return undefined;
     }
+    setParticipantId(getParticipantId(token));
     api.get('/question-answer-invites', requestConfig)
       .then((response) => {
         if (!cancelled) setQuestion(response.data);
@@ -104,7 +121,13 @@ export default function QuestionAnswerInvitePage() {
       const response = await api.post(
         '/question-answer-invites/reveal',
         {},
-        requestConfig,
+        {
+          ...requestConfig,
+          headers: {
+            ...requestConfig.headers,
+            'X-Question-Answer-Participant-Id': participantId,
+          },
+        },
       );
       setAnswer(response.data.answer);
       setAnswerVisible(true);
@@ -126,8 +149,8 @@ export default function QuestionAnswerInvitePage() {
       <header className="question-answer-invite-brand">
         <img src={characterPack.assets.buttonAvatar} alt="" />
         <div>
-          <strong>肥音卤果邀请答题</strong>
-          <span>一题一链接，想好再揭晓</span>
+          <strong>肥音卤果</strong>
+          <span>邀请答题</span>
         </div>
       </header>
 
@@ -139,18 +162,18 @@ export default function QuestionAnswerInvitePage() {
       ) : invalidLink || !question ? (
         <CharacterEmptyState
           title="这个邀请链接已经失效"
-          description="链接可能已被停用或重新生成，请向邀请人获取新链接。"
+          description="请向邀请人获取新链接。"
         />
       ) : (
         <div className="question-answer-invite-content">
           <div className="question-answer-invite-kicker">
             <span>#{question.question_id}</span>
             <span>{tagMeta.shortLabel}</span>
-            <span>{question.invited_by} 邀请你</span>
+            <span>{question.invited_by} 邀请</span>
           </div>
 
           <CharacterCard layout="watermark" className="question-answer-invite-card">
-            <span className="question-answer-invite-card__label">请回答</span>
+            <span className="question-answer-invite-card__label">题目</span>
             <h1>{question.question}</h1>
           </CharacterCard>
 
@@ -168,14 +191,13 @@ export default function QuestionAnswerInvitePage() {
           )}
 
           <section className="question-answer-invite-reveal">
-            <p>先在心里确认你的答案，再点击下面的按钮。</p>
             <CharacterButton
               block
               size="large"
               onClick={toggleAnswer}
               loading={revealing}
             >
-              {answerVisible ? <><EyeInvisibleOutlined /> 收起答案</> : <><EyeOutlined /> 查看答案</>}
+              {answerVisible ? <><EyeInvisibleOutlined /> 收起答案</> : <><EyeOutlined /> 揭晓答案</>}
             </CharacterButton>
             {answerVisible && answer !== null && (
               <div className="question-answer-invite-answer" role="status">
@@ -185,10 +207,6 @@ export default function QuestionAnswerInvitePage() {
             )}
           </section>
 
-          <footer className="question-answer-invite-security">
-            <SafetyCertificateOutlined />
-            <span>这是随机生成的专属链接，邀请人可以随时停用。</span>
-          </footer>
         </div>
       )}
     </main>

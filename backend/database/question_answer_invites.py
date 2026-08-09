@@ -19,6 +19,11 @@ INVITE_SELECT = """
         l.admin_id,
         l.token,
         l.reveal_count,
+        (
+            SELECT COUNT(*)
+            FROM question_answer_invite_participants p
+            WHERE p.invite_token = l.token
+        ) AS participant_count,
         l.last_revealed_at,
         l.created_at,
         l.updated_at,
@@ -52,6 +57,7 @@ def _row_to_invite(row: sqlite3.Row) -> Dict[str, object]:
         "admin_id": int(row["admin_id"]),
         "token": row["token"],
         "reveal_count": int(row["reveal_count"] or 0),
+        "participant_count": int(row["participant_count"] or 0),
         "last_revealed_at": row["last_revealed_at"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
@@ -155,6 +161,15 @@ def rotate_question_answer_invite(
     conn = get_connection()
     try:
         conn.execute("BEGIN IMMEDIATE")
+        previous = conn.execute(
+            "SELECT token FROM question_answer_invite_links WHERE admin_id = ?",
+            (admin_id,),
+        ).fetchone()
+        if previous:
+            conn.execute(
+                "DELETE FROM question_answer_invite_participants WHERE invite_token = ?",
+                (previous[0],),
+            )
         conn.execute(
             """
             INSERT INTO question_answer_invite_links (admin_id, question_id, token)
@@ -185,17 +200,33 @@ def rotate_question_answer_invite(
 def revoke_question_answer_invite(admin_id: int) -> bool:
     conn = get_connection()
     try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT token FROM question_answer_invite_links WHERE admin_id = ?",
+            (admin_id,),
+        ).fetchone()
+        if row:
+            conn.execute(
+                "DELETE FROM question_answer_invite_participants WHERE invite_token = ?",
+                (row[0],),
+            )
         cursor = conn.execute(
             "DELETE FROM question_answer_invite_links WHERE admin_id = ?",
             (admin_id,),
         )
         conn.commit()
         return cursor.rowcount == 1
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
 
-def reveal_question_answer_invite(token: str) -> Dict[str, object]:
+def reveal_question_answer_invite(
+    token: str,
+    participant_id: str,
+) -> Dict[str, object]:
     conn = get_connection()
     conn.row_factory = sqlite3.Row
     try:
@@ -204,6 +235,22 @@ def reveal_question_answer_invite(token: str) -> Dict[str, object]:
         if not row:
             raise InvalidQuestionAnswerInvite()
         reveal_count = int(row["reveal_count"] or 0) + 1
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO question_answer_invite_participants
+                (invite_token, participant_id)
+            VALUES (?, ?)
+            """,
+            (token, participant_id),
+        )
+        participant_count = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM question_answer_invite_participants
+            WHERE invite_token = ?
+            """,
+            (token,),
+        ).fetchone()[0]
         conn.execute(
             """
             UPDATE question_answer_invite_links
@@ -218,6 +265,7 @@ def reveal_question_answer_invite(token: str) -> Dict[str, object]:
         return {
             "answer": str(row["answer"]),
             "reveal_count": reveal_count,
+            "participant_count": int(participant_count),
         }
     except Exception:
         conn.rollback()

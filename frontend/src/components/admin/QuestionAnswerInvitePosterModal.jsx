@@ -61,12 +61,12 @@ function wrapCharacters(context, text, maxWidth) {
 
 
 function fitQuestionLines(context, text, maxWidth, maxLines) {
-  for (let fontSize = 68; fontSize >= 38; fontSize -= 2) {
-    context.font = `700 ${fontSize}px ${context.font.split('px ')[1]}`;
+  for (let fontSize = 76; fontSize >= 40; fontSize -= 2) {
+    context.font = `800 ${fontSize}px ${context.font.split('px ')[1]}`;
     const lines = wrapCharacters(context, text, maxWidth);
     if (lines.length <= maxLines) return { fontSize, lines };
   }
-  context.font = `700 38px ${context.font.split('px ')[1]}`;
+  context.font = `800 40px ${context.font.split('px ')[1]}`;
   const lines = wrapCharacters(context, text, maxWidth);
   const visibleLines = lines.slice(0, maxLines);
   if (lines.length > maxLines) {
@@ -76,7 +76,7 @@ function fitQuestionLines(context, text, maxWidth, maxLines) {
     }
     visibleLines[maxLines - 1] = `${lastLine}…`;
   }
-  return { fontSize: 38, lines: visibleLines };
+  return { fontSize: 40, lines: visibleLines };
 }
 
 
@@ -87,7 +87,7 @@ export default function QuestionAnswerInvitePosterModal({
   inviteUrl,
 }) {
   const { message } = App.useApp();
-  const { characterPack, tokens } = useCloudUI();
+  const { characterPack } = useCloudUI();
   const canvasRef = useRef(null);
   const [rendering, setRendering] = useState(false);
 
@@ -114,85 +114,83 @@ export default function QuestionAnswerInvitePosterModal({
       const height = 1440;
       canvas.width = width;
       canvas.height = height;
+      const fontFamily = 'Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
+      const palette = {
+        ink: '#172033',
+        muted: '#667085',
+        paper: '#f5f7fa',
+        white: '#ffffff',
+        line: '#d8dee8',
+      };
 
-      context.fillStyle = tokens.colorSurfaceMuted;
+      context.fillStyle = palette.paper;
       context.fillRect(0, 0, width, height);
 
-      context.fillStyle = characterPack.accentSoft;
-      context.fillRect(0, 0, width, 232);
+      context.fillStyle = palette.ink;
+      context.fillRect(0, 0, width, 252);
       context.fillStyle = characterPack.accent;
-      context.fillRect(0, 0, 22, height);
-      context.fillRect(58, 196, 660, 8);
+      context.fillRect(0, 0, 18, height);
 
-      context.fillStyle = tokens.colorText;
-      context.font = '800 38px Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
-      context.fillText('肥音卤果 · 邀请答题', 72, 92);
-      context.fillStyle = tokens.colorTextMuted;
-      context.font = '600 25px Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
-      context.fillText(`${characterPack.name}陪你一起想答案`, 72, 143);
-      drawImageContain(context, characterImage, 790, 24, 235, 210);
+      context.fillStyle = palette.white;
+      context.font = `700 28px ${fontFamily}`;
+      context.fillText('肥音卤果', 72, 78);
+      context.font = `800 58px ${fontFamily}`;
+      context.fillText('邀请答题', 72, 158);
+      context.fillStyle = characterPack.accent;
+      context.fillRect(72, 190, 104, 8);
+      drawImageContain(context, characterImage, 760, 14, 270, 224);
 
-      context.save();
-      context.shadowColor = 'rgba(27, 42, 67, 0.12)';
-      context.shadowBlur = 28;
-      context.shadowOffsetY = 12;
-      roundedRect(context, 62, 278, 956, 650, 34);
-      context.fillStyle = tokens.colorSurfaceRaised;
-      context.fill();
-      context.restore();
+      context.fillStyle = palette.white;
+      context.fillRect(18, 252, width - 18, 782);
 
       const tagMeta = getQuestionTagMeta(question.tag);
-      roundedRect(context, 104, 326, 210, 56, 28);
+      const badgeText = `#${question.id}  ${tagMeta.shortLabel}`;
+      context.font = `700 24px ${fontFamily}`;
+      const badgeWidth = context.measureText(badgeText).width + 50;
+      roundedRect(context, 72, 316, badgeWidth, 54, 10);
       context.fillStyle = characterPack.accentSoft;
       context.fill();
       context.fillStyle = characterPack.accentDeep;
-      context.font = '700 24px Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
-      context.fillText(`#${question.id} · ${tagMeta.shortLabel}`, 132, 363);
+      context.fillText(badgeText, 97, 352);
 
-      context.fillStyle = tokens.colorTextMuted;
-      context.font = '700 25px Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
-      context.fillText('请回答下面这道题', 104, 438);
+      context.fillStyle = palette.muted;
+      context.font = `700 24px ${fontFamily}`;
+      context.fillText('题目', 72, 428);
 
-      const fontFamily = 'Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
-      context.font = `700 68px ${fontFamily}`;
-      const fitted = fitQuestionLines(context, question.question, 820, 7);
-      context.font = `700 ${fitted.fontSize}px ${fontFamily}`;
-      context.fillStyle = tokens.colorText;
-      const lineHeight = fitted.fontSize * 1.55;
+      context.font = `800 76px ${fontFamily}`;
+      const fitted = fitQuestionLines(context, question.question, 900, 8);
+      context.font = `800 ${fitted.fontSize}px ${fontFamily}`;
+      context.fillStyle = palette.ink;
+      const lineHeight = fitted.fontSize * 1.45;
       const textBlockHeight = fitted.lines.length * lineHeight;
-      const firstLineY = 624 - (textBlockHeight / 2) + lineHeight;
+      const firstLineY = 680 - (textBlockHeight / 2) + fitted.fontSize;
       fitted.lines.forEach((line, index) => {
-        context.fillText(line, 104, firstLineY + (index * lineHeight));
+        context.fillText(line, 72, firstLineY + (index * lineHeight));
       });
 
-      context.strokeStyle = tokens.colorBorder;
+      context.strokeStyle = palette.line;
       context.lineWidth = 2;
       context.beginPath();
-      context.moveTo(104, 858);
-      context.lineTo(976, 858);
+      context.moveTo(72, 964);
+      context.lineTo(1008, 964);
       context.stroke();
-      context.fillStyle = tokens.colorTextMuted;
-      context.font = `500 23px ${fontFamily}`;
-      context.fillText('先想一想，再扫码进入页面查看答案', 104, 895);
 
-      roundedRect(context, 62, 972, 956, 390, 34);
-      context.fillStyle = characterPack.accentSoft;
+      roundedRect(context, 62, 1040, 956, 330, 28);
+      context.fillStyle = palette.ink;
       context.fill();
-      roundedRect(context, 696, 1012, 286, 286, 22);
-      context.fillStyle = '#ffffff';
-      context.fill();
-      context.drawImage(qrImage, 713, 1029, 252, 252);
+      context.fillStyle = characterPack.accent;
+      context.fillRect(104, 1092, 86, 8);
+      context.fillStyle = palette.white;
+      context.font = `800 48px ${fontFamily}`;
+      context.fillText('扫码作答', 104, 1180);
+      context.fillStyle = '#c7ced9';
+      context.font = `600 25px ${fontFamily}`;
+      context.fillText('想好后揭晓答案', 104, 1234);
 
-      context.fillStyle = characterPack.accentDeep;
-      context.font = `800 42px ${fontFamily}`;
-      context.fillText('扫码查看答案', 104, 1080);
-      context.fillStyle = tokens.colorText;
-      context.font = `650 27px ${fontFamily}`;
-      context.fillText('打开专属答题页', 104, 1142);
-      context.fillText('点击按钮后揭晓正确答案', 104, 1188);
-      context.fillStyle = tokens.colorTextMuted;
-      context.font = `500 21px ${fontFamily}`;
-      context.fillText('随机安全链接 · 可由邀请人随时停用', 104, 1274);
+      roundedRect(context, 714, 1078, 268, 268, 18);
+      context.fillStyle = palette.white;
+      context.fill();
+      context.drawImage(qrImage, 728, 1092, 240, 240);
 
       setRendering(false);
     };
@@ -206,7 +204,7 @@ export default function QuestionAnswerInvitePosterModal({
     return () => {
       cancelled = true;
     };
-  }, [characterPack, inviteUrl, message, open, question, tokens]);
+  }, [characterPack, inviteUrl, message, open, question]);
 
   const downloadPoster = () => {
     const canvas = canvasRef.current;
@@ -245,7 +243,6 @@ export default function QuestionAnswerInvitePosterModal({
             <div><LoadingOutlined spin /> 正在生成海报…</div>
           )}
         </div>
-        <p>海报包含完整题目和专属二维码，答案不会直接出现在图片中。</p>
         <button type="button" onClick={downloadPoster} disabled={rendering}>
           <DownloadOutlined /> 下载 PNG 海报
         </button>

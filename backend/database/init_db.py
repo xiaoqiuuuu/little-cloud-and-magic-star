@@ -398,6 +398,18 @@ def init_db():
         CREATE UNIQUE INDEX IF NOT EXISTS idx_question_answer_invites_token
         ON question_answer_invite_links(token)
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS question_answer_invite_participants (
+            invite_token TEXT NOT NULL,
+            participant_id TEXT NOT NULL,
+            first_revealed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (invite_token, participant_id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_question_answer_invite_participants_token
+        ON question_answer_invite_participants(invite_token)
+    ''')
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS admin_refresh_tokens (

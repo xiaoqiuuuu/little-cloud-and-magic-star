@@ -225,7 +225,7 @@ export default function QuestionSubmissionPage() {
         <section className="question-submission-state-card">
           <SafetyCertificateOutlined />
           <h1>出题链接已失效</h1>
-          <p>链接可能已被重新生成、撤销，或所属账号已停用。请联系链接提供者获取新地址。</p>
+          <p>请联系邀请人获取新链接。</p>
         </section>
       </main>
     );
@@ -235,17 +235,17 @@ export default function QuestionSubmissionPage() {
     <main className="question-submission-page">
       <section className="question-submission-shell">
         <header className="question-submission-header">
-          <p>题目征集问卷</p>
+          <p>邀请出题</p>
           <h1>{formInfo.owner_name} 邀请你出题</h1>
-          <span>提交后题目会直接进入题库，请确认题目和答案准确。</span>
+          <span>填写题目和答案，提交后直接加入题库。</span>
         </header>
 
         {submittedQuestionId ? (
           <div className="question-submission-success" role="status">
             <CheckCircleFilled />
-            <h2>题目已加入题库</h2>
-            <p>新题号为 <strong>#{submittedQuestionId}</strong>，感谢你的贡献。</p>
-            <button type="button" onClick={startAnotherQuestion}>继续出一道题</button>
+            <h2>已加入题库</h2>
+            <p>题号 <strong>#{submittedQuestionId}</strong></p>
+            <button type="button" onClick={startAnotherQuestion}>继续出题</button>
           </div>
         ) : (
           <form className="question-submission-form" onSubmit={handleSubmit}>
@@ -254,7 +254,6 @@ export default function QuestionSubmissionPage() {
                 <div className="question-draft-notice" role="status">
                   <div>
                     <strong>已恢复未提交的内容</strong>
-                    <span>可以接着上次继续填写。</span>
                   </div>
                   <button
                     type="button"
@@ -278,10 +277,9 @@ export default function QuestionSubmissionPage() {
               />
             </div>
             <footer className="question-submission-footer">
-              <span><SafetyCertificateOutlined /> 仅持有此链接的人可以提交</span>
               <button type="submit" disabled={isBusy}>
                 {isSubmitting && <LoadingOutlined spin />}
-                {isSubmitting ? '正在加入题库…' : '提交并加入题库'}
+                {isSubmitting ? '提交中…' : '提交题目'}
               </button>
             </footer>
           </form>

@@ -71,6 +71,7 @@ class QuestionAnswerInviteLink(BaseModel):
     tag: str
     token: str
     reveal_count: int = 0
+    participant_count: int = 0
     last_revealed_at: Optional[str] = None
     created_at: str
     updated_at: str
@@ -87,6 +88,7 @@ class PublicQuestionAnswerInvite(BaseModel):
 class QuestionAnswerInviteResult(BaseModel):
     answer: str
     reveal_count: int
+    participant_count: int
 
 # 更新题目请求
 
