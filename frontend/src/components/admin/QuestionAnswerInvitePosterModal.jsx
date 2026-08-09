@@ -7,18 +7,6 @@ import { getQuestionTagMeta } from '../../constants/questionTags';
 import { useCloudUI } from '../../ui';
 
 
-function roundedRect(context, x, y, width, height, radius) {
-  const safeRadius = Math.min(radius, width / 2, height / 2);
-  context.beginPath();
-  context.moveTo(x + safeRadius, y);
-  context.arcTo(x + width, y, x + width, y + height, safeRadius);
-  context.arcTo(x + width, y + height, x, y + height, safeRadius);
-  context.arcTo(x, y + height, x, y, safeRadius);
-  context.arcTo(x, y, x + width, y, safeRadius);
-  context.closePath();
-}
-
-
 function loadImage(source) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -60,11 +48,34 @@ function wrapCharacters(context, text, maxWidth) {
 }
 
 
+function balanceWrappedLines(context, lines, maxWidth) {
+  const balanced = [...lines];
+  for (let index = balanced.length - 1; index > 0; index -= 1) {
+    const previous = Array.from(balanced[index - 1]);
+    const current = Array.from(balanced[index]);
+    while (previous.length - current.length > 1) {
+      const moved = previous.pop();
+      const candidate = [moved, ...current].join('');
+      if (context.measureText(candidate).width > maxWidth) break;
+      current.unshift(moved);
+    }
+    balanced[index - 1] = previous.join('');
+    balanced[index] = current.join('');
+  }
+  return balanced;
+}
+
+
 function fitQuestionLines(context, text, maxWidth, maxLines) {
-  for (let fontSize = 76; fontSize >= 40; fontSize -= 2) {
+  for (let fontSize = 82; fontSize >= 40; fontSize -= 2) {
     context.font = `800 ${fontSize}px ${context.font.split('px ')[1]}`;
     const lines = wrapCharacters(context, text, maxWidth);
-    if (lines.length <= maxLines) return { fontSize, lines };
+    if (lines.length <= maxLines) {
+      return {
+        fontSize,
+        lines: balanceWrappedLines(context, lines, maxWidth),
+      };
+    }
   }
   context.font = `800 40px ${context.font.split('px ')[1]}`;
   const lines = wrapCharacters(context, text, maxWidth);
@@ -116,81 +127,121 @@ export default function QuestionAnswerInvitePosterModal({
       canvas.height = height;
       const fontFamily = 'Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
       const palette = {
-        ink: '#172033',
-        muted: '#667085',
-        paper: '#f5f7fa',
+        ink: '#151821',
+        muted: '#626979',
+        paper: '#f4f6fa',
         white: '#ffffff',
-        line: '#d8dee8',
+        signal: '#ffdc5d',
+        line: '#cbd2de',
       };
 
       context.fillStyle = palette.paper;
       context.fillRect(0, 0, width, height);
 
-      context.fillStyle = palette.ink;
-      context.fillRect(0, 0, width, 252);
       context.fillStyle = characterPack.accent;
       context.fillRect(0, 0, 18, height);
 
-      context.fillStyle = palette.white;
-      context.font = `700 28px ${fontFamily}`;
-      context.fillText('肥音卤果', 72, 78);
-      context.font = `800 58px ${fontFamily}`;
-      context.fillText('邀请答题', 72, 158);
-      context.fillStyle = characterPack.accent;
-      context.fillRect(72, 190, 104, 8);
-      drawImageContain(context, characterImage, 760, 14, 270, 224);
+      context.fillStyle = palette.ink;
+      context.fillRect(18, 0, 682, 238);
+      context.fillStyle = characterPack.accentSoft;
+      context.fillRect(700, 0, 380, 348);
 
       context.fillStyle = palette.white;
-      context.fillRect(18, 252, width - 18, 782);
+      context.font = `700 27px ${fontFamily}`;
+      context.fillText('肥音卤果', 64, 68);
+      context.font = `900 64px ${fontFamily}`;
+      context.fillText('邀请答题', 64, 153);
+      context.fillStyle = palette.signal;
+      context.fillRect(64, 188, 116, 10);
+
+      context.fillStyle = palette.ink;
+      context.fillRect(766, 48, 242, 242);
+      context.fillStyle = palette.signal;
+      context.fillRect(750, 32, 242, 242);
+      drawImageContain(context, characterImage, 770, 40, 202, 226);
+
+      context.fillStyle = characterPack.accentDeep;
+      for (let row = 0; row < 4; row += 1) {
+        for (let column = 0; column < 5; column += 1) {
+          context.fillRect(718 + (column * 17), 292 + (row * 17), 5, 5);
+        }
+      }
 
       const tagMeta = getQuestionTagMeta(question.tag);
-      const badgeText = `#${question.id}  ${tagMeta.shortLabel}`;
-      context.font = `700 24px ${fontFamily}`;
-      const badgeWidth = context.measureText(badgeText).width + 50;
-      roundedRect(context, 72, 316, badgeWidth, 54, 10);
-      context.fillStyle = characterPack.accentSoft;
-      context.fill();
-      context.fillStyle = characterPack.accentDeep;
-      context.fillText(badgeText, 97, 352);
+      const badgeText = `#${question.id}  /  ${tagMeta.shortLabel}`;
+      context.font = `800 25px ${fontFamily}`;
+      const badgeWidth = context.measureText(badgeText).width + 48;
+      context.fillStyle = palette.signal;
+      context.fillRect(64, 302, badgeWidth, 58);
+      context.fillStyle = palette.ink;
+      context.fillText(badgeText, 88, 340);
 
       context.fillStyle = palette.muted;
-      context.font = `700 24px ${fontFamily}`;
-      context.fillText('题目', 72, 428);
+      context.font = `800 22px ${fontFamily}`;
+      context.fillText('题目', 64, 424);
 
-      context.font = `800 76px ${fontFamily}`;
+      context.fillStyle = characterPack.accentSoft;
+      context.font = `900 360px ${fontFamily}`;
+      context.fillText('?', 796, 934);
+
+      context.font = `800 82px ${fontFamily}`;
       const fitted = fitQuestionLines(context, question.question, 900, 8);
       context.font = `800 ${fitted.fontSize}px ${fontFamily}`;
       context.fillStyle = palette.ink;
-      const lineHeight = fitted.fontSize * 1.45;
+      const lineHeight = fitted.fontSize * 1.42;
       const textBlockHeight = fitted.lines.length * lineHeight;
-      const firstLineY = 680 - (textBlockHeight / 2) + fitted.fontSize;
+      const firstLineY = 690 - (textBlockHeight / 2) + fitted.fontSize;
       fitted.lines.forEach((line, index) => {
-        context.fillText(line, 72, firstLineY + (index * lineHeight));
+        context.fillText(line, 64, firstLineY + (index * lineHeight));
       });
 
       context.strokeStyle = palette.line;
       context.lineWidth = 2;
       context.beginPath();
-      context.moveTo(72, 964);
-      context.lineTo(1008, 964);
+      context.moveTo(64, 976);
+      context.lineTo(1016, 976);
       context.stroke();
 
-      roundedRect(context, 62, 1040, 956, 330, 28);
-      context.fillStyle = palette.ink;
-      context.fill();
       context.fillStyle = characterPack.accent;
-      context.fillRect(104, 1092, 86, 8);
-      context.fillStyle = palette.white;
-      context.font = `800 48px ${fontFamily}`;
-      context.fillText('扫码作答', 104, 1180);
-      context.fillStyle = '#c7ced9';
-      context.font = `600 25px ${fontFamily}`;
-      context.fillText('想好后揭晓答案', 104, 1234);
+      context.fillRect(80, 1074, 936, 294);
 
-      roundedRect(context, 714, 1078, 268, 268, 18);
       context.fillStyle = palette.white;
+      context.fillRect(64, 1058, 936, 294);
+      context.strokeStyle = palette.ink;
+      context.lineWidth = 4;
+      context.strokeRect(64, 1058, 936, 294);
+
+      context.fillStyle = palette.ink;
+      context.font = `800 22px ${fontFamily}`;
+      context.fillText('答案入口', 106, 1124);
+      context.font = `900 52px ${fontFamily}`;
+      context.fillText('扫码查看答案', 106, 1208);
+      context.fillStyle = characterPack.accentDeep;
+      context.font = `900 62px ${fontFamily}`;
+      context.fillText('→', 106, 1300);
+
+      context.save();
+      context.setLineDash([12, 12]);
+      context.strokeStyle = palette.line;
+      context.lineWidth = 3;
+      context.beginPath();
+      context.moveTo(700, 1088);
+      context.lineTo(700, 1322);
+      context.stroke();
+      context.restore();
+
+      context.fillStyle = palette.white;
+      context.fillRect(738, 1084, 242, 242);
+      context.drawImage(qrImage, 748, 1094, 222, 222);
+
+      context.fillStyle = palette.paper;
+      context.beginPath();
+      context.arc(64, 1205, 18, 0, Math.PI * 2);
+      context.arc(1000, 1205, 18, 0, Math.PI * 2);
       context.fill();
-      context.drawImage(qrImage, 728, 1092, 240, 240);
+
+      context.fillStyle = palette.ink;
+      context.fillRect(18, 1404, 1062, 36);
 
       setRendering(false);
     };
