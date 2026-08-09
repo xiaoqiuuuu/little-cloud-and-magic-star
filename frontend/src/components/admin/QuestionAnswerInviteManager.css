@@ -30,15 +30,6 @@
   overflow-wrap: anywhere;
 }
 
-.question-invite-manager__notice {
-  padding: 12px 14px;
-  border-left: 4px solid var(--cui-color-primary);
-  color: var(--cui-color-text-muted);
-  background: var(--cui-color-primary-soft);
-  font-size: 13px;
-  line-height: 1.65;
-}
-
 .question-invite-manager__empty {
   display: grid;
   min-height: 210px;
@@ -204,13 +195,6 @@
   gap: 8px;
   color: var(--cui-color-text-muted);
   background: color-mix(in srgb, var(--cui-color-surface-raised) 86%, transparent);
-}
-
-.question-invite-poster p {
-  margin: 0;
-  color: var(--cui-color-text-muted);
-  font-size: 12px;
-  text-align: center;
 }
 
 .question-invite-poster > button {

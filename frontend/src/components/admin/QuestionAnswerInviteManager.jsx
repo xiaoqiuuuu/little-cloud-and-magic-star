@@ -155,17 +155,13 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
             </div>
           )}
 
-          <div className="question-invite-manager__notice">
-            系统会从你有权管理的题库中随机抽取一道题，并生成不可猜测的随机链接。访问者主动点击后才会获取答案。
-          </div>
-
           {loading ? (
             <div className="question-invite-manager__empty">正在读取链接…</div>
           ) : !link ? (
             <div className="question-invite-manager__empty">
               <QrcodeOutlined />
-              <strong>还没有启用随机邀请答题</strong>
-              <span>生成后可以分享链接，也可以制作带二维码的题目海报。</span>
+              <strong>还没有答题链接</strong>
+              <span>随机抽一道题并生成链接。</span>
               <button type="button" onClick={confirmRotate} disabled={saving}>
                 {saving ? '随机抽题中…' : '随机一题并生成链接'}
               </button>
@@ -190,8 +186,8 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
               </label>
 
               <div className="question-invite-manager__stats">
-                <div><span>答案查看次数</span><strong>{link.reveal_count}</strong></div>
-                <div><span>最近查看答案</span><strong>{formatDateTime(link.last_revealed_at)}</strong></div>
+                <div><span>答题人数</span><strong>{link.participant_count}</strong></div>
+                <div><span>最近答题</span><strong>{formatDateTime(link.last_revealed_at)}</strong></div>
               </div>
 
               <div className="question-invite-manager__actions">

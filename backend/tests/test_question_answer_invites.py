@@ -85,8 +85,11 @@ class QuestionAnswerInviteTests(unittest.IsolatedAsyncioTestCase):
         return response.json()["id"]
 
     @staticmethod
-    def invite_headers(token: str) -> dict:
-        return {"X-Question-Answer-Invite-Token": token}
+    def invite_headers(token: str, participant_id=None) -> dict:
+        headers = {"X-Question-Answer-Invite-Token": token}
+        if participant_id:
+            headers["X-Question-Answer-Participant-Id"] = participant_id
+        return headers
 
     async def test_random_invite_hides_answer_until_reveal(self):
         headers = await self.login_headers()
@@ -102,6 +105,7 @@ class QuestionAnswerInviteTests(unittest.IsolatedAsyncioTestCase):
         link = created.json()
         self.assertIn(link["question_id"], answers)
         self.assertGreaterEqual(len(link["token"]), 32)
+        self.assertEqual(link["participant_count"], 0)
 
         opened = await self.client.get(
             "/api/question-answer-invites",
@@ -113,17 +117,30 @@ class QuestionAnswerInviteTests(unittest.IsolatedAsyncioTestCase):
 
         revealed = await self.client.post(
             "/api/question-answer-invites/reveal",
-            headers=self.invite_headers(link["token"]),
+            headers=self.invite_headers(link["token"], "participant-0001"),
         )
         self.assertEqual(revealed.status_code, 200, revealed.text)
         self.assertEqual(revealed.json()["answer"], answers[link["question_id"]])
         self.assertEqual(revealed.json()["reveal_count"], 1)
+        self.assertEqual(revealed.json()["participant_count"], 1)
+
+        repeated = await self.client.post(
+            "/api/question-answer-invites/reveal",
+            headers=self.invite_headers(link["token"], "participant-0001"),
+        )
+        second_participant = await self.client.post(
+            "/api/question-answer-invites/reveal",
+            headers=self.invite_headers(link["token"], "participant-0002"),
+        )
+        self.assertEqual(repeated.json()["participant_count"], 1)
+        self.assertEqual(second_participant.json()["participant_count"], 2)
 
         refreshed = await self.client.get(
             "/api/admin/question-answer-invites",
             headers=headers,
         )
-        self.assertEqual(refreshed.json()["reveal_count"], 1)
+        self.assertEqual(refreshed.json()["reveal_count"], 3)
+        self.assertEqual(refreshed.json()["participant_count"], 2)
         self.assertIsNotNone(refreshed.json()["last_revealed_at"])
 
     async def test_regenerate_changes_question_and_invalidates_old_link(self):

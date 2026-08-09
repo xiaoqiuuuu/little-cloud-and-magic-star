@@ -58,6 +58,7 @@ def _to_link_response(invite: dict) -> QuestionAnswerInviteLink:
         tag=invite["tag"],
         token=invite["token"],
         reveal_count=invite["reveal_count"],
+        participant_count=invite["participant_count"],
         last_revealed_at=invite["last_revealed_at"],
         created_at=invite["created_at"],
         updated_at=invite["updated_at"],
@@ -73,6 +74,17 @@ def _invite_token(
     ),
 ) -> str:
     return token
+
+
+def _participant_id(
+    participant_id: Optional[str] = Header(
+        None,
+        alias="X-Question-Answer-Participant-Id",
+        min_length=16,
+        max_length=128,
+    ),
+) -> str:
+    return participant_id or f"legacy-{secrets.token_urlsafe(18)}"
 
 
 @admin_router.get("", response_model=Optional[QuestionAnswerInviteLink])
@@ -133,9 +145,10 @@ def get_public_question_answer_invite(
 @public_router.post("/reveal", response_model=QuestionAnswerInviteResult)
 def reveal_public_question_answer(
     token: str = Depends(_invite_token),
+    participant_id: str = Depends(_participant_id),
 ):
     try:
-        result = reveal_question_answer_invite(token)
+        result = reveal_question_answer_invite(token, participant_id)
     except InvalidQuestionAnswerInvite as error:
         raise HTTPException(
             status_code=404,

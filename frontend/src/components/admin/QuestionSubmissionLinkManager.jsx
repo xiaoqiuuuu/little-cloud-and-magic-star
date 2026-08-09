@@ -105,8 +105,8 @@ export default function QuestionSubmissionLinkManager({ open, onClose }) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: '题目征集问卷',
-          text: '欢迎通过这个问卷提交题目，提交后会直接加入题库。',
+          title: '邀请出题',
+          text: '请通过这个链接提交题目。',
           url: submissionUrl,
         });
         return;
@@ -121,15 +121,15 @@ export default function QuestionSubmissionLinkManager({ open, onClose }) {
   return (
     <Modal
       open={open}
-      title={<span><LinkOutlined /> 出题问卷链接</span>}
+      title={<span><LinkOutlined /> 邀请出题</span>}
       onCancel={onClose}
       footer={null}
       width={620}
       centered
     >
-      <div className="question-link-manager">
-        <div className="question-link-manager__notice">
-          将链接分享给可信任的出题者。对方无需后台账号，提交后题目会直接进入题库并归属当前账号。
+        <div className="question-link-manager">
+          <div className="question-link-manager__notice">
+          提交的题目会直接进入题库，并归属你的账号。
         </div>
 
         {loading ? (
@@ -137,8 +137,7 @@ export default function QuestionSubmissionLinkManager({ open, onClose }) {
         ) : !link ? (
           <div className="question-link-manager__empty">
             <LinkOutlined />
-            <strong>还没有启用出题问卷</strong>
-            <span>生成后即可复制或通过手机系统分享。</span>
+            <strong>还没有出题链接</strong>
             <button type="button" onClick={confirmRotate} disabled={saving}>
               {saving ? '生成中…' : '生成出题链接'}
             </button>
@@ -146,7 +145,7 @@ export default function QuestionSubmissionLinkManager({ open, onClose }) {
         ) : (
           <>
             <label className="question-link-manager__url">
-              <span>公开问卷地址</span>
+                <span>出题链接</span>
               <div>
                 <input value={submissionUrl} readOnly />
                 <button

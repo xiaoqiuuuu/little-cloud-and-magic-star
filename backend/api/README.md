@@ -111,10 +111,12 @@ api/
 - `POST /api/admin/question-answer-invites`: 从账号可管理的题库随机抽题并生成新链接
 - `DELETE /api/admin/question-answer-invites`: 停用当前邀请链接
 - `GET /api/question-answer-invites`: 获取公开题目，不返回答案
-- `POST /api/question-answer-invites/reveal`: 主动揭晓答案并记录查看次数
+- `POST /api/question-answer-invites/reveal`: 主动揭晓答案并记录查看次数与去重答题人数
 
 公开接口通过 `X-Question-Answer-Invite-Token` 请求头携带随机令牌。前端分享地址使用
 `/answer-invite#令牌`；重新生成、停用、账号禁用或失去题目权限后，旧令牌立即失效。
+揭晓答案时，前端通过 `X-Question-Answer-Participant-Id` 携带浏览器生成的匿名标识，
+同一链接下相同标识只计为一名答题者。
 
 ### materials.py（物料模块）
 **前缀**: `/api/admin`
