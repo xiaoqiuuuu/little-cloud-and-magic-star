@@ -173,17 +173,17 @@
   overflow: hidden;
   min-height: 320px;
   border: 1px solid var(--cui-color-border);
-  border-radius: 12px;
-  padding: 12px;
-  background: var(--cui-color-surface-muted);
+  border-radius: 10px;
+  padding: 18px;
+  background: color-mix(in srgb, var(--cui-color-primary-soft) 52%, var(--cui-color-surface-muted));
 }
 
 .question-invite-poster__preview canvas {
   display: block;
-  width: min(100%, 405px);
+  width: min(100%, 430px);
   height: auto;
-  border-radius: 8px;
-  box-shadow: var(--cui-shadow-card);
+  border-radius: 2px;
+  box-shadow: 12px 12px 0 color-mix(in srgb, var(--cui-color-primary) 24%, transparent);
 }
 
 .question-invite-poster__preview > div {
