@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Result, Spin } from 'antd';
-import { HomeOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, ExportOutlined, HomeOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
 
@@ -34,6 +34,12 @@ const themeStyles = {
     cta: 'from-emerald-200 via-teal-200 to-cyan-200',
     footer: 'from-emerald-950 to-teal-900',
   },
+};
+
+const ctaLinkClasses = {
+  primary: 'border-slate-900 bg-slate-900 text-white shadow-lg hover:border-slate-800 hover:bg-slate-800',
+  light: 'border-white/80 bg-white/75 text-slate-800 shadow-sm hover:bg-white',
+  outline: 'border-slate-700/60 bg-transparent text-slate-800 hover:border-slate-900 hover:bg-white/30',
 };
 
 
@@ -117,6 +123,8 @@ function HomePage() {
   const eventMeta = [event.date_label, event.location].filter(Boolean).join(' · ');
   const materials = content.materials || [];
   const highlights = content.highlights || [];
+  const ctaLinks = content.cta.links || [];
+  const hasCta = Boolean(content.cta.title || content.cta.description || ctaLinks.length);
 
   const openRules = () => {
     if (!content.rules.link) return;
@@ -170,7 +178,7 @@ function HomePage() {
                 精选物料
               </a>
             )}
-            {(content.cta.title || content.cta.description) && (
+            {hasCta && (
               <a href="#event-cta" className="rounded-full border border-white/80 bg-white/65 px-5 py-2.5 font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white">
                 获取方式
               </a>
@@ -321,7 +329,7 @@ function HomePage() {
         </section>
       )}
 
-      {(content.cta.title || content.cta.description) && (
+      {hasCta && (
         <section id="event-cta" className="container mx-auto scroll-mt-6 px-4 py-16 relative z-10">
           <div className={`max-w-3xl mx-auto text-center bg-gradient-to-r ${theme.cta} rounded-3xl p-8 md:p-12 shadow-xl`}>
             {content.cta.title && (
@@ -331,6 +339,32 @@ function HomePage() {
               <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">
                 {content.cta.description}
               </p>
+            )}
+            {ctaLinks.length > 0 && (
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                {ctaLinks.map((link, index) => {
+                  const className = `inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 px-6 py-3 font-bold transition duration-200 hover:-translate-y-0.5 ${ctaLinkClasses[link.variant] || ctaLinkClasses.primary}`;
+                  const key = `${link.label}-${link.url}-${index}`;
+                  if (/^https?:\/\//i.test(link.url)) {
+                    return (
+                      <a
+                        key={key}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={className}
+                      >
+                        {link.label} <ExportOutlined />
+                      </a>
+                    );
+                  }
+                  return (
+                    <button key={key} type="button" onClick={() => navigate(link.url)} className={className}>
+                      {link.label} <ArrowRightOutlined />
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
         </section>
