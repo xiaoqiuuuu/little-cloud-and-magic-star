@@ -47,6 +47,12 @@ const themeOptions = [
   { value: 'mint', label: '薄荷（绿青）' },
 ];
 
+const ctaLinkVariantOptions = [
+  { value: 'primary', label: '主要按钮' },
+  { value: 'light', label: '浅色按钮' },
+  { value: 'outline', label: '描边按钮' },
+];
+
 function blankEvent() {
   return {
     name: '',
@@ -74,7 +80,7 @@ function blankEvent() {
       },
       materials_title: '精彩物料一览',
       material_ids: [],
-      cta: { title: '🎉 获取方式', description: '' },
+      cta: { title: '🎉 获取方式', description: '', links: [] },
       footer: { title: '', copyright: '', note: '' },
     },
   };
@@ -558,9 +564,74 @@ function SiteEventManager() {
             </div>
           )}
 
-          <Divider orientation="left">获取方式与页脚</Divider>
+          <Divider orientation="left">获取方式</Divider>
           <Form.Item name={['content', 'cta', 'title']} label="获取方式标题"><Input /></Form.Item>
           <Form.Item name={['content', 'cta', 'description']} label="获取方式说明"><TextArea rows={5} /></Form.Item>
+          <Alert
+            className="mb-4"
+            type="info"
+            showIcon
+            message="可以在说明下方配置最多 6 个跳转按钮"
+            description="站内地址请填写 / 开头的路径，例如 /quiz；外部链接请填写完整的 https:// 地址，访问时会在新标签页打开。"
+          />
+          <Form.List name={['content', 'cta', 'links']}>
+            {(fields, { add, remove }) => (
+              <Space direction="vertical" size="middle" className="w-full">
+                {fields.map((field, index) => (
+                  <Card
+                    key={field.key}
+                    size="small"
+                    title={`跳转按钮 ${index + 1}`}
+                    extra={<Button type="text" danger onClick={() => remove(field.name)}>移除</Button>}
+                  >
+                    <Row gutter={12}>
+                      <Col xs={24} md={7}>
+                        <Form.Item
+                          name={[field.name, 'label']}
+                          label="按钮文案"
+                          rules={[{ required: true, message: '请输入按钮文案' }]}
+                        >
+                          <Input placeholder="例如：立即参与" maxLength={50} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={11}>
+                        <Form.Item
+                          name={[field.name, 'url']}
+                          label="跳转地址"
+                          rules={[
+                            { required: true, message: '请输入跳转地址' },
+                            {
+                              pattern: /^(?:\/[^\s]*|https?:\/\/[^\s]+)$/,
+                              message: '请输入 / 开头的站内地址或完整的 http(s) 外链',
+                            },
+                          ]}
+                        >
+                          <Input placeholder="/quiz 或 https://example.com" maxLength={1000} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={6}>
+                        <Form.Item name={[field.name, 'variant']} label="按钮样式" rules={[{ required: true }]}>
+                          <Select options={ctaLinkVariantOptions} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Card>
+                ))}
+                {fields.length < 6 && (
+                  <Button
+                    type="dashed"
+                    block
+                    icon={<PlusOutlined />}
+                    onClick={() => add({ label: '', url: '', variant: fields.length === 0 ? 'primary' : 'light' })}
+                  >
+                    添加跳转按钮
+                  </Button>
+                )}
+              </Space>
+            )}
+          </Form.List>
+
+          <Divider orientation="left">页脚</Divider>
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item name={['content', 'footer', 'title']} label="页脚标题"><Input /></Form.Item>

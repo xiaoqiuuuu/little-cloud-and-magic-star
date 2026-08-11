@@ -320,9 +320,20 @@ class SiteEventRules(BaseModel):
     icons: List[str] = Field(default_factory=lambda: ["🌙", "☀️", "🎭"], max_length=6)
 
 
+class SiteEventCallToActionLink(BaseModel):
+    label: str = Field(min_length=1, max_length=50)
+    url: str = Field(
+        min_length=1,
+        max_length=1000,
+        pattern=r"^(?:/[^\s]*|https?://[^\s]+)$",
+    )
+    variant: Literal["primary", "light", "outline"] = "primary"
+
+
 class SiteEventCallToAction(BaseModel):
     title: str = Field(default="获取方式", max_length=100)
     description: str = Field(default="", max_length=2000)
+    links: List[SiteEventCallToActionLink] = Field(default_factory=list, max_length=6)
 
 
 class SiteEventFooter(BaseModel):

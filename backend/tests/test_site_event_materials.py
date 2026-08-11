@@ -81,6 +81,14 @@ class SiteEventMaterialTests(unittest.IsolatedAsyncioTestCase):
         draft = duplicated.json()
         content = draft["content"]
         content["material_ids"] = [material_id]
+        content["cta"]["links"] = [
+            {"label": "立即答题", "url": "/quiz", "variant": "primary"},
+            {
+                "label": "查看外部活动",
+                "url": "https://example.com/campaign",
+                "variant": "outline",
+            },
+        ]
         updated = await self.client.put(
             f"/api/admin/site-events/{draft['id']}",
             headers=headers,
@@ -90,6 +98,10 @@ class SiteEventMaterialTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             updated.json()["content"]["materials"][0]["description"],
             "初始介绍",
+        )
+        self.assertEqual(
+            updated.json()["content"]["cta"]["links"],
+            content["cta"]["links"],
         )
 
         activated = await self.client.post(
@@ -110,6 +122,24 @@ class SiteEventMaterialTests(unittest.IsolatedAsyncioTestCase):
             refreshed.json()["content"]["materials"][0]["description"],
             "物料管理中更新后的介绍",
         )
+        self.assertEqual(
+            refreshed.json()["content"]["cta"]["links"][1]["url"],
+            "https://example.com/campaign",
+        )
+
+    async def test_homepage_rejects_unsafe_cta_link_protocols(self):
+        headers = await self.login_headers()
+        current = (await self.client.get("/api/site-events/current")).json()
+        content = current["content"]
+        content["cta"]["links"] = [
+            {"label": "不安全链接", "url": "javascript:alert(1)", "variant": "primary"},
+        ]
+        updated = await self.client.put(
+            f"/api/admin/site-events/{current['id']}",
+            headers=headers,
+            json={"content": content},
+        )
+        self.assertEqual(updated.status_code, 422, updated.text)
 
 
 if __name__ == "__main__":
