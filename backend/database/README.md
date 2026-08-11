@@ -81,6 +81,7 @@ from database import (
 - `get_materials_count()`: 获取物料总数
 - `get_all_materials()`: 获取所有物料（支持分页）
 - `get_material_by_id()`: 根据ID获取物料
+- `get_materials_by_ids()`: 按首页配置顺序批量读取物料
 - `get_next_material_id()`: 获取下一个物料ID
 - `create_material()`: 创建物料
 - `update_material()`: 更新物料

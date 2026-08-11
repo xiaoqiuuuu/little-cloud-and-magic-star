@@ -37,14 +37,18 @@ const themeStyles = {
 };
 
 
-const materialColors = {
-  rose: 'bg-rose-100',
-  pink: 'bg-pink-100',
-  yellow: 'bg-yellow-100',
-  blue: 'bg-blue-100',
-  indigo: 'bg-indigo-100',
-  purple: 'bg-purple-100',
-};
+function getResourceKind(url = '') {
+  if (/\.(avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i.test(url)) return 'image';
+  if (/\.(m4v|mov|mp4|ogg|webm)(?:[?#].*)?$/i.test(url)) return 'video';
+  if (/\.(aac|flac|m4a|mp3|wav)(?:[?#].*)?$/i.test(url)) return 'audio';
+  return 'link';
+}
+
+
+function resourceLabel(kind, index) {
+  const labels = { image: '查看图片', video: '播放视频', audio: '收听音频', link: '打开资源' };
+  return `${labels[kind]}${index > 0 ? ` ${index + 1}` : ''}`;
+}
 
 
 function HomePage() {
@@ -111,6 +115,8 @@ function HomePage() {
   const content = event.content;
   const theme = themeStyles[content.theme] || themeStyles.aurora;
   const eventMeta = [event.date_label, event.location].filter(Boolean).join(' · ');
+  const materials = content.materials || [];
+  const highlights = content.highlights || [];
 
   const openRules = () => {
     if (!content.rules.link) return;
@@ -148,8 +154,31 @@ function HomePage() {
             </h1>
           </div>
 
+          <nav className="mb-8 flex flex-wrap justify-center gap-3" aria-label="首页内容导航">
+            {(content.intro_title || content.intro) && (
+              <a href="#event-intro" className="rounded-full border border-white/80 bg-white/65 px-5 py-2.5 font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white">
+                活动介绍
+              </a>
+            )}
+            {content.rules.enabled && (
+              <a href="#event-rules" className="rounded-full border border-white/80 bg-white/65 px-5 py-2.5 font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white">
+                玩法规则
+              </a>
+            )}
+            {materials.length > 0 && (
+              <a href="#event-materials" className="rounded-full bg-slate-900 px-5 py-2.5 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-800">
+                精选物料
+              </a>
+            )}
+            {(content.cta.title || content.cta.description) && (
+              <a href="#event-cta" className="rounded-full border border-white/80 bg-white/65 px-5 py-2.5 font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white">
+                获取方式
+              </a>
+            )}
+          </nav>
+
           {(content.intro_title || content.intro) && (
-            <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 mb-8 shadow-xl">
+            <div id="event-intro" className="scroll-mt-6 bg-white/70 backdrop-blur-sm rounded-2xl p-8 mb-8 shadow-xl">
               {content.intro_title && (
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">
                   {content.intro_title}
@@ -163,8 +192,25 @@ function HomePage() {
             </div>
           )}
 
+          {highlights.length > 0 && (
+            <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+              {highlights.map((highlight, index) => (
+                <div
+                  key={`${highlight.value}-${highlight.label}-${index}`}
+                  className="rounded-2xl border border-white/70 bg-white/55 px-4 py-5 text-left shadow-sm backdrop-blur"
+                >
+                  <strong className="block text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
+                    {highlight.value}
+                  </strong>
+                  <span className="mt-1 block text-sm font-medium text-slate-600">{highlight.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {content.rules.enabled && (
             <button
+              id="event-rules"
               type="button"
               onClick={openRules}
               className={`w-full text-left cursor-pointer bg-gradient-to-r ${theme.rule} rounded-2xl p-8 mb-8 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group`}
@@ -190,45 +236,93 @@ function HomePage() {
         </div>
       </section>
 
-      {content.materials.length > 0 && (
-        <section className="container mx-auto px-4 py-12 relative z-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-12">
+      {materials.length > 0 && (
+        <section id="event-materials" className="container mx-auto scroll-mt-6 px-4 py-12 relative z-10">
+          <div className="mb-12 text-center">
+            <span className="text-xs font-black uppercase tracking-[0.35em] text-slate-500">Selected works</span>
+            <h2 className="mt-3 text-3xl md:text-5xl font-black text-center text-gray-900">
             {content.materials_title}
-          </h2>
-          <div className="max-w-6xl mx-auto space-y-8">
-            {content.materials.map((material, index) => (
-              <div
-                key={`${material.title}-${index}`}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300"
-              >
-                <div className="flex flex-col md:flex-row items-center">
-                  <div className={`w-full md:w-1/2 ${materialColors[material.color] || materialColors.blue} flex items-center justify-center min-h-[300px]`}>
-                    {material.image ? (
-                      <img src={material.image} alt={material.title} className="w-full h-full object-cover max-h-[400px]" />
-                    ) : (
-                      <div className="p-8 text-center">
-                        <div className="text-6xl mb-4">{material.icon}</div>
-                        <p className="text-gray-500 font-medium">图片稍后补充</p>
+            </h2>
+            <p className="mt-3 text-slate-600">所有内容均与物料库同步，更新后会自动呈现在这里。</p>
+          </div>
+          <div className="max-w-6xl mx-auto grid gap-6 md:grid-cols-2">
+            {materials.map((material, index) => {
+              const resources = material.resources || [];
+              const coverUrl = resources[0] || '';
+              const coverKind = getResourceKind(coverUrl);
+              return (
+                <article
+                  key={material.id || `${material.name}-${index}`}
+                  className={`group overflow-hidden rounded-[28px] border border-white/80 bg-white/[0.78] shadow-lg backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-2xl ${index === 0 && materials.length % 2 === 1 ? 'md:col-span-2 md:grid md:grid-cols-2' : ''}`}
+                >
+                  <div className="relative flex min-h-[260px] items-center justify-center overflow-hidden bg-gradient-to-br from-slate-100 via-white to-indigo-100">
+                    {coverKind === 'image' && (
+                      <img src={coverUrl} alt={material.name} className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+                    )}
+                    {coverKind === 'video' && (
+                      <video src={coverUrl} controls preload="metadata" className="absolute inset-0 h-full w-full object-cover" />
+                    )}
+                    {coverKind === 'audio' && (
+                      <div className="w-full px-8 text-center">
+                        <div className="mb-5 text-6xl">♫</div>
+                        <audio src={coverUrl} controls preload="metadata" className="w-full" />
                       </div>
                     )}
+                    {(!coverUrl || coverKind === 'link') && (
+                      <div className="text-center text-slate-500">
+                        <div className="mb-3 text-6xl">✦</div>
+                        <p className="font-semibold">{coverUrl ? '点击下方打开资源' : '物料资源准备中'}</p>
+                      </div>
+                    )}
+                    <span className="absolute left-5 top-5 rounded-full bg-slate-950/[0.82] px-3 py-1 text-xs font-bold text-white backdrop-blur">
+                      #{material.id}
+                    </span>
                   </div>
-                  <div className="w-full md:w-1/2 p-8">
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">
-                      {material.title}
-                    </h3>
-                    <p className="text-gray-600 text-lg leading-relaxed whitespace-pre-line">
-                      {material.description}
+                  <div className="flex min-h-[260px] flex-col p-7 md:p-8">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <h3 className="text-2xl md:text-3xl font-black text-gray-900">
+                        {material.name}
+                      </h3>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                        {resources.length} 个资源
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-base md:text-lg leading-relaxed whitespace-pre-line">
+                      {material.description || '这份物料的介绍正在准备中。'}
                     </p>
+                    <div className="mt-auto pt-6">
+                      {(material.creator || []).length > 0 && (
+                        <p className="mb-3 text-xs font-semibold text-slate-500">
+                          创作：{material.creator.join(' · ')}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {resources.slice(0, 4).map((resource, resourceIndex) => {
+                          const kind = getResourceKind(resource);
+                          return (
+                            <a
+                              key={`${resource}-${resourceIndex}`}
+                              href={resource}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                            >
+                              {resourceLabel(kind, resourceIndex)}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
 
       {(content.cta.title || content.cta.description) && (
-        <section className="container mx-auto px-4 py-16 relative z-10">
+        <section id="event-cta" className="container mx-auto scroll-mt-6 px-4 py-16 relative z-10">
           <div className={`max-w-3xl mx-auto text-center bg-gradient-to-r ${theme.cta} rounded-3xl p-8 md:p-12 shadow-xl`}>
             {content.cta.title && (
               <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">{content.cta.title}</h2>

@@ -105,10 +105,10 @@ api/
 公开接口通过 `X-Question-Submission-Token` 请求头携带分享令牌。前端分享地址使用
 `/submit-question#令牌`，避免令牌进入普通页面访问日志和 Referer。
 
-### question_answer_invites.py（随机邀请答题）
+### question_answer_invites.py（单题邀请答题）
 
 - `GET /api/admin/question-answer-invites`: 获取当前账号的邀请链接
-- `POST /api/admin/question-answer-invites`: 从账号可管理的题库随机抽题并生成新链接
+- `POST /api/admin/question-answer-invites`: 随机抽题并生成新链接；传入 `{ "question_id": "12" }` 可指定题号
 - `DELETE /api/admin/question-answer-invites`: 停用当前邀请链接
 - `GET /api/question-answer-invites`: 获取公开题目，不返回答案
 - `POST /api/question-answer-invites/reveal`: 主动揭晓答案并记录查看次数与去重答题人数
@@ -117,6 +117,17 @@ api/
 `/answer-invite#令牌`；重新生成、停用、账号禁用或失去题目权限后，旧令牌立即失效。
 揭晓答案时，前端通过 `X-Question-Answer-Participant-Id` 携带浏览器生成的匿名标识，
 同一链接下相同标识只计为一名答题者。
+
+### site_events.py（官网活动与首页配置）
+
+- `GET /api/site-events/current`: 获取当前主页活动
+- `GET /api/site-events/{slug}`: 获取已发布或往期活动
+- `GET /api/admin/site-events`: 获取全部官网活动
+- `GET /api/admin/site-events/material-options`: 获取首页可引用的物料管理数据
+- `POST /api/admin/site-events/{event_id}/activate`: 将活动设为当前主页
+
+活动内容只保存 `material_ids`，返回活动时实时读取物料管理中的名称、介绍、署名与资源。
+旧版内嵌物料会在数据库初始化时迁移为物料管理记录。
 
 ### materials.py（物料模块）
 **前缀**: `/api/admin`

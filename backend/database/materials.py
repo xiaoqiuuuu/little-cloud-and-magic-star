@@ -136,6 +136,29 @@ def get_material_by_id(material_id: str) -> Optional[Material]:
     return None
 
 
+def get_materials_by_ids(material_ids: Sequence[str]) -> List[Material]:
+    """按传入顺序获取物料；已删除或不存在的 ID 会被忽略。"""
+    ordered_ids = list(dict.fromkeys(str(material_id) for material_id in material_ids))
+    if not ordered_ids:
+        return []
+
+    placeholders = ", ".join("?" for _ in ordered_ids)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        f"""
+        SELECT id, name, description, creator, resources
+        FROM materials
+        WHERE id IN ({placeholders})
+        """,
+        ordered_ids,
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    materials_by_id = {str(row[0]): _row_to_material(row) for row in rows}
+    return [materials_by_id[material_id] for material_id in ordered_ids if material_id in materials_by_id]
+
+
 def get_next_material_id() -> str:
     """生成下一个物料ID（自增）"""
     conn = get_connection()
