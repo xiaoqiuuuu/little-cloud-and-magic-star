@@ -110,6 +110,78 @@ def _backfill_account_contributors(cursor):
         )
 
 
+def _migrate_site_event_materials(cursor):
+    """把旧版官网活动内嵌物料迁移为物料管理记录与 ID 引用。"""
+    next_material_id = int(cursor.execute(
+        "SELECT COALESCE(MAX(CAST(id AS INTEGER)), -1) FROM materials"
+    ).fetchone()[0]) + 1
+    rows = cursor.execute(
+        "SELECT id, created_by, content FROM site_events"
+    ).fetchall()
+
+    for event_id, created_by, raw_content in rows:
+        try:
+            content = json.loads(raw_content)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if "material_ids" in content:
+            continue
+
+        material_ids = []
+        legacy_materials = content.get("materials") or []
+        for item in legacy_materials:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("title") or "").strip()
+            if not name:
+                continue
+            description = str(item.get("description") or "")
+            resources = [
+                str(value).strip()
+                for value in item.get("resources") or []
+                if str(value).strip()
+            ]
+            image = str(item.get("image") or "").strip()
+            if image and image not in resources:
+                resources.insert(0, image)
+            resources_json = json.dumps(resources, ensure_ascii=False)
+            existing = cursor.execute(
+                """
+                SELECT id FROM materials
+                WHERE name = ? AND COALESCE(description, '') = ? AND resources = ?
+                LIMIT 1
+                """,
+                (name, description, resources_json),
+            ).fetchone()
+            if existing:
+                material_id = str(existing[0])
+            else:
+                material_id = str(next_material_id)
+                next_material_id += 1
+                creators = item.get("creator") or ([created_by] if created_by else [])
+                cursor.execute(
+                    """
+                    INSERT INTO materials (id, name, description, creator, resources)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        material_id,
+                        name,
+                        description,
+                        json.dumps(creators, ensure_ascii=False),
+                        resources_json,
+                    ),
+                )
+            material_ids.append(material_id)
+
+        content["material_ids"] = material_ids
+        content.pop("materials", None)
+        cursor.execute(
+            "UPDATE site_events SET content = ? WHERE id = ?",
+            (json.dumps(content, ensure_ascii=False), event_id),
+        )
+
+
 def init_db():
     """初始化数据库，创建所有表"""
     conn = get_connection()
@@ -510,6 +582,8 @@ def init_db():
         DEFAULT_SITE_EVENT['location'],
         json.dumps(DEFAULT_SITE_EVENT['content'], ensure_ascii=False),
     ))
+    _migrate_site_event_materials(cursor)
+    _backfill_account_contributors(cursor)
 
     # 星辰大海：公开星愿留言及其在星空中的固定位置。
     cursor.execute('''

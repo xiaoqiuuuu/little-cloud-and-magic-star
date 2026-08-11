@@ -77,6 +77,10 @@ class QuestionAnswerInviteLink(BaseModel):
     updated_at: str
 
 
+class QuestionAnswerInviteCreate(BaseModel):
+    question_id: Optional[str] = Field(default=None, min_length=1, max_length=100)
+
+
 class PublicQuestionAnswerInvite(BaseModel):
     question_id: str
     question: str
@@ -295,11 +299,16 @@ class QuizActivityUpdate(BaseModel):
 
 
 class SiteEventMaterial(BaseModel):
-    title: str = Field(min_length=1, max_length=100)
-    description: str = Field(default="", max_length=1000)
-    image: str = Field(default="", max_length=1000)
-    icon: str = Field(default="✨", max_length=20)
-    color: Literal["rose", "pink", "yellow", "blue", "indigo", "purple"] = "blue"
+    id: str
+    name: str
+    description: str = ""
+    creator: List[str] = Field(default_factory=list)
+    resources: List[str] = Field(default_factory=list)
+
+
+class SiteEventHighlight(BaseModel):
+    value: str = Field(min_length=1, max_length=30)
+    label: str = Field(min_length=1, max_length=50)
 
 
 class SiteEventRules(BaseModel):
@@ -327,8 +336,10 @@ class SiteEventContent(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     intro_title: str = Field(default="", max_length=200)
     intro: str = Field(default="", max_length=3000)
+    highlights: List[SiteEventHighlight] = Field(default_factory=list, max_length=6)
     rules: SiteEventRules = Field(default_factory=SiteEventRules)
     materials_title: str = Field(default="精彩物料一览", max_length=100)
+    material_ids: List[str] = Field(default_factory=list, max_length=30)
     materials: List[SiteEventMaterial] = Field(default_factory=list, max_length=30)
     cta: SiteEventCallToAction = Field(default_factory=SiteEventCallToAction)
     footer: SiteEventFooter = Field(default_factory=SiteEventFooter)

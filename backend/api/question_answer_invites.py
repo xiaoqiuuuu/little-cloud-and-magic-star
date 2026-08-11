@@ -18,6 +18,7 @@ from database import (
 )
 from models import (
     PublicQuestionAnswerInvite,
+    QuestionAnswerInviteCreate,
     QuestionAnswerInviteLink,
     QuestionAnswerInviteResult,
 )
@@ -100,19 +101,33 @@ def get_admin_question_answer_invite(
 
 @admin_router.post("", response_model=QuestionAnswerInviteLink)
 def rotate_admin_question_answer_invite(
+    payload: Optional[QuestionAnswerInviteCreate] = None,
     user_info: dict = Depends(require_questions_manage),
 ):
     question_ids = _manageable_question_ids(user_info)
     if not question_ids:
         raise HTTPException(status_code=409, detail="当前没有可邀请作答的题目")
-    current = get_question_answer_invite_for_admin(user_info["id"])
-    if current and len(question_ids) > 1:
-        question_ids = [
-            question_id
-            for question_id in question_ids
-            if question_id != current["question_id"]
-        ]
-    question_id = secrets.choice(question_ids)
+    requested_question_id = (
+        payload.question_id.strip()
+        if payload and payload.question_id
+        else ""
+    )
+    if requested_question_id:
+        if requested_question_id not in set(question_ids):
+            raise HTTPException(
+                status_code=404,
+                detail="题目不存在，或不在你的可管理范围内",
+            )
+        question_id = requested_question_id
+    else:
+        current = get_question_answer_invite_for_admin(user_info["id"])
+        if current and len(question_ids) > 1:
+            question_ids = [
+                question_id
+                for question_id in question_ids
+                if question_id != current["question_id"]
+            ]
+        question_id = secrets.choice(question_ids)
     return _to_link_response(
         rotate_question_answer_invite(question_id, user_info["id"])
     )

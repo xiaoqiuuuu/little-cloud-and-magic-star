@@ -5,6 +5,7 @@ import sqlite3
 from typing import Any, Dict, List, Optional
 
 from .config import get_connection
+from .materials import get_materials_by_ids
 
 
 DEFAULT_SITE_EVENT = {
@@ -17,6 +18,11 @@ DEFAULT_SITE_EVENT = {
         "title": "肥音卤果创意者联盟\n深圳无料——桌游上新",
         "intro_title": "万众期待 - 小雲殺2.0 无料介绍",
         "intro": "《小雲殺》是一款以推理与社交博弈为核心的阵营互动类桌游。玩家将在游戏中随机扮演不同角色，在隐藏身份的状态下，通过发言、推理与技能行动，争取让自己的阵营取得最终胜利。",
+        "highlights": [
+            {"value": "12 位", "label": "特色角色"},
+            {"value": "6–12 人", "label": "灵活组局"},
+            {"value": "2 种", "label": "获取方式"},
+        ],
         "rules": {
             "enabled": True,
             "title": "游戏玩法与规则",
@@ -77,6 +83,44 @@ DEFAULT_SITE_EVENT = {
 }
 
 
+def _content_for_storage(content: Dict[str, Any]) -> Dict[str, Any]:
+    stored_content = json.loads(json.dumps(content, ensure_ascii=False))
+    stored_content.pop("materials", None)
+    return stored_content
+
+
+def _legacy_materials(content: Dict[str, Any]) -> List[Dict[str, Any]]:
+    normalized = []
+    for index, item in enumerate(content.get("materials") or []):
+        if not isinstance(item, dict):
+            continue
+        resources = list(item.get("resources") or [])
+        if item.get("image") and item["image"] not in resources:
+            resources.insert(0, item["image"])
+        normalized.append({
+            "id": str(item.get("id") or f"legacy-{index}"),
+            "name": str(item.get("name") or item.get("title") or "历史物料"),
+            "description": str(item.get("description") or ""),
+            "creator": list(item.get("creator") or []),
+            "resources": resources,
+        })
+    return normalized
+
+
+def _hydrate_content(raw_content: Dict[str, Any]) -> Dict[str, Any]:
+    content = json.loads(json.dumps(raw_content, ensure_ascii=False))
+    material_ids = [str(value) for value in content.get("material_ids") or []]
+    if material_ids:
+        content["materials"] = [
+            material.model_dump(mode="json")
+            for material in get_materials_by_ids(material_ids)
+        ]
+    else:
+        content["materials"] = _legacy_materials(content)
+    content["material_ids"] = material_ids
+    return content
+
+
 def _row_to_event(row: sqlite3.Row) -> Dict[str, Any]:
     return {
         "id": int(row["id"]),
@@ -86,7 +130,7 @@ def _row_to_event(row: sqlite3.Row) -> Dict[str, Any]:
         "location": row["location"] or "",
         "status": row["status"],
         "is_current": bool(row["is_current"]),
-        "content": json.loads(row["content"]),
+        "content": _hydrate_content(json.loads(row["content"])),
         "created_by": row["created_by"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
@@ -165,7 +209,7 @@ def create_site_event(data: Dict[str, Any], created_by: str) -> Dict[str, Any]:
                 data["name"],
                 data.get("date_label", ""),
                 data.get("location", ""),
-                json.dumps(data["content"], ensure_ascii=False),
+                json.dumps(_content_for_storage(data["content"]), ensure_ascii=False),
                 created_by,
             ),
         )
@@ -195,7 +239,7 @@ def update_site_event(event_id: int, updates: Dict[str, Any]) -> Optional[Dict[s
             values.append(updates[key])
     if "content" in updates:
         fields.append("content = ?")
-        values.append(json.dumps(updates["content"], ensure_ascii=False))
+        values.append(json.dumps(_content_for_storage(updates["content"]), ensure_ascii=False))
     if not fields:
         return get_site_event(event_id)
 
@@ -237,7 +281,7 @@ def duplicate_site_event(event_id: int, created_by: str) -> Optional[Dict[str, A
                 f"{source['name'][:96]}（副本）",
                 source["date_label"],
                 source["location"],
-                json.dumps(source["content"], ensure_ascii=False),
+                json.dumps(_content_for_storage(source["content"]), ensure_ascii=False),
                 created_by,
             ),
         )

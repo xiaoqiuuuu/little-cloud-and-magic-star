@@ -11,6 +11,7 @@ from database import (
     create_site_event,
     delete_site_event,
     duplicate_site_event,
+    get_all_materials,
     get_current_site_event,
     get_public_site_event,
     get_site_event,
@@ -18,6 +19,7 @@ from database import (
     update_site_event,
 )
 from models import (
+    Material,
     SiteEvent,
     SiteEventCreate,
     SiteEventSummary,
@@ -72,6 +74,14 @@ def admin_create_site_event(
         return create_site_event(payload.model_dump(mode="json"), user["username"])
     except sqlite3.IntegrityError as error:
         _conflict_from_integrity(error)
+
+
+@admin_router.get("/material-options", response_model=List[Material])
+def admin_site_event_material_options(
+    _: dict = Depends(require_homepage_manage),
+):
+    """首页配置可选择全部物料，不要求账号同时拥有物料编辑权限。"""
+    return get_all_materials(page_size=0)
 
 
 @admin_router.get("/{event_id}", response_model=SiteEvent)

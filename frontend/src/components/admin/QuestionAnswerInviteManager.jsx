@@ -46,6 +46,7 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [posterOpen, setPosterOpen] = useState(false);
+  const [questionIdDraft, setQuestionIdDraft] = useState('');
   const inviteUrl = link
     ? `${window.location.origin}/answer-invite#${link.token}`
     : '';
@@ -54,22 +55,28 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
     if (!open) return;
     setLoading(true);
     setPosterOpen(false);
+    setQuestionIdDraft('');
     api.get('/admin/question-answer-invites', { hideLoading: true })
       .then((response) => setLink(response.data))
       .catch(() => setLink(null))
       .finally(() => setLoading(false));
   }, [open]);
 
-  const rotateLink = async () => {
+  const rotateLink = async (questionId = '') => {
     setSaving(true);
     try {
       const response = await api.post(
         '/admin/question-answer-invites',
-        {},
+        questionId ? { question_id: questionId } : {},
         { hideLoading: true },
       );
       setLink(response.data);
-      message.success(link ? '已生成新链接，旧链接已失效' : '邀请答题链接已生成');
+      setQuestionIdDraft('');
+      message.success(
+        questionId
+          ? `已为题目 #${questionId} 生成链接`
+          : link ? '已随机生成新链接，旧链接已失效' : '随机邀请答题链接已生成',
+      );
     } catch {
       // 全局请求拦截器已经展示错误信息。
     } finally {
@@ -87,7 +94,26 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
       content: '系统会重新随机题目，旧链接和旧海报中的二维码会立即失效。',
       okText: '生成新链接',
       cancelText: '取消',
-      onOk: rotateLink,
+      onOk: () => rotateLink(),
+    });
+  };
+
+  const confirmSpecificQuestion = () => {
+    const questionId = questionIdDraft.trim();
+    if (!questionId) {
+      message.warning('请输入要生成链接的题号');
+      return;
+    }
+    if (!link) {
+      rotateLink(questionId);
+      return;
+    }
+    modal.confirm({
+      title: `为题目 #${questionId} 生成新链接？`,
+      content: '当前链接和海报二维码会立即失效，答题统计也会从零开始。',
+      okText: '生成指定题目链接',
+      cancelText: '取消',
+      onOk: () => rotateLink(questionId),
     });
   };
 
@@ -148,7 +174,7 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
           {link && (
             <div className="question-invite-manager__question">
               <div>
-                <strong>随机题目 #{link.question_id}</strong>
+                <strong>当前题目 #{link.question_id}</strong>
                 <Tag color={tagMeta.color}>{tagMeta.shortLabel}</Tag>
               </div>
               <p>{link.question}</p>
@@ -161,10 +187,27 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
             <div className="question-invite-manager__empty">
               <QrcodeOutlined />
               <strong>还没有答题链接</strong>
-              <span>随机抽一道题并生成链接。</span>
-              <button type="button" onClick={confirmRotate} disabled={saving}>
-                {saving ? '随机抽题中…' : '随机一题并生成链接'}
-              </button>
+              <span>可以输入题号精准生成，也可以交给系统随机抽题。</span>
+              <div className="question-invite-manager__generator is-empty">
+                <label htmlFor="question-invite-id">指定题号</label>
+                <div>
+                  <input
+                    id="question-invite-id"
+                    value={questionIdDraft}
+                    onChange={(event) => setQuestionIdDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') confirmSpecificQuestion();
+                    }}
+                    placeholder="例如：12"
+                  />
+                  <button type="button" onClick={confirmSpecificQuestion} disabled={saving}>
+                    指定生成
+                  </button>
+                </div>
+                <button type="button" className="is-random" onClick={confirmRotate} disabled={saving}>
+                  {saving ? '正在生成…' : '随机一题并生成链接'}
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -190,6 +233,27 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
                 <div><span>最近答题</span><strong>{formatDateTime(link.last_revealed_at)}</strong></div>
               </div>
 
+              <div className="question-invite-manager__generator">
+                <div>
+                  <strong>指定题号重新生成</strong>
+                  <span>只能选择你有权管理的题目</span>
+                </div>
+                <div>
+                  <input
+                    value={questionIdDraft}
+                    onChange={(event) => setQuestionIdDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') confirmSpecificQuestion();
+                    }}
+                    aria-label="指定题号"
+                    placeholder="输入题号，例如 12"
+                  />
+                  <button type="button" onClick={confirmSpecificQuestion} disabled={saving}>
+                    指定生成
+                  </button>
+                </div>
+              </div>
+
               <div className="question-invite-manager__actions">
                 <button type="button" className="is-primary" onClick={shareLink}>
                   <ShareAltOutlined /> 分享链接
@@ -204,7 +268,7 @@ export default function QuestionAnswerInviteManager({ open, onClose }) {
                   <ExportOutlined /> 打开页面
                 </button>
                 <button type="button" onClick={confirmRotate} disabled={saving}>
-                  <ReloadOutlined /> 重新生成
+                  <ReloadOutlined /> 随机换题
                 </button>
                 <button type="button" className="is-danger" onClick={revokeLink}>
                   <DeleteOutlined /> 停用链接

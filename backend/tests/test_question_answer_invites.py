@@ -172,6 +172,45 @@ class QuestionAnswerInviteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(old_link.status_code, 404)
         self.assertEqual(new_link.status_code, 200)
 
+    async def test_can_generate_link_for_a_specific_manageable_question_id(self):
+        headers = await self.login_headers()
+        first_id = await self.create_question(headers, "指定题号 A", "A")
+        second_id = await self.create_question(headers, "指定题号 B", "B")
+
+        created = await self.client.post(
+            "/api/admin/question-answer-invites",
+            headers=headers,
+            json={"question_id": second_id},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        self.assertEqual(created.json()["question_id"], second_id)
+
+        regenerated = await self.client.post(
+            "/api/admin/question-answer-invites",
+            headers=headers,
+            json={"question_id": first_id},
+        )
+        self.assertEqual(regenerated.status_code, 200, regenerated.text)
+        self.assertEqual(regenerated.json()["question_id"], first_id)
+        self.assertNotEqual(regenerated.json()["token"], created.json()["token"])
+
+    async def test_cannot_generate_link_for_an_unmanaged_question_id(self):
+        owner_headers = await self.login_headers()
+        await self.create_question(owner_headers, "自己的可管理题", "可选")
+        other_headers = await self.login_headers("other-owner", "OtherPass123")
+        other_question_id = await self.create_question(
+            other_headers,
+            "其他账号的指定题",
+            "不可选",
+        )
+
+        created = await self.client.post(
+            "/api/admin/question-answer-invites",
+            headers=owner_headers,
+            json={"question_id": other_question_id},
+        )
+        self.assertEqual(created.status_code, 404, created.text)
+
     async def test_revoke_and_disabled_owner_invalidate_link(self):
         headers = await self.login_headers()
         await self.create_question(headers, "可停用题目", "答案")

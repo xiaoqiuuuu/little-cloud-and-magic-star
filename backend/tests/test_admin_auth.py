@@ -154,6 +154,11 @@ class AdminAuthApiTests(unittest.IsolatedAsyncioTestCase):
         current = await self.client.get("/api/site-events/current")
         self.assertEqual(current.status_code, 200, current.text)
         original = current.json()
+        self.assertTrue(original["content"]["material_ids"])
+        self.assertEqual(
+            len(original["content"]["material_ids"]),
+            len(original["content"]["materials"]),
+        )
 
         editor_tokens = await self.login("editor", "EditorPass123")
         editor_response = await self.client.get(
