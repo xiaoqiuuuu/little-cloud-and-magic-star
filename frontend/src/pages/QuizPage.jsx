@@ -6,6 +6,7 @@ import VideoPreview from '../components/VideoPreview';
 import AudioPreview from '../components/AudioPreview';
 import Countdown from '../components/Countdown';
 import api from '../api';
+import { getResourceType } from '../components/admin/questionForm';
 import {
   PERMISSIONS,
   canManageAllQuestions,
@@ -708,23 +709,23 @@ function QuizPage({ activityMode = false, initialQuestionId = null }) {
                   <h3>题目资源：</h3>
                   <div className="quiz-character-resource-grid">
                     {currentQuestion.resources.map((url, index) => {
-                      const extension = url.split('.').pop().toLowerCase();
+                      const resourceType = getResourceType(url);
                       return (
                         <div className="quiz-character-resource" key={url}>
-                          {/(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(extension) ? (
+                          {resourceType === 'image' ? (
                             <ImagePreview
                               src={url}
                               alt="图片资源"
                               className="quiz-character-resource__visual"
                               themedClose
                             />
-                          ) : /(mp4|webm|ogg|mov|avi|mkv)$/.test(extension) ? (
+                          ) : resourceType === 'video' ? (
                             <VideoPreview
                               src={url}
                               className="quiz-character-resource__visual"
                               themedClose
                             />
-                          ) : /(mp3|wav|aac|flac|m4a|ogg)$/.test(extension) ? (
+                          ) : resourceType === 'audio' ? (
                             <AudioPreview
                               src={url}
                               className="quiz-character-resource__audio"

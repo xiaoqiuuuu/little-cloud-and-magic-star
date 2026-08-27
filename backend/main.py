@@ -7,6 +7,8 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+from range_static import RangeStaticFiles
+
 # 所有运行方式统一从项目根目录加载环境变量。
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
@@ -55,7 +57,7 @@ app.add_middleware(
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
 if not os.path.exists(uploads_dir):
     os.makedirs(uploads_dir)
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+app.mount("/uploads", RangeStaticFiles(directory=uploads_dir), name="uploads")
 
 # 注册所有路由 - 注意：API路由必须在静态也路由之前注册
 app.include_router(upload_router)  # 上传接口
