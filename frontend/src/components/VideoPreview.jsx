@@ -23,7 +23,8 @@ export default function VideoPreview({ src, className = '', character, themedClo
           <video
             src={src}
             controls
-            autoPlay
+            playsInline
+            preload="metadata"
             className="media-preview-overlay__media"
           />
         </MediaPreviewOverlay>
